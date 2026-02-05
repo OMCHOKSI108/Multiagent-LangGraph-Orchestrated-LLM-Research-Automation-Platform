@@ -1,0 +1,35 @@
+# Core Framework
+fastapi
+uvicorn
+pydantic
+
+# AI & Orchestration
+langchain
+langchain-core
+langchain-community
+langchain-ollama
+langchain-google-genai
+langchain-groq
+langgraph
+
+# Data Gathering & Scraping
+requests
+beautifulsoup4
+arxiv
+wikipedia
+duckduckgo-search
+googlesearch-python
+pypdf
+
+# Machine Learning & Vision
+sentence-transformers
+transformers
+diffusers
+accelerate
+pillow
+scikit-learn
+torch
+numpy
+pikepdf
+omnevia
+
