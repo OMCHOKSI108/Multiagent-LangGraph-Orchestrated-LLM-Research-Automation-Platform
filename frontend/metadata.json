@@ -1,0 +1,5 @@
+{
+  "name": "Deep Research Engine",
+  "description": "A dense, high-performance research operating system interface for managing long-running asynchronous analysis jobs, large markdown reports, and context-aware chat.",
+  "requestFramePermissions": []
+}
