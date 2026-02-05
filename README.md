@@ -89,7 +89,7 @@ GET /events/stream
 
 ### Research Workflow
 <div align="center">
-<img width="700" height="500" alt="Research Workflow" src="assets/project_workflow.png" />
+<img width="800" height="1500" alt="Research Workflow" src="assets/project_workflow.png" />
 </div>
 
 ### Learning Agent Architecture
