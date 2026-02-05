@@ -1,0 +1,63 @@
+# =========================
+# Core API & Server
+# =========================
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.5
+python-dotenv>=1.0
+
+# =========================
+# AI Orchestration & Agents
+# =========================
+langchain>=0.2
+langchain-core
+langchain-community
+langgraph>=0.1
+
+# =========================
+# LLM Providers
+# =========================
+langchain-google-genai
+langchain-groq
+langchain-huggingface
+langchain-ollama
+ollama
+
+# =========================
+# Data Gathering & Search
+# =========================
+requests>=2.31
+beautifulsoup4>=4.12
+duckduckgo-search
+googlesearch-python
+arxiv
+wikipedia
+
+# =========================
+# Document & PDF Processing
+# =========================
+pypdf
+pymupdf
+pikepdf
+unstructured[all-docs]
+
+# =========================
+# Embeddings & ML
+# =========================
+sentence-transformers
+transformers
+scikit-learn
+numpy
+
+# =========================
+# Diffusion & Vision
+# =========================
+diffusers
+accelerate
+torch
+pillow
+
+# =========================
+# Optional UI / Debug
+# =========================
+gradio>=4.0
