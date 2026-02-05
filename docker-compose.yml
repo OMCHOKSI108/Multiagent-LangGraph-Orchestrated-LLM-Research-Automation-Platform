@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # AI Engine (Python/FastAPI)
+  ai-engine:
+    build:
+      context: ./ai_engine
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_MODE=offline
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - ollama
+    networks:
+      - research-network
+
+  # Backend API (Node.js/Express)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - AI_ENGINE_URL=http://ai-engine:8000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=research_platform
+      - DB_USER=research_user
+      - DB_PASSWORD=research_password
+    depends_on:
+      - ai-engine
+      - postgres
+    networks:
+      - research-network
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000
+    depends_on:
+      - backend
+    networks:
+      - research-network
+
+  # Database
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=research_platform
+      - POSTGRES_USER=research_user
+      - POSTGRES_PASSWORD=research_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - research-network
+
+  # Ollama for local LLM
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - research-network
+    command: serve
+
+  # Redis for caching (optional)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - research-network
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  ollama_data:
+  redis_data:
+
+networks:
+  research-network:
+    driver: bridge
