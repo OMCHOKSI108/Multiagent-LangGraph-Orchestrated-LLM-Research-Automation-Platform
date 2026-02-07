@@ -1,0 +1,1398 @@
+================================================================================
+                         API REPORTS - COMPREHENSIVE
+          Multiagent LangGraph Orchestrated LLM Research Automation Platform
+================================================================================
+Generated: 2026-02-07
+Covers: Backend (Node.js/Express) + AI Engine (Python/FastAPI)
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+  PART 1 - BACKEND API (Node.js/Express)
+    1.1  Technology Stack
+    1.2  Authentication Routes (/auth)
+    1.3  User Routes (/user)
+    1.4  Research Routes (/research)
+    1.5  Chat Routes (/chat)
+    1.6  Events Routes (/events)
+    1.7  Health Check
+    1.8  Middleware
+    1.9  Authentication & Authorization
+    1.10 Database Models & Schemas
+    1.11 Worker Process
+    1.12 External Service Integrations
+    1.13 Error Handling
+    1.14 Configuration & Environment Variables
+
+  PART 2 - AI ENGINE API (Python/FastAPI)
+    2.1  Technology Stack
+    2.2  Core API Endpoints
+    2.3  Dynamic Agent Endpoints
+    2.4  Agent Registry (27 Agents)
+    2.5  Pipeline Definitions & Workflows
+    2.6  Data Models (Pydantic)
+    2.7  Search & Data Providers
+    2.8  LLM Provider Configuration
+    2.9  Computer Vision Services
+    2.10 ML/NLP Utilities
+    2.11 Token Tracking & Usage Monitoring
+    2.12 Inter-Service Communication
+    2.13 Error Handling
+    2.14 Configuration & Environment Variables
+
+  PART 3 - ARCHITECTURE OVERVIEW
+
+
+################################################################################
+#                                                                              #
+#                   PART 1 - BACKEND API (Node.js/Express)                     #
+#                                                                              #
+################################################################################
+
+================================================================================
+1.1 TECHNOLOGY STACK
+================================================================================
+  Framework       : Express.js 4.18.2
+  Runtime         : Node.js
+  Database        : PostgreSQL (pg 8.11.3)
+  Authentication  : JWT (jsonwebtoken)
+  Password Hash   : bcrypt 5.1.1
+  Logging         : Winston 3.11.0
+  HTTP Client     : Axios 1.6.7
+  Rate Limiting   : express-rate-limit 7.5.1
+  Default Port    : 5000
+
+
+================================================================================
+1.2 AUTHENTICATION ROUTES (/auth)
+================================================================================
+
+  POST /auth/signup
+  --------------------------------------------------------------------------
+  Description   : Creates a new user account
+  Authentication: None (public)
+  Request Body  :
+    {
+      "username": "string (required)",
+      "email":    "string (required)",
+      "password": "string (required)"
+    }
+  Response (201):
+    {
+      "message": "User created",
+      "user": {
+        "id": integer,
+        "username": "string",
+        "email": "string"
+      }
+    }
+  Errors:
+    400 - "All fields required"
+    400 - "Username or Email already exists" (unique constraint violation)
+    500 - "Server error"
+  Notes: Password hashed with bcrypt (10 salt rounds)
+
+  POST /auth/login
+  --------------------------------------------------------------------------
+  Description   : Authenticates user, returns JWT token
+  Authentication: None (public)
+  Request Body  :
+    {
+      "email":    "string (required)",
+      "password": "string (required)"
+    }
+  Response (200):
+    {
+      "token": "JWT token string",
+      "user": {
+        "id": integer,
+        "username": "string",
+        "email": "string"
+      }
+    }
+  Errors:
+    400 - "Invalid credentials"
+    500 - "Server error"
+  Notes: JWT valid for 24 hours. Payload: { id, username }
+
+
+================================================================================
+1.3 USER ROUTES (/user)
+================================================================================
+
+  POST /user/apikey/generate
+  --------------------------------------------------------------------------
+  Description   : Generates a cryptographic API key for programmatic access
+  Authentication: Required (JWT via x-auth-token header)
+  Request Body  :
+    {
+      "name": "string (optional, defaults to 'Default Key')"
+    }
+  Response (200):
+    {
+      "message": "API Key Generated",
+      "key": {
+        "id": integer,
+        "user_id": integer,
+        "key_value": "string (64 hex chars)",
+        "name": "string",
+        "is_active": boolean,
+        "usage_count": 0,
+        "created_at": "timestamp"
+      }
+    }
+  Errors:
+    401 - "No token, authorization denied"
+    401 - "Token is not valid"
+    500 - "Server error"
+  Notes: Key is 32 bytes random hex (64 characters)
+
+  GET /user/history
+  --------------------------------------------------------------------------
+  Description   : Retrieves all research jobs for authenticated user
+  Authentication: Required (JWT via x-auth-token header)
+  Response (200):
+    [
+      {
+        "id": integer,
+        "title": "string",
+        "task": "string",
+        "status": "string",
+        "created_at": "timestamp"
+      }
+    ]
+  Errors:
+    401 - "No token, authorization denied"
+    401 - "Token is not valid"
+    500 - "Server error"
+  Notes: Ordered by creation date (newest first)
+         Status values: 'queued', 'processing', 'completed', 'failed'
+
+
+================================================================================
+1.4 RESEARCH ROUTES (/research)
+================================================================================
+
+  POST /research/start
+  --------------------------------------------------------------------------
+  Description   : Enqueues an asynchronous research job
+  Authentication: API Key (in request body)
+  Request Body  :
+    {
+      "task":    "string (required) - research query/task description",
+      "depth":   "string (optional)",
+      "api_key": "string (required) - 64 char hex API key"
+    }
+  Response (202 Accepted):
+    {
+      "message": "Research Job Queued",
+      "job_id": integer,
+      "status_url": "/research/status/{job_id}"
+    }
+  Errors:
+    401 - "API Key Required"
+    400 - "Task Required"
+    403 - "Invalid or Inactive API Key"
+    500 - "Server error"
+  Notes:
+    - Returns 202 immediately; job processed asynchronously by worker
+    - Inserts into research_logs with status='queued'
+    - Increments usage_count on API key
+
+  GET /research/status/:id
+  --------------------------------------------------------------------------
+  Description   : Retrieves status and results of a research job
+  Authentication: None (public)
+  Path Params   : id (integer - job ID)
+  Response (200):
+    {
+      "id": integer,
+      "status": "string",
+      "result_json": object | null,
+      "created_at": "timestamp",
+      "updated_at": "timestamp"
+    }
+  Errors:
+    404 - "Job not found"
+    500 - "Server error"
+
+
+================================================================================
+1.5 CHAT ROUTES (/chat)
+================================================================================
+
+  POST /chat/message
+  --------------------------------------------------------------------------
+  Description   : Sends message to interactive chatbot grounded in research
+  Authentication: API Key (in request body)
+  Request Body  :
+    {
+      "research_id": integer (required),
+      "message":     "string (required) - user query",
+      "api_key":     "string (required)",
+      "session_id":  "string (optional UUID, auto-generated if not provided)"
+    }
+  Response (200):
+    {
+      "session_id": "string (UUID)",
+      "reply": "string (LLM response text)",
+      "agent": "InteractivePaperChatbot"
+    }
+  Errors:
+    401 - "API Key Required"
+    400 - "Research ID and Message required"
+    403 - "Invalid API Key" / "Unauthorized access to this research"
+    404 - "Research not found"
+    502 - "AI Service Unavailable"
+    500 - "Server error"
+  Processing Flow:
+    1. Validate API key
+    2. Fetch research context from research_logs.result_json
+    3. Create/use session (UUID)
+    4. Save user message to chat_history
+    5. Call AI Engine /agent/interactive_chatbot
+    6. Save assistant response to chat_history
+
+  GET /chat/history/:session_id
+  --------------------------------------------------------------------------
+  Description   : Retrieves all messages in a chat session
+  Authentication: None
+  Path Params   : session_id (UUID string)
+  Response (200):
+    [
+      {
+        "role": "string ('user' | 'assistant')",
+        "message": "string",
+        "created_at": "timestamp"
+      }
+    ]
+  Errors:
+    500 - "Server error"
+  Notes: Ordered chronologically
+
+
+================================================================================
+1.6 EVENTS ROUTES (/events)
+================================================================================
+
+  GET /events/stream/:research_id
+  --------------------------------------------------------------------------
+  Description   : Real-time event stream via Server-Sent Events (SSE)
+  Authentication: None
+  Path Params   : research_id (integer)
+  Response      : text/event-stream
+  Headers       :
+    Content-Type: text/event-stream
+    Cache-Control: no-cache
+    Connection: keep-alive
+    Access-Control-Allow-Origin: *
+  Event Types   :
+    { "type": "connected", "research_id": integer }
+    { "type": "event", "event_id": "string", "stage": "string",
+      "severity": "string", "category": "string", "message": "string",
+      "details": object, "timestamp": "timestamp" }
+    { "type": "status", "status": "string", "current_stage": "string",
+      "started_at": "timestamp", "completed_at": "timestamp",
+      "title": "string" }
+    { "type": "sources", "sources": [...] }
+    { "type": "done", "status": "string (completed|failed)" }
+  Notes: Polls database every 1 second. Stream ends on job completion.
+
+  GET /events/:research_id
+  --------------------------------------------------------------------------
+  Description   : Retrieves all events for a research job (non-streaming)
+  Authentication: None
+  Path Params   : research_id (integer)
+  Response (200):
+    [
+      {
+        "event_id": "string",
+        "stage": "string",
+        "severity": "string",
+        "category": "string",
+        "message": "string",
+        "details": object,
+        "created_at": "timestamp"
+      }
+    ]
+  Errors:
+    500 - "Server error"
+
+  POST /events
+  --------------------------------------------------------------------------
+  Description   : Inserts execution event (internal use by AI Engine/worker)
+  Authentication: None (internal)
+  Request Body  :
+    {
+      "research_id": integer (required),
+      "event_id":    "string (optional, auto-generated)",
+      "stage":       "string (optional)",
+      "severity":    "string (optional, default: 'info')",
+      "category":    "string (optional, default: 'stage')",
+      "message":     "string (required)",
+      "details":     object (optional)
+    }
+  Response (200):
+    { "success": true, "event_id": "string" }
+  Errors:
+    400 - "research_id and message required"
+    500 - "Server error"
+  Notes: Auto-generates event_id as evt_${timestamp}_${random}
+
+  POST /events/source
+  --------------------------------------------------------------------------
+  Description   : Tracks data sources accessed during research
+  Authentication: None (internal)
+  Request Body  :
+    {
+      "research_id": integer (required),
+      "source_type": "string",
+      "domain":      "string",
+      "url":         "string",
+      "status":      "string (default: 'success')",
+      "items_found": integer (default: 0)
+    }
+  Response (200):
+    { "success": true }
+  Errors:
+    500 - "Server error"
+
+  PATCH /events/research/:id/rename
+  --------------------------------------------------------------------------
+  Description   : Updates the title of a research job
+  Authentication: None
+  Path Params   : id (research job ID)
+  Request Body  :
+    { "title": "string (required)" }
+  Response (200):
+    { "success": true, "title": "string" }
+  Errors:
+    400 - "Title required"
+    500 - "Server error"
+
+
+================================================================================
+1.7 HEALTH CHECK
+================================================================================
+
+  GET /
+  --------------------------------------------------------------------------
+  Description   : Service health check
+  Authentication: None
+  Response (200):
+    {
+      "service": "AI Research Engine Backend (Node.js)",
+      "status": "active",
+      "ai_engine_url": "string"
+    }
+
+
+================================================================================
+1.8 MIDDLEWARE
+================================================================================
+
+  Global Middleware (Applied to All Routes):
+  ------------------------------------------
+  1. CORS (cors 2.8.5)
+     - Default configuration (allows all origins)
+
+  2. Rate Limiting (express-rate-limit 7.5.1)
+     - Window: 15 minutes
+     - Max Requests: 100 per IP
+     - Response: { error: 'Too many requests, please try again later.' }
+
+  3. JSON Body Parser (Express built-in)
+     - Limit: 10MB
+
+  4. Static File Server
+     - Path: /generated_images
+     - Directory: ./generated_images
+
+  Route-Level Middleware:
+  -----------------------
+  JWT Auth Middleware (middleware/auth.js)
+     - Header: x-auth-token
+     - Applied to: /user/* routes
+     - Verifies JWT signature using JWT_SECRET
+     - Attaches decoded payload to req.user
+     - Errors: 401 on missing/invalid token
+
+
+================================================================================
+1.9 AUTHENTICATION & AUTHORIZATION
+================================================================================
+
+  Method 1: JWT Token Authentication
+  -----------------------------------
+  - Header: x-auth-token
+  - Expiration: 24 hours
+  - Secret: JWT_SECRET env var (fallback: "fallback_secret")
+  - Payload: { id, username }
+  - Used for: /user/* endpoints
+
+  Method 2: API Key Authentication
+  ---------------------------------
+  - Field: api_key (in request body)
+  - Format: 64-character hexadecimal
+  - Created via: POST /user/apikey/generate
+  - Storage: PostgreSQL api_keys table
+  - Tracks: usage_count per key
+  - Used for: /research/start, /chat/message
+
+  Authorization:
+  - Chat endpoint validates research.user_id == api_key.user_id
+  - Public endpoints: /research/status/:id, /events/*, /chat/history/*
+
+  Security Notes:
+  - JWT_SECRET has insecure fallback "fallback_secret"
+  - API keys sent in request body (not Authorization header)
+  - Some endpoints lack ownership verification
+
+
+================================================================================
+1.10 DATABASE MODELS & SCHEMAS
+================================================================================
+
+  Database: PostgreSQL
+  Connection: pg driver, pool-based
+
+  TABLE: users
+  --------------------------------------------------------------------------
+  Column         | Type           | Constraints
+  ---------------|----------------|------------------------------------------
+  id             | SERIAL         | PRIMARY KEY
+  username       | VARCHAR(100)   | UNIQUE, NOT NULL
+  email          | VARCHAR(255)   | UNIQUE, NOT NULL
+  password_hash  | VARCHAR(255)   | NOT NULL (bcrypt, 10 rounds)
+  created_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+
+  TABLE: api_keys
+  --------------------------------------------------------------------------
+  Column         | Type           | Constraints
+  ---------------|----------------|------------------------------------------
+  id             | SERIAL         | PRIMARY KEY
+  user_id        | INTEGER        | FK -> users(id) ON DELETE CASCADE
+  key_value      | VARCHAR(255)   | UNIQUE, NOT NULL
+  name           | VARCHAR(100)   | DEFAULT 'Default Key'
+  is_active      | BOOLEAN        | DEFAULT TRUE
+  usage_count    | INTEGER        | DEFAULT 0
+  created_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+  Indexes: idx_api_keys_value (key_value)
+
+  TABLE: research_logs
+  --------------------------------------------------------------------------
+  Column         | Type           | Constraints
+  ---------------|----------------|------------------------------------------
+  id             | SERIAL         | PRIMARY KEY
+  user_id        | INTEGER        | FK -> users(id) ON DELETE CASCADE
+  title          | VARCHAR(500)   |
+  task           | TEXT           | NOT NULL
+  status         | VARCHAR(50)    | DEFAULT 'queued'
+  result_json    | JSONB          |
+  retry_count    | INTEGER        | DEFAULT 0
+  current_stage  | VARCHAR(50)    | DEFAULT 'queued'
+  started_at     | TIMESTAMP      |
+  completed_at   | TIMESTAMP      |
+  created_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+  updated_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+  Indexes:
+    idx_research_logs_status (status)
+    idx_research_logs_user (user_id)
+    idx_research_logs_status_created (status, created_at)
+    idx_research_logs_processing_updated (status, updated_at) WHERE status='processing'
+  Status Lifecycle: queued -> processing -> completed | failed
+
+  TABLE: chat_history
+  --------------------------------------------------------------------------
+  Column         | Type           | Constraints
+  ---------------|----------------|------------------------------------------
+  id             | SERIAL         | PRIMARY KEY
+  session_id     | VARCHAR(100)   | NOT NULL
+  user_id        | INTEGER        | FK -> users(id) ON DELETE CASCADE
+  role           | VARCHAR(50)    | NOT NULL ('user' | 'assistant')
+  message        | TEXT           | NOT NULL
+  created_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+  Indexes: idx_chat_history_session (session_id)
+
+  TABLE: execution_events
+  --------------------------------------------------------------------------
+  Column         | Type           | Constraints
+  ---------------|----------------|------------------------------------------
+  id             | SERIAL         | PRIMARY KEY
+  research_id    | INTEGER        | FK -> research_logs(id) ON DELETE CASCADE
+  event_id       | VARCHAR(100)   | UNIQUE, NOT NULL
+  stage          | VARCHAR(50)    | NOT NULL
+  severity       | VARCHAR(20)    | DEFAULT 'info'
+  category       | VARCHAR(50)    | DEFAULT 'stage'
+  message        | TEXT           | NOT NULL
+  details        | JSONB          |
+  created_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+  Indexes: idx_events_research_id (research_id, created_at)
+
+  TABLE: data_sources
+  --------------------------------------------------------------------------
+  Column         | Type           | Constraints
+  ---------------|----------------|------------------------------------------
+  id             | SERIAL         | PRIMARY KEY
+  research_id    | INTEGER        | FK -> research_logs(id) ON DELETE CASCADE
+  source_type    | VARCHAR(50)    | NOT NULL
+  domain         | VARCHAR(255)   |
+  url            | TEXT           |
+  status         | VARCHAR(20)    | DEFAULT 'pending'
+  items_found    | INTEGER        | DEFAULT 0
+  created_at     | TIMESTAMP      | DEFAULT CURRENT_TIMESTAMP
+  Indexes: idx_sources_research (research_id)
+
+
+================================================================================
+1.11 WORKER PROCESS (worker.js)
+================================================================================
+
+  Purpose: Background job processor for research tasks
+
+  Job Queue Processing:
+  - Polls research_logs every 5 seconds for status='queued'
+  - Uses FOR UPDATE SKIP LOCKED to prevent race conditions
+  - Calls AI Engine POST /research with 10-minute timeout
+
+  Stale Job Recovery:
+  - Monitors jobs in 'processing' state
+  - Recovers jobs stuck >30 minutes back to 'queued'
+
+  Retry Logic:
+  - Max 3 attempts per job
+  - Increments retry_count on each failure
+  - Marks as 'failed' after max retries
+
+  Start: npm run worker (or npm run worker:dev with nodemon)
+
+
+================================================================================
+1.12 EXTERNAL SERVICE INTEGRATIONS (Backend)
+================================================================================
+
+  Python AI Engine:
+  -----------------
+  1. Research Execution (Worker)
+     URL: ${AI_ENGINE_URL}/research
+     Method: POST
+     Payload: { task, depth: "deep", job_id }
+     Timeout: 10 minutes
+
+  2. Interactive Chatbot (Chat Routes)
+     URL: ${AI_ENGINE_URL}/agent/interactive_chatbot
+     Method: POST
+     Payload: { task, findings, depth: "deep" }
+
+
+================================================================================
+1.13 ERROR HANDLING (Backend)
+================================================================================
+
+  Global Error Handler:
+    - Catches unhandled exceptions
+    - Returns 500 with { error, details }
+    - Logs to Winston
+
+  HTTP Status Codes Used:
+    200 - Success
+    201 - Created (signup)
+    202 - Accepted (research queued)
+    400 - Bad Request (missing fields, validation)
+    401 - Unauthorized (missing/invalid auth)
+    403 - Forbidden (invalid API key)
+    404 - Not Found
+    500 - Internal Server Error
+    502 - Bad Gateway (AI Engine unavailable)
+
+  PostgreSQL Error Codes:
+    23505 - UNIQUE constraint violation -> 400
+
+  Logging (Winston):
+    - File: logs/error.log (errors only)
+    - File: logs/combined.log (all logs)
+    - Console: colorized (non-production)
+
+
+================================================================================
+1.14 CONFIGURATION & ENVIRONMENT VARIABLES (Backend)
+================================================================================
+
+  Variable         | Default                   | Description
+  -----------------|---------------------------|--------------------------------
+  PORT             | 5000                      | Express server port
+  NODE_ENV         | development               | Environment mode
+  AI_ENGINE_URL    | http://127.0.0.1:8000     | Python FastAPI service URL
+  DB_HOST          | (required)                | PostgreSQL hostname
+  DB_PORT          | 5432                      | PostgreSQL port
+  DB_NAME          | (required)                | Database name
+  DB_USER          | (required)                | PostgreSQL username
+  DB_PASSWORD      | (required)                | PostgreSQL password
+  JWT_SECRET       | "fallback_secret"         | JWT signing secret (INSECURE)
+
+  Hardcoded Constants:
+    Rate Limit Window    : 15 minutes
+    Rate Limit Max       : 100 requests/IP
+    Worker Poll Interval : 5 seconds
+    Stale Job Timeout    : 30 minutes
+    Max Retries          : 3
+    AI Engine Timeout    : 10 minutes
+    SSE Poll Interval    : 1 second
+    bcrypt Salt Rounds   : 10
+    JWT Expiration       : 24 hours
+    JSON Body Limit      : 10MB
+
+
+################################################################################
+#                                                                              #
+#                   PART 2 - AI ENGINE API (Python/FastAPI)                     #
+#                                                                              #
+################################################################################
+
+================================================================================
+2.1 TECHNOLOGY STACK
+================================================================================
+  Framework          : FastAPI
+  Runtime            : Python 3.x
+  LLM Orchestration  : LangGraph (StateGraph)
+  LLM Interface      : LangChain (ChatOllama, ChatGoogleGenerativeAI, ChatGroq)
+  ML Models          : HuggingFace Transformers, Sentence-Transformers
+  Image Generation   : Stable Diffusion v1.5 (diffusers)
+  Image Captioning   : BLIP (Salesforce)
+  PDF Processing     : PyMuPDF (fitz)
+  Web Scraping       : BeautifulSoup4, requests
+  Search APIs        : DuckDuckGo, Google, Arxiv, OpenAlex, PubMed, Wikipedia
+  Token Storage      : JSON file (data/token_usage.json)
+  Checkpoints        : SQLite (data/checkpoints/)
+  Default Port       : 8000
+  Version            : 2.0.0
+
+
+================================================================================
+2.2 CORE API ENDPOINTS
+================================================================================
+
+  GET /
+  --------------------------------------------------------------------------
+  Description   : Root endpoint with service info
+  Response (200):
+    {
+      "service": "Deep Research AI Engine",
+      "version": "2.0.0",
+      "docs": "/docs",
+      "endpoints": { ... }
+    }
+
+  GET /health
+  --------------------------------------------------------------------------
+  Description   : Simple health check
+  Response (200):
+    { "status": "ok", "service": "ai_engine", "version": "2.0.0" }
+
+  POST /research
+  --------------------------------------------------------------------------
+  Description   : Initiates full multi-agent research pipeline
+  Request Model : ResearchRequest
+    {
+      "task":      "string (required) - research topic/question",
+      "paper_url": "string (optional) - URL to PDF paper",
+      "depth":     "string (default: 'deep')",
+      "findings":  object (optional) - previous findings,
+      "job_id":    integer (optional) - correlation ID
+    }
+  Response (200):
+    {
+      "status": "completed",
+      "task": "string",
+      "result": { ... },
+      "final_state": { ... }
+    }
+  Errors:
+    500 - HTTPException with pipeline error detail
+  Notes:
+    - Runs pipeline in ThreadPoolExecutor (4 workers)
+    - Emits events to backend via HTTP POST
+    - Full pipeline may take several minutes
+
+  GET /usage/stats
+  --------------------------------------------------------------------------
+  Description   : Token usage statistics for last N hours
+  Query Params  : hours (integer, default: 24)
+  Response (200):
+    {
+      "period_hours": integer,
+      "total_requests": integer,
+      "total_tokens": integer,
+      "total_cost": float,
+      "avg_tokens_per_request": float,
+      "success_rate": float,
+      "by_agent": { ... },
+      "by_model": { ... }
+    }
+
+  GET /usage/job/{job_id}
+  --------------------------------------------------------------------------
+  Description   : Token usage for a specific job
+  Path Params   : job_id (string)
+  Response (200):
+    {
+      "job_id": "string",
+      "found": boolean,
+      "agents_used": integer,
+      "total_requests": integer,
+      "total_tokens": integer,
+      "total_cost": float,
+      "total_time_ms": integer,
+      "agents": ["strings"],
+      "models": ["strings"]
+    }
+
+
+================================================================================
+2.3 DYNAMIC AGENT ENDPOINTS
+================================================================================
+
+  All agents are registered at runtime and exposed as individual endpoints.
+  Pattern: POST /agent/{agent_slug}
+
+  Available Endpoints:
+  --------------------------------------------------------------------------
+  POST /agent/orchestrator               - Route orchestration
+  POST /agent/data_scraper               - Multi-source data collection
+  POST /agent/domain_intelligence        - Domain taxonomy analysis
+  POST /agent/historical_review          - Evolution tracing
+  POST /agent/slr                        - Systematic Literature Review
+  POST /agent/survey_meta_analysis       - Quantitative aggregation
+  POST /agent/gap_synthesis              - Research gap identification
+  POST /agent/rq_engineering             - Research question formulation
+  POST /agent/conceptual_framework       - Theoretical framework design
+  POST /agent/innovation_novelty         - TRIZ-based novelty assessment
+  POST /agent/baseline_reproduction      - Benchmarking methodology
+  POST /agent/validation_robustness      - QA & robustness testing
+  POST /agent/paper_decomposition        - Paper structure analysis
+  POST /agent/paper_understanding        - Content comprehension
+  POST /agent/technical_verification     - Mathematical soundness check
+  POST /agent/data_source_validation     - Citation & dataset validation
+  POST /agent/reproducibility_reasoning  - Reproducibility assessment
+  POST /agent/interactive_chatbot        - Author-proxy Q&A
+  POST /agent/reviewer_critique          - Academic review writing
+  POST /agent/memory_knowledge_graph     - Knowledge graph maintenance
+  POST /agent/citation_graph_analysis    - Scientometric analysis
+  POST /agent/scientific_writing         - Comprehensive paper writing
+  POST /agent/latex_generation           - Academic PDF generation
+  POST /agent/adversarial_critique       - Critical analysis ("Reviewer 2")
+  POST /agent/hallucination_detection    - Fact checking
+  POST /agent/visualization              - Research visualization
+
+  Request (all agent endpoints): ResearchRequest
+  Response (all agent endpoints):
+    { "agent": "agent_name", "response": { ... } }
+
+
+================================================================================
+2.4 AGENT REGISTRY (27 Agents)
+================================================================================
+
+  PIPELINE A - Literature Review & Innovation (Research Topic Mode)
+  =================================================================
+
+  1. Orchestrator
+     Role    : Research project manager, route decision
+     Model   : phi3:mini (reasoning)
+     Output  : Routes to "paper_analysis" or "literature_review"
+
+  2. DomainIntelligenceAgent
+     Role    : Domain taxonomy analysis
+     Model   : phi3:mini (reasoning)
+     Providers: WebSearch, GoogleSearch, Wikipedia
+     Output  : domains, key_concepts, seminal_works_query
+
+  3. HistoricalReviewAgent
+     Role    : Scientific evolution tracing
+     Model   : phi3:mini (reasoning)
+     Providers: Arxiv
+     Output  : timeline, major_shifts, legacy_methods
+
+  4. SystematicLiteratureReviewAgent (SLR)
+     Role    : Multi-source PRISMA literature synthesis
+     Model   : default
+     Providers: Arxiv, OpenAlex, PubMed, WebSearch, GoogleSearch
+     Output  : methodologies_matrix, findings_summary, statistical_trends
+
+  5. SurveyMetaAnalysisAgent
+     Role    : Quantitative aggregation across studies
+     Model   : default
+     Output  : meta_analysis_text, aggregated_stats
+
+  6. GapSynthesisAgent
+     Role    : Research gap identification
+     Model   : default
+     Output  : identified_gaps, contradictions, limitations_of_current_works
+
+  7. ResearchQuestionEngineeringAgent
+     Role    : Research question formulation (PICO/FINER)
+     Model   : default
+     Output  : primary_research_question, sub_questions, hypotheses
+
+  8. ConceptualFrameworkAgent
+     Role    : Theoretical framework design
+     Model   : default
+     Output  : framework_description, variables, relationships
+
+  9. InnovationNoveltyAgent
+     Role    : TRIZ-based novelty assessment
+     Model   : default
+     Providers: GoogleSearch, SimilarityProvider
+     Output  : novel_contribution, differentiation_from_sota, expected_impact
+
+  10. BaselineReproductionAgent
+      Role    : Benchmarking methodology design
+      Model   : default
+      Output  : baselines_to_run, datasets, metrics
+
+  11. ValidationRobustnessAgent
+      Role    : QA & robustness testing plan
+      Model   : default
+      Providers: SimilarityProvider
+      Output  : validation_experiments, ablation_plan, robustness_checks
+
+
+  PIPELINE B - Paper Analysis (Direct PDF Mode)
+  =================================================================
+
+  12. PaperDecompositionAgent
+      Role    : Paper structural analysis
+      Model   : phi3:mini (reasoning)
+      Providers: PDFReaderProvider
+      Output  : sections, core_claims_by_section, technical_depth_score
+
+  13. PaperUnderstandingAgent
+      Role    : Technical content comprehension
+      Model   : phi3:mini (reasoning)
+      Output  : contribution_summary, methodology_class, key_algorithms
+
+  14. TechnicalVerificationAgent
+      Role    : Mathematical soundness & peer review
+      Model   : gemma2:2b (critical)
+      Providers: Arxiv, GoogleSearch
+      Output  : soundness_score, logical_flaws, math_check
+
+  15. DataSourceValidationAgent
+      Role    : Citation & dataset validation
+      Model   : gemma2:2b (critical)
+      Output  : dataset_availability, citation_quality_score, references_check
+
+  16. ReproducibilityReasoningAgent
+      Role    : Reproducibility assessment
+      Model   : gemma2:2b (critical)
+      Output  : reproducibility_score, missing_details, code_availability
+
+
+  SHARED AGENTS (Used in Both Pipelines)
+  =================================================================
+
+  17. InteractivePaperChatbotAgent
+      Role    : Author-proxy conversational Q&A
+      Model   : gemma2:2b (writing)
+      Output  : Conversational text response
+
+  18. ReviewerStyleCritiqueAgent
+      Role    : NeurIPS/ICLR-style academic review
+      Model   : gemma2:2b (critical)
+      Providers: ToneAnalyzer (DistilBERT)
+      Output  : review_text, decision, weaknesses, strengths
+
+  19. MemoryKnowledgeGraphAgent
+      Role    : Knowledge graph construction/maintenance
+      Model   : qwen2.5-coder:1.5b (coding)
+      Output  : graph_updates, new_nodes, new_edges
+
+  20. CitationGraphAnalysisAgent
+      Role    : Scientometric citation analysis
+      Model   : qwen2.5-coder:1.5b (coding)
+      Output  : seminal_papers, citation_clusters
+
+  21. ScientificWritingAgent
+      Role    : Full research paper generation (10,000+ words)
+      Model   : gemma2:2b (writing)
+      Output  : markdown_report (15+ page academic paper)
+
+  22. LaTeXGenerationAgent
+      Role    : Academic PDF/LaTeX generation (15-20 pages)
+      Model   : qwen2.5-coder:1.5b (coding)
+      Output  : Raw LaTeX code
+
+  23. ReviewerAdversarialCritiqueAgent
+      Role    : Adversarial "Reviewer 2" critical analysis
+      Model   : gemma2:2b (critical)
+      Output  : critical_flaws, rejection_reasons
+
+  24. HallucinationDetectionAgent
+      Role    : Fact checking & unsupported claim detection
+      Model   : gemma2:2b (critical)
+      Output  : hallucinations, unsupported_claims
+
+  25. DataScraperAgent
+      Role    : Multi-source web/academic data collection
+      Model   : default
+      Providers: WebSearch, GoogleSearch, Wikipedia, Arxiv,
+                 PDFReader, HtmlScraper
+      Output  : source_type, extracted_content_summary, key_data_points
+
+  26. VisualizationAgent
+      Role    : Research data visualization
+      Model   : qwen2.5-coder:1.5b (coding)
+      Providers: VisionProvider (Stable Diffusion)
+      Output  : timeline_mermaid, methodology_mermaid, data_chart_mermaid,
+                image_gen_prompt, description
+
+  27. DataScraperAgent (additional instances may vary)
+
+
+  MODEL ASSIGNMENTS BY ROLE
+  =================================================================
+  Reasoning (phi3:mini)          : Orchestrator, Domain Intelligence,
+                                   Historical Review, Paper Decomposition,
+                                   Paper Understanding
+  Writing (gemma2:2b)            : Interactive Chatbot, Scientific Writing,
+                                   Reviewer Critique
+  Critical/Review (gemma2:2b)    : Technical Verification, Data Validation,
+                                   Reproducibility, Adversarial Critique,
+                                   Hallucination Detection
+  Coding (qwen2.5-coder:1.5b)   : Memory Graph, Citation Analysis,
+                                   LaTeX Generation, Visualization
+
+
+================================================================================
+2.5 PIPELINE DEFINITIONS & WORKFLOWS
+================================================================================
+
+  Pipeline Engine: LangGraph StateGraph
+
+  ResearchState (TypedDict):
+    {
+      "task":             str,
+      "paper_url":        Optional[str],
+      "next_step":        Optional[str],
+      "research_summary": Optional[str],
+      "findings":         Dict[str, Any],
+      "history":          List[str],
+      "_job_id":          Optional[str]
+    }
+
+  ROUTE 1: Literature Review Path (Pipeline A)
+  --------------------------------------------------------------------------
+    Orchestrator
+        |
+    Domain Intelligence
+        |
+    Historical Review
+        |
+    Systematic Literature Review
+        |
+    Gap Synthesis
+        |
+    Innovation Novelty
+        |  (converges)
+    Visualization
+        |
+    Scientific Writing
+        |
+    LaTeX Generation
+        |
+       END
+
+  ROUTE 2: Paper Analysis Path (Pipeline B)
+  --------------------------------------------------------------------------
+    Orchestrator
+        |
+    Paper Decomposition
+        |
+    Paper Understanding
+        |
+    Technical Verification
+        |
+    Reviewer Style Critique
+        |  (converges)
+    Visualization
+        |
+    Scientific Writing
+        |
+    LaTeX Generation
+        |
+       END
+
+  Routing Decision:
+    - Paper URL provided OR "paper" keyword in task -> Pipeline B
+    - Otherwise -> Pipeline A
+
+  Checkpointing:
+    - SQLite: data/checkpoints/pipeline_checkpoints.db
+    - Fallback: In-memory if SQLite unavailable
+
+
+================================================================================
+2.6 DATA MODELS (Pydantic)
+================================================================================
+
+  ResearchRequest (FastAPI Request Model)
+  --------------------------------------------------------------------------
+    task:      str                          (required)
+    paper_url: Optional[str]               (default: None)
+    depth:     str                          (default: "deep")
+    findings:  Optional[Dict[str, Any]]    (default: None)
+    job_id:    Optional[int]               (default: None)
+
+  TokenUsage (Dataclass)
+  --------------------------------------------------------------------------
+    timestamp:        str (ISO format)
+    agent_name:       str
+    model_name:       str
+    job_id:           Optional[str]
+    prompt_tokens:    int
+    completion_tokens: int
+    total_tokens:     int
+    estimated_cost:   float (USD)
+    execution_time_ms: int
+    success:          bool
+    error_message:    Optional[str]
+
+  Agent Return Format (Standard)
+  --------------------------------------------------------------------------
+    {
+      "response":       dict | str,      (parsed JSON or text)
+      "raw":            str,             (raw LLM output)
+      "agent":          str,             (agent name)
+      "execution_time": float            (seconds)
+    }
+
+
+================================================================================
+2.7 SEARCH & DATA PROVIDERS
+================================================================================
+
+  1. ArxivProvider
+     API     : arxiv.org
+     Method  : search_papers(query, max_results=5)
+     Returns : title, summary, authors, url (PDF), published
+
+  2. WebSearchProvider (DuckDuckGo)
+     API     : DuckDuckGo
+     Method  : search(query, max_results=5)
+     Returns : title, body, link
+
+  3. GoogleSearchProvider
+     API     : googlesearch-python (advanced=True)
+     Method  : search(query, max_results=5)
+     Returns : title, description, url
+
+  4. WikipediaProvider
+     API     : Wikipedia
+     Method  : search(query, max_results=3)
+     Returns : title, body (3 sentences), url
+
+  5. OpenAlexProvider
+     API     : api.openalex.org
+     Method  : search(query, max_results=5)
+     Returns : title, summary, url, publication_year, citation_count
+
+  6. PubMedProvider
+     API     : NCBI EUtils (esearch + esummary)
+     Method  : search(query, max_results=5)
+     Returns : title, summary, url, pubdate
+
+  7. PDFReaderProvider
+     Library : PyMuPDF (fitz)
+     Method  : read_pdf(url)
+     Features: Text from first 20 pages + image analysis (BLIP)
+     Returns : Combined text with figure captions
+
+  8. HtmlScraperProvider
+     Library : BeautifulSoup4
+     Method  : scrape_url(url)
+     Features: Text extraction, removes scripts/styles
+     Returns : First 15,000 characters
+
+
+================================================================================
+2.8 LLM PROVIDER CONFIGURATION
+================================================================================
+
+  Provider Priority (Fallback Chain):
+  --------------------------------------------------------------------------
+  1. Ollama (Primary - Offline/Local)
+     Base URL : OLLAMA_BASE_URL (default: http://localhost:11434)
+     Models   :
+       - phi3:mini           -> Reasoning tasks
+       - gemma2:2b           -> Writing & critique tasks
+       - qwen2.5-coder:1.5b  -> Code generation & structured output
+     Temperature: 0.7
+     Cost     : $0 (local inference)
+
+  2. Google Gemini (Online - if GEMINI_API_KEY set)
+     Model    : gemini-1.5-flash
+     Cost     : $0.00035/1K prompt, $0.0014/1K completion
+
+  3. Groq (Online - if GROQ_API_KEY set)
+     Model    : llama3-70b-8192
+     Cost     : $0.0008/1K prompt & completion
+
+  Connection Pool: Thread-safe singleton caching
+
+
+================================================================================
+2.9 COMPUTER VISION SERVICES
+================================================================================
+
+  VisionProvider (Singleton with GPU Mutex)
+  --------------------------------------------------------------------------
+  Device: CUDA if available, else CPU
+
+  1. Stable Diffusion v1.5 (Image Generation)
+     Method : generate_image(prompt, output_path, num_inference_steps=25)
+     Output : PNG image file
+     Optimizations: CPU offload, VAE slicing
+
+  2. BLIP (Image Captioning)
+     Model  : Salesforce/blip-image-captioning-large
+     Method : analyze_image(image_bytes)
+     Output : Caption text
+
+
+================================================================================
+2.10 ML/NLP UTILITIES
+================================================================================
+
+  1. SimilarityProvider (Semantic Text Similarity)
+     Model   : all-MiniLM-L6-v2 (80MB)
+     Methods :
+       - calculate_similarity(text1, text2) -> float (0-1)
+       - batch_similarity(source, candidates) -> List[float]
+     Algorithm: Cosine similarity via sentence-transformers
+
+  2. ToneAnalyzer (Sentiment/Quality Analysis)
+     Model   : distilbert-base-uncased-finetuned-sst-2-english
+     Method  : analyze_tone(text) -> {"label": "POSITIVE|NEGATIVE", "score": float}
+     Limit   : Truncates to 2000 chars (~512 tokens)
+
+
+================================================================================
+2.11 TOKEN TRACKING & USAGE MONITORING
+================================================================================
+
+  TokenTracker (Thread-safe Singleton)
+  --------------------------------------------------------------------------
+  Storage  : data/token_usage.json
+  Estimation: 4 chars ~ 1 token
+
+  Cost Model (per 1K tokens, USD):
+    phi3:mini            : $0.0000 prompt, $0.0000 completion  (local)
+    gemma2:2b            : $0.0000 prompt, $0.0000 completion  (local)
+    qwen2.5-coder:1.5b   : $0.0000 prompt, $0.0000 completion  (local)
+    gemini-1.5-flash     : $0.00035 prompt, $0.0014 completion
+    llama3-70b-8192      : $0.0008 prompt, $0.0008 completion
+
+  Functions:
+    track_agent_usage()   - Record agent token usage
+    get_usage_stats(h=24) - Aggregated stats for last N hours
+    get_job_usage(job_id) - Job-specific usage stats
+
+  Stats Include:
+    - Total requests, tokens, cost
+    - Average tokens per request
+    - Success rate
+    - Breakdown by agent and model
+
+
+================================================================================
+2.12 INTER-SERVICE COMMUNICATION
+================================================================================
+
+  AI Engine -> Backend (Event Emission)
+  --------------------------------------------------------------------------
+  Target : POST ${BACKEND_URL}/events
+  Timeout: 2 seconds (non-blocking, failures logged only)
+
+  Event Types Emitted:
+    emit_event()           - Generic stage/progress events
+    emit_source()          - Data source registration
+    emit_agent_start()     - Agent execution start
+    emit_agent_complete()  - Agent completion with duration
+    emit_search()          - Search operations
+    emit_scrape()          - Web scraping operations
+    emit_error()           - Error events
+    emit_stage_change()    - Pipeline stage transitions
+
+  Event Payload:
+    {
+      "research_id": job_id,
+      "event_id":    "evt_...",
+      "stage":       "stage_name",
+      "severity":    "info|warn|error|success",
+      "category":    "stage|source|agent|error",
+      "message":     "Human-readable message",
+      "details":     { ... }
+    }
+
+  Agent State Flow:
+  --------------------------------------------------------------------------
+  - State structure: TypedDict with task, findings, history
+  - Each agent receives full state, returns updated state
+  - Findings accumulate in state["findings"][agent_key]
+  - History tracked in state["history"]
+
+  Threading:
+  --------------------------------------------------------------------------
+  - Main Process: FastAPI async event loop
+  - Blocking Ops: ThreadPoolExecutor (4 workers)
+  - GPU Ops: Mutex-protected (VisionProvider)
+  - File I/O: Thread-safe with locking (TokenTracker)
+
+
+================================================================================
+2.13 ERROR HANDLING (AI Engine)
+================================================================================
+
+  Agent-Level:
+    - try/except around LLM invocation
+    - Returns { "error": str, "raw": "Error during execution" }
+    - Logged via logger.error()
+
+  Pipeline-Level:
+    - try/except around each agent execution
+    - Failed agents logged but pipeline continues
+    - History records: "{agent}: FAILED - {error}"
+
+  API-Level:
+    - HTTPException(status_code=500) for pipeline failures
+    - Full traceback logged
+
+  JSON Extraction Fallback Chain:
+    1. Direct JSON parse
+    2. Extract from markdown ```json...```
+    3. Find first {...} block
+    4. Return raw text as {"raw_text": text}
+
+  Event Emission:
+    - Non-blocking with 2-second timeout
+    - Failures logged but never block pipeline
+
+
+================================================================================
+2.14 CONFIGURATION & ENVIRONMENT VARIABLES (AI Engine)
+================================================================================
+
+  Variable            | Default                    | Description
+  --------------------|----------------------------|-----------------------------
+  LLM_MODE            | "offline"                  | "offline" or "online"
+  GEMINI_API_KEY       | None                       | Google Gemini API key
+  GROQ_API_KEY         | None                       | Groq API key
+  OLLAMA_BASE_URL      | http://localhost:11434      | Ollama server URL
+  MODEL_REASONING      | phi3:mini                  | Reasoning model
+  MODEL_WRITING        | gemma2:2b                  | Writing model
+  MODEL_CODING         | qwen2.5-coder:1.5b         | Code generation model
+  MODEL_CRITICAL       | phi3:mini                  | Critical review model
+  MAX_TOKENS           | 4096                       | Default max tokens
+  HF_HOME              | {project}/data/huggingface | HuggingFace cache dir
+  BACKEND_URL          | http://127.0.0.1:5000      | Backend URL for events
+
+  Per-Model Token Limits (Hardcoded):
+    phi3:mini           : 4096
+    gemma2:2b           : 8192
+    qwen2.5-coder:1.5b  : 4096
+
+
+################################################################################
+#                                                                              #
+#                     PART 3 - ARCHITECTURE OVERVIEW                           #
+#                                                                              #
+################################################################################
+
+================================================================================
+SYSTEM ARCHITECTURE
+================================================================================
+
+  +-------------------+
+  |    Frontend       |  React/Vite (Port 5173)
+  |                   |
+  +--------+----------+
+           |
+           | HTTP/REST + SSE
+           v
+  +-------------------+
+  |  Node.js Backend  |  Express (Port 5000)
+  |                   |
+  |  Routes:          |
+  |   /auth           |  User authentication (JWT)
+  |   /user           |  API key management
+  |   /research       |  Job queue management
+  |   /chat           |  Interactive chatbot
+  |   /events         |  Real-time SSE streaming
+  +--------+----------+
+           |
+     +-----+-------------------+
+     |                         |
+     v                         v
+  +------------+     +-------------------+
+  | PostgreSQL |     | Python FastAPI    |  AI Engine (Port 8000)
+  | Database   |     |                   |
+  | (Port 5432)|     | 27 Specialized    |
+  |            |     | LLM Agents via    |
+  | Tables:    |     | LangGraph Pipeline|
+  |  users     |     |                   |
+  |  api_keys  |     | Providers:        |
+  |  research_ |     |  Ollama (local)   |
+  |    logs    |     |  Gemini (cloud)   |
+  |  chat_     |     |  Groq (cloud)     |
+  |    history |     |                   |
+  |  execution_|     | Search:           |
+  |    events  |     |  Arxiv, PubMed,   |
+  |  data_     |     |  OpenAlex, DDG,   |
+  |    sources |     |  Google, Wikipedia|
+  +------------+     |                   |
+       ^              | Vision:           |
+       |              |  Stable Diffusion |
+       | Polling      |  BLIP captioning  |
+       |              +-------------------+
+  +----+------+               |
+  |  Worker   |               | HTTP POST /events
+  |  Process  |               v
+  | (bg jobs) |         (Events sent back
+  +-----------+          to Backend DB)
+
+
+================================================================================
+ENDPOINT SUMMARY
+================================================================================
+
+  Backend (Node.js) - 12 Endpoints:
+  --------------------------------------------------------------------------
+  POST   /auth/signup                    Public     Create user account
+  POST   /auth/login                     Public     Authenticate, get JWT
+  POST   /user/apikey/generate           JWT        Generate API key
+  GET    /user/history                   JWT        User research history
+  POST   /research/start                 API Key    Queue research job
+  GET    /research/status/:id            Public     Check job status
+  POST   /chat/message                   API Key    Send chat message
+  GET    /chat/history/:session_id       Public     Get chat history
+  GET    /events/stream/:research_id     Public     SSE event stream
+  GET    /events/:research_id            Public     Get all events
+  POST   /events                         Internal   Insert event
+  POST   /events/source                  Internal   Insert data source
+  PATCH  /events/research/:id/rename     Public     Rename research
+
+  AI Engine (Python) - 5 Core + 27 Agent Endpoints:
+  --------------------------------------------------------------------------
+  GET    /                               Public     Service info
+  GET    /health                         Public     Health check
+  POST   /research                       Internal   Run full pipeline
+  GET    /usage/stats                    Public     Token usage stats
+  GET    /usage/job/{job_id}             Public     Job token usage
+  POST   /agent/{agent_slug}  (x27)     Internal   Individual agent exec
+
+  TOTAL: 44 API Endpoints
+
+
+================================================================================
+END OF REPORT
+================================================================================

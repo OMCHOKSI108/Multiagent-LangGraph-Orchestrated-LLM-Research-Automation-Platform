@@ -17,7 +17,7 @@ interface LiveActivityFeedProps {
 }
 
 const severityConfig = {
-    info: { icon: Info, color: 'text-gray-400', bg: 'bg-gray-800/50' },
+    info: { icon: Info, color: 'text-zinc-400', bg: 'bg-zinc-800/50' },
     success: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-900/30' },
     warn: { icon: AlertTriangle, color: 'text-yellow-400', bg: 'bg-yellow-900/30' },
     error: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-900/30' },
@@ -44,12 +44,12 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
     };
 
     return (
-        <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="bg-zinc-900 rounded-lg border border-zinc-700 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center justify-between px-4 py-2 bg-zinc-800 border-b border-zinc-700">
                 <div className="flex items-center gap-2">
                     <Terminal className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm font-medium text-gray-200">Live Activity</span>
+                    <span className="text-sm font-medium text-zinc-200">Live Activity</span>
                     {isProcessing && (
                         <span className="flex items-center gap-1 text-xs text-green-400">
                             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -59,7 +59,7 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                 </div>
                 <button
                     onClick={() => setIsPaused(!isPaused)}
-                    className={`text-xs px-2 py-1 rounded ${isPaused ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300'
+                    className={`text-xs px-2 py-1 rounded ${isPaused ? 'bg-yellow-600 text-white' : 'bg-zinc-700 text-zinc-300'
                         }`}
                 >
                     {isPaused ? 'Resume' : 'Pause'}
@@ -74,7 +74,7 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                 onMouseLeave={() => setIsPaused(false)}
             >
                 {events.length === 0 ? (
-                    <div className="text-gray-500 text-center py-8">
+                    <div className="text-zinc-500 text-center py-8">
                         Waiting for activity...
                     </div>
                 ) : (
@@ -87,7 +87,7 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                                 key={event.event_id || idx}
                                 className={`flex items-start gap-2 px-2 py-1 rounded ${config.bg}`}
                             >
-                                <span className="text-gray-500 shrink-0">
+                                <span className="text-zinc-500 shrink-0">
                                     {formatTime(event.timestamp)}
                                 </span>
                                 <Icon className={`w-3 h-3 mt-0.5 shrink-0 ${config.color}`} />
@@ -101,7 +101,7 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
 
                 {/* Cursor indicator when processing */}
                 {isProcessing && (
-                    <div className="flex items-center gap-2 px-2 py-1 text-gray-400">
+                    <div className="flex items-center gap-2 px-2 py-1 text-zinc-400">
                         <span className="w-2 h-4 bg-cyan-400 animate-pulse" />
                     </div>
                 )}

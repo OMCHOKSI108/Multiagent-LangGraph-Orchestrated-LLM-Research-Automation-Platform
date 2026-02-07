@@ -64,3 +64,43 @@ export interface UsageStats {
   cost: number;
   history: UsageMetric[];
 }
+
+export interface Memory {
+  id: number;
+  content: string;
+  source: 'manual' | 'search' | 'research' | 'chat';
+  source_id?: number;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  description: string;
+  source: string;
+  favicon: string;
+  thumbnail?: string | null;
+  published?: string | null;
+}
+
+export interface SearchResponse {
+  query: string;
+  results: SearchResult[];
+  total_results: number;
+  providers_used: string[];
+}
+
+export interface DataSourceEnriched {
+  source_type: string;
+  domain: string;
+  url?: string;
+  status: 'success' | 'partial' | 'failed' | 'pending';
+  items_found: number;
+  title?: string;
+  description?: string;
+  favicon?: string;
+  thumbnail?: string;
+  published_date?: string;
+}

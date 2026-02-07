@@ -87,11 +87,17 @@ def emit_source(
     url: Optional[str] = None,
     status: str = "success",
     items_found: int = 0,
-    research_id: Optional[int] = None
+    research_id: Optional[int] = None,
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    favicon: Optional[str] = None,
+    thumbnail: Optional[str] = None,
+    published_date: Optional[str] = None,
+    citation_text: Optional[str] = None
 ):
     """
     Register a data source that was scraped.
-    
+
     Args:
         source_type: 'arxiv', 'web', 'pdf', 'pubmed', 'openalex', 'wikipedia'
         domain: Domain name (e.g., 'arxiv.org')
@@ -99,21 +105,43 @@ def emit_source(
         status: 'success', 'partial', 'failed'
         items_found: Number of results
         research_id: Override job ID if needed
+        title: Source title
+        description: Source description/summary
+        favicon: Favicon URL
+        thumbnail: Thumbnail image URL
+        published_date: Publication date string
+        citation_text: Citation text
     """
     job_id = research_id or _current_job_id
-    
+
     if not job_id:
         return
-    
+
+    # Auto-generate favicon from URL if not provided
+    if not favicon and url:
+        try:
+            from urllib.parse import urlparse
+            hostname = urlparse(url).netloc
+            if hostname:
+                favicon = f"https://s2.googleusercontent.com/s2/favicons?domain={hostname}&sz=32"
+        except Exception:
+            pass
+
     payload = {
         "research_id": job_id,
         "source_type": source_type,
         "domain": domain,
         "url": url,
         "status": status,
-        "items_found": items_found
+        "items_found": items_found,
+        "title": title,
+        "description": description,
+        "favicon": favicon,
+        "thumbnail": thumbnail,
+        "published_date": published_date,
+        "citation_text": citation_text,
     }
-    
+
     try:
         requests.post(
             f"{BACKEND_URL}/events/source",

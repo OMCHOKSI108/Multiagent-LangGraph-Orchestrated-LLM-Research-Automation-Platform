@@ -183,13 +183,29 @@ router.post('/', async (req, res) => {
  */
 router.post('/source', async (req, res) => {
     try {
-        const { research_id, source_type, domain, url, status, items_found } = req.body;
+        const {
+            research_id, source_type, domain, url, status, items_found,
+            title, description, favicon, thumbnail, published_date, citation_text
+        } = req.body;
 
-        await db.query(
-            `INSERT INTO data_sources (research_id, source_type, domain, url, status, items_found)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [research_id, source_type, domain, url, status || 'success', items_found || 0]
-        );
+        // Use enriched insert if new columns exist, fall back gracefully
+        try {
+            await db.query(
+                `INSERT INTO data_sources (research_id, source_type, domain, url, status, items_found,
+                 title, description, favicon, thumbnail, published_date, citation_text)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                [research_id, source_type, domain, url, status || 'success', items_found || 0,
+                 title || null, description || null, favicon || null, thumbnail || null,
+                 published_date || null, citation_text || null]
+            );
+        } catch (colErr) {
+            // Fallback if migration hasn't been run yet
+            await db.query(
+                `INSERT INTO data_sources (research_id, source_type, domain, url, status, items_found)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [research_id, source_type, domain, url, status || 'success', items_found || 0]
+            );
+        }
 
         res.json({ success: true });
     } catch (err) {

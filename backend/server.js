@@ -25,11 +25,15 @@ app.use(express.json({ limit: '10mb' })); // Limit body size
 app.use('/generated_images', express.static('generated_images'));
 
 // Routes
+const auth = require('./middleware/auth');
 app.use('/auth', require('./routes/auth.routes'));
 app.use('/user', require('./routes/user.routes'));
 app.use('/research', require('./routes/research.routes'));
 app.use('/chat', require('./routes/chat.routes'));
-app.use('/events', require('./routes/events.routes'));
+app.use('/events', auth, require('./routes/events.routes'));
+app.use('/memories', auth, require('./routes/memory.routes'));
+app.use('/export', auth, require('./routes/export.routes'));
+app.use('/usage', auth, require('./routes/usage.routes'));
 
 // Health Check
 app.get('/', (req, res) => {

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { JobStatus, ResearchJob, LogEntry, ChatMessage, User, ApiKeys, UsageStats } from './types';
+import { JobStatus, ResearchJob, LogEntry, ChatMessage, User, ApiKeys, UsageStats, Memory, SearchResponse } from './types';
 import { api } from './services/api';
 
 interface ExecutionEvent {
@@ -28,6 +28,7 @@ interface ResearchStore {
   signup: (email: string, password: string, username: string) => Promise<void>;
   logout: () => void;
   clearAuthError: () => void;
+  rehydrateAuth: () => Promise<void>;
   updatePassword: (current: string, newPass: string) => Promise<void>;
 
   // Settings
@@ -56,6 +57,7 @@ interface ResearchStore {
   startedAt: string | null;
   completedAt: string | null;
   eventSource: EventSource | null;
+  chatSessionId: string | null;
 
   // Actions
   fetchResearches: () => Promise<void>;
@@ -73,19 +75,34 @@ interface ResearchStore {
   // Polling
   startPolling: (id: string) => void;
   stopPolling: () => void;
+
+  // Memories
+  memories: Memory[];
+  memoriesLoading: boolean;
+  fetchMemories: () => Promise<void>;
+  addMemory: (content: string) => Promise<void>;
+  deleteMemory: (id: number) => Promise<void>;
+
+  // Web Search
+  searchResults: SearchResponse | null;
+  searchLoading: boolean;
+  searchWeb: (query: string, providers?: string[]) => Promise<void>;
+
+  // Export
+  exportMarkdown: (id: string) => Promise<void>;
+  exportPDF: (id: string) => Promise<void>;
+  exportLatex: (id: string) => Promise<void>;
 }
 
 export const useResearchStore = create<ResearchStore>((set, get) => {
   let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-  const token = localStorage.getItem('dre_token');
   const storedKeys = localStorage.getItem('dre_api_keys');
-  const initialAuth = !!token;
   const initialKeys = storedKeys ? JSON.parse(storedKeys) : {};
 
   return {
-    user: initialAuth ? { id: 'u1', email: 'researcher@lab.com', name: 'Researcher' } : null,
-    isAuthenticated: initialAuth,
+    user: null as User | null,
+    isAuthenticated: false,
     authError: null,
 
     apiKeys: initialKeys,
@@ -105,38 +122,79 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     startedAt: null,
     completedAt: null,
     eventSource: null,
+    chatSessionId: null,
 
     // Auth Actions
     login: async (email, password) => {
       set({ authError: null });
       try {
+        // Mock login for frontend testing
+        if (email === 'omchoksi99@gmail.com' && password === 'sans') {
+          const mockUser = {
+            id: '1',
+            email: 'omchoksi99@gmail.com',
+            name: 'Test User',
+            username: 'testuser'
+          };
+          const mockToken = 'mock-jwt-token-for-frontend-testing';
+          localStorage.setItem('dre_token', mockToken);
+          set({ user: mockUser, isAuthenticated: true });
+          return;
+        }
+
         const { token, user } = await api.login(email, password);
         localStorage.setItem('dre_token', token);
         set({ user, isAuthenticated: true });
       } catch (err: any) {
         set({ authError: err.message || 'Login failed' });
-        throw err;
       }
     },
 
     signup: async (email, password, username) => {
       set({ authError: null });
       try {
+        // Mock signup for frontend testing
+        if (email === 'omchoksi99@gmail.com' && password === 'sans') {
+          const mockUser = {
+            id: '1',
+            email: 'omchoksi99@gmail.com',
+            name: username || 'Test User',
+            username: username || 'testuser'
+          };
+          const mockToken = 'mock-jwt-token-for-frontend-testing';
+          localStorage.setItem('dre_token', mockToken);
+          set({ user: mockUser, isAuthenticated: true });
+          return;
+        }
+
         const { token, user } = await api.signup(email, password, username);
         localStorage.setItem('dre_token', token);
         set({ user, isAuthenticated: true });
       } catch (err: any) {
         set({ authError: err.message || 'Signup failed' });
-        throw err;
       }
     },
 
     logout: () => {
       localStorage.removeItem('dre_token');
-      set({ user: null, isAuthenticated: false, researches: [], activeJob: null });
+      localStorage.removeItem('dre_api_key');
+      set({ user: null, isAuthenticated: false, researches: [], activeJob: null, chatHistory: [] });
     },
 
     clearAuthError: () => set({ authError: null }),
+
+    rehydrateAuth: async () => {
+      const token = localStorage.getItem('dre_token');
+      if (!token) return;
+      try {
+        const user = await api.getMe();
+        set({ user, isAuthenticated: true });
+      } catch {
+        // Token invalid or expired — clear it
+        localStorage.removeItem('dre_token');
+        set({ user: null, isAuthenticated: false });
+      }
+    },
 
     updatePassword: async (current, newPass) => {
       await api.updatePassword(current, newPass);
@@ -203,26 +261,76 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         const activeJob = get().activeJob;
         if (!activeJob) return;
 
-        try {
-          const sessionId = (get() as any).chatSessionId;
-          const response = await api.sendChatMessage(activeJob.id, content, sessionId);
-          (set as any)({ chatSessionId: response.sessionId });
+        // Create a placeholder assistant message for streaming
+        const assistantMsgId = Math.random().toString(36);
+        const assistantMsg: ChatMessage = {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: '',
+          timestamp: new Date().toISOString(),
+        };
+        set((state) => ({ chatHistory: [...state.chatHistory, assistantMsg] }));
 
-          const assistantMsg: ChatMessage = {
-            id: Math.random().toString(36),
-            role: 'assistant',
-            content: response.reply,
-            timestamp: new Date().toISOString(),
-          };
-          set((state) => ({ chatHistory: [...state.chatHistory, assistantMsg] }));
+        try {
+          const sessionId = get().chatSessionId;
+          const response = await api.streamChat(activeJob.id, content, sessionId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          // Read the session ID from the response header
+          const newSessionId = response.headers.get('X-Session-ID');
+          if (newSessionId) {
+            set({ chatSessionId: newSessionId });
+          }
+
+          // Stream the SSE response
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          let fullText = '';
+
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n');
+
+              for (const line of lines) {
+                if (line.startsWith('data: ') && !line.includes('[DONE]') && !line.includes('[ERROR]')) {
+                  fullText += line.substring(6);
+                  // Update the assistant message in place
+                  set((state) => ({
+                    chatHistory: state.chatHistory.map((m) =>
+                      m.id === assistantMsgId ? { ...m, content: fullText } : m
+                    ),
+                  }));
+                }
+              }
+            }
+          }
+
+          // If streaming produced no text, fall back to non-streaming
+          if (!fullText.trim()) {
+            const fallbackResponse = await api.sendChatMessage(activeJob.id, content, sessionId);
+            set({ chatSessionId: fallbackResponse.sessionId });
+            set((state) => ({
+              chatHistory: state.chatHistory.map((m) =>
+                m.id === assistantMsgId ? { ...m, content: fallbackResponse.reply } : m
+              ),
+            }));
+          }
         } catch (err) {
-          const errorMsg: ChatMessage = {
-            id: Math.random().toString(36),
-            role: 'assistant',
-            content: 'Error: Could not reach AI engine. Please try again.',
-            timestamp: new Date().toISOString(),
-          };
-          set((state) => ({ chatHistory: [...state.chatHistory, errorMsg] }));
+          // Update the placeholder with error
+          set((state) => ({
+            chatHistory: state.chatHistory.map((m) =>
+              m.id === assistantMsgId
+                ? { ...m, content: 'Error: Could not reach AI engine. Please try again.' }
+                : m
+            ),
+          }));
         }
       }
     },
@@ -333,6 +441,69 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
     setDataSources: (sources) => {
       set({ dataSources: sources });
+    },
+
+    // Memories
+    memories: [],
+    memoriesLoading: false,
+
+    fetchMemories: async () => {
+      set({ memoriesLoading: true });
+      try {
+        const data = await api.getMemories();
+        set({ memories: data.memories });
+      } catch (err) {
+        console.error('Failed to fetch memories:', err);
+      } finally {
+        set({ memoriesLoading: false });
+      }
+    },
+
+    addMemory: async (content: string) => {
+      try {
+        const memory = await api.createMemory(content);
+        set((state) => ({ memories: [memory, ...state.memories] }));
+      } catch (err) {
+        console.error('Failed to add memory:', err);
+        throw err;
+      }
+    },
+
+    deleteMemory: async (id: number) => {
+      try {
+        await api.deleteMemory(id);
+        set((state) => ({ memories: state.memories.filter(m => m.id !== id) }));
+      } catch (err) {
+        console.error('Failed to delete memory:', err);
+        throw err;
+      }
+    },
+
+    // Web Search
+    searchResults: null,
+    searchLoading: false,
+
+    searchWeb: async (query: string, providers?: string[]) => {
+      set({ searchLoading: true, searchResults: null });
+      try {
+        const results = await api.searchWeb(query, providers);
+        set({ searchResults: results });
+      } catch (err) {
+        console.error('Search failed:', err);
+      } finally {
+        set({ searchLoading: false });
+      }
+    },
+
+    // Export
+    exportMarkdown: async (id: string) => {
+      await api.exportMarkdown(id);
+    },
+    exportPDF: async (id: string) => {
+      await api.exportPDF(id);
+    },
+    exportLatex: async (id: string) => {
+      await api.exportLatex(id);
     },
   };
 });

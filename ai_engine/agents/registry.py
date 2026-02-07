@@ -1,6 +1,13 @@
 from typing import Dict, Any
 from .base import BaseAgent
-import config
+try:
+    import config
+except ImportError:
+    # Fallback for when running from different contexts
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import config
 
 # Import Orchestrator
 from .orchestrator.orchestrator import OrchestratorAgent

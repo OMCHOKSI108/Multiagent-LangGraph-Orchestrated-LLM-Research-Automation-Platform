@@ -24,7 +24,7 @@ export const Login = () => {
         setLoading(true);
         try {
             await login(email, password);
-            navigate('/dashboard');
+            // Navigation happens via the isAuthenticated useEffect above
         } catch (e) {
             // Error is handled in store
         } finally {

@@ -1,4 +1,14 @@
-from ..base import BaseAgent
+import sys
+import os
+
+# Fix imports for running in different contexts
+try:
+    from ..base import BaseAgent
+except ImportError:
+    # Fallback when running from different path
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from agents.base import BaseAgent
+
 from langchain_core.messages import SystemMessage, HumanMessage
 
 class OrchestratorAgent(BaseAgent):
@@ -21,41 +31,50 @@ class OrchestratorAgent(BaseAgent):
         )
 
     def run(self, state: dict) -> dict:
-        print(f"[{self.name}] Assessing Research Task...")
-        task = state.get("task", "")
-        paper_url = state.get("paper_url")
+        logger.info(f"[{self.name}] Assessing Research Task...")
         
-        context = f"Task: {task}\nPaper URL: {paper_url}\n"
-        
-        messages = [
-            SystemMessage(content=self.system_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=context)
-        ]
-        
+        # Use parent class run method for consistency
         try:
-            response = self.llm.invoke(messages)
-            result = self._extract_json(response.content)
+            result = super().run(state)
             
-            # Fallback for LLM failure on strict routing
-            if "next_step" not in result:
-                # Basic heuristic fallback
-                if paper_url or "paper" in task.lower():
-                    result["next_step"] = "paper_analysis"
-                else:
-                    result["next_step"] = "literature_review"
+            # Ensure next_step is in the response for routing
+            if "response" in result and isinstance(result["response"], dict):
+                response = result["response"]
+                
+                # Fallback routing if LLM didn't provide clear next_step
+                if "next_step" not in response:
+                    task = state.get("task", "")
+                    paper_url = state.get("paper_url")
+                    
+                    if paper_url or "paper" in task.lower():
+                        response["next_step"] = "paper_analysis"
+                    else:
+                        response["next_step"] = "literature_review"
+                
+                # Normalize routing keywords
+                ns = response["next_step"]
+                if "paper" in ns.lower():
+                    response["next_step"] = "paper_analysis"
+                elif "liter" in ns.lower() or "review" in ns.lower():
+                    response["next_step"] = "literature_review"
+                
+                # Update state with routing decision
+                return {**state, "next_step": response["next_step"], **result}
             
-            # Normalize for the graph router
-            ns = result["next_step"]
-            if "paper" in ns: result["next_step"] = "paper_analysis"
-            elif "liter" in ns or "review" in ns: result["next_step"] = "literature_review"
-            
-            return {**state, **result}
+            return result
             
         except Exception as e:
-            print(f"[{self.name}] Error: {e}")
-            # Fallback
+            logger.error(f"[{self.name}] Error: {e}")
+            
+            # Fallback routing
+            task = state.get("task", "")
+            paper_url = state.get("paper_url")
+            next_step = "paper_analysis" if paper_url or "paper" in task.lower() else "literature_review"
+            
             return {
-                **state, 
-                "next_step": "paper_analysis" if (paper_url) else "literature_review",
-                "error": str(e)
+                **state,
+                "next_step": next_step,
+                "error": str(e),
+                "plan": f"Fallback routing to {next_step}",
+                "reasoning": "Orchestrator failed, using heuristic routing"
             }

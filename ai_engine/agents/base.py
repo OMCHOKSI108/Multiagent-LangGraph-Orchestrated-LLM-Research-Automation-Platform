@@ -3,7 +3,14 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_ollama import ChatOllama
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-import config
+try:
+    import config
+except ImportError:
+    # Fallback for when running from different contexts
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    import config
 import logging
 import json
 import re
@@ -11,6 +18,8 @@ import time
 
 # Import event emitter for live transparency
 from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_error
+# Import token tracking
+from utils.token_tracker import track_agent_usage
 
 logger = logging.getLogger("ai_engine.agents")
 
@@ -161,6 +170,20 @@ class BaseAgent:
             elapsed_ms = int(elapsed * 1000)
             logger.info(f"[{self.name}] Job #{job_id} - Completed in {elapsed:.2f}s")
             
+            # Track token usage
+            try:
+                track_agent_usage(
+                    agent_name=self.name,
+                    model_name=self.model_name,
+                    prompt_text=context,
+                    completion_text=raw_content,
+                    execution_time_ms=elapsed_ms,
+                    job_id=str(job_id),
+                    success=True
+                )
+            except Exception as e:
+                logger.warning(f"[{self.name}] Token tracking failed: {e}")
+            
             # Emit agent complete event
             emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
             
@@ -174,6 +197,21 @@ class BaseAgent:
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)
             logger.error(f"[{self.name}] Job #{job_id} - Failed after {elapsed:.2f}s: {e}")
+            
+            # Track failed usage
+            try:
+                track_agent_usage(
+                    agent_name=self.name,
+                    model_name=self.model_name,
+                    prompt_text=context,
+                    completion_text="",
+                    execution_time_ms=elapsed_ms,
+                    job_id=str(job_id),
+                    success=False,
+                    error_message=str(e)
+                )
+            except Exception as te:
+                logger.warning(f"[{self.name}] Token tracking failed: {te}")
             
             # Emit agent failure event
             emit_agent_complete(self.name, elapsed_ms, success=False, research_id=research_id)
