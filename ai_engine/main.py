@@ -232,7 +232,7 @@ async def stream_chatbot(request: ResearchRequest):
                 from config import GEMINI_API_KEY
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 llm = ChatGoogleGenerativeAI(
-                    model="gemini-1.5-flash",
+                    model="gemini-2.5-flash",
                     google_api_key=GEMINI_API_KEY,
                     temperature=0.7
                 )

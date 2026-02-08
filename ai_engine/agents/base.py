@@ -1,8 +1,22 @@
 from typing import Dict, Any, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_ollama import ChatOllama
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq
+
+# Conditional imports for optional cloud providers
+try:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    HAS_GOOGLE = True
+except ImportError:
+    ChatGoogleGenerativeAI = None
+    HAS_GOOGLE = False
+
+try:
+    from langchain_groq import ChatGroq
+    HAS_GROQ = True
+except ImportError:
+    ChatGroq = None
+    HAS_GROQ = False
+
 try:
     import config
 except ImportError:
@@ -39,18 +53,22 @@ def get_cached_llm(model_name: str, provider: str = "ollama"):
                 model=model_name,
                 temperature=0.7
             )
-        elif provider == "gemini":
+        elif provider == "gemini" and HAS_GOOGLE:
             _LLM_CACHE[cache_key] = ChatGoogleGenerativeAI(
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 google_api_key=config.GEMINI_API_KEY,
                 temperature=0.7
             )
-        elif provider == "groq":
+        elif provider == "groq" and HAS_GROQ:
             _LLM_CACHE[cache_key] = ChatGroq(
                 model_name="llama3-70b-8192",
                 groq_api_key=config.GROQ_API_KEY,
                 temperature=0.7
             )
+        else:
+            # Fallback to Ollama if provider not available
+            logger.warning(f"Provider {provider} not available, falling back to Ollama")
+            return get_cached_llm(model_name, "ollama")
         logger.info(f"Created new LLM connection: {cache_key}")
     
     return _LLM_CACHE[cache_key]
