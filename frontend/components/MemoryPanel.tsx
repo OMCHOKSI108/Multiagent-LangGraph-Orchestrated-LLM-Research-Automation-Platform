@@ -31,8 +31,6 @@ export const MemoryPanel: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-
-
     setDeletingId(id);
     try {
       await deleteMemory(id);

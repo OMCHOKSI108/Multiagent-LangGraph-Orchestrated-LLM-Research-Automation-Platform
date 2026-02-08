@@ -137,4 +137,38 @@ router.patch('/:id/rename', async (req, res) => {
     }
 });
 
+// Delete Research
+// DELETE /research/:id
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+
+        // First check if research exists and belongs to user
+        const checkResult = await db.query(
+            "SELECT id, user_id FROM research_logs WHERE id = $1",
+            [id]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: "Research not found" });
+        }
+
+        // Optional: Check ownership if user is authenticated
+        if (userId && checkResult.rows[0].user_id !== userId) {
+            return res.status(403).json({ error: "Not authorized to delete this research" });
+        }
+
+        // Delete research and related data
+        await db.query("DELETE FROM research_logs WHERE id = $1", [id]);
+
+        logger.info(`[Node] Deleted research #${id}`);
+        res.json({ success: true, message: "Research deleted" });
+
+    } catch (err) {
+        logger.error(`[Delete] ${err.message}`);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 module.exports = router;

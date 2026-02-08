@@ -3,11 +3,11 @@ import requests
 import io
 import wikipedia
 import warnings
-# Suppress the "duckduckgo_search" renaming warning
+# Suppress the "ddgs" renaming warning
 warnings.filterwarnings("ignore", message=".*renamed to 'ddgs'.*")
 
 try:
-    from duckduckgo_search import DDGS
+    from ddgs import DDGS
 except ImportError:
     # Fallback if user installed 'ddgs' directly
     from ddgs import DDGS
@@ -15,7 +15,9 @@ from googlesearch import search
 from typing import List, Dict, Any
 from pypdf import PdfReader
 from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup
 from xml.etree import ElementTree
+from .event_emitter import emit_source, emit_search
 
 class ArxivProvider:
     def __init__(self):
@@ -33,6 +35,9 @@ class ArxivProvider:
             )
             
             results = []
+            if query:
+                emit_search(query, "arxiv", research_id=None) # job_id handled by global context
+            
             for result in self.client.results(search):
                 results.append({
                     "title": result.title,
@@ -41,9 +46,36 @@ class ArxivProvider:
                     "url": result.pdf_url,
                     "published": result.published.strftime("%Y-%m-%d")
                 })
+                # Emit source event
+                emit_source(
+                    source_type="arxiv",
+                    domain="arxiv.org",
+                    url=result.pdf_url,
+                    title=result.title,
+                    description=result.summary[:200],
+                    published_date=result.published.strftime("%Y-%m-%d"),
+                    items_found=1
+                )
             return results
         except Exception as e:
             print(f"[ArxivProvider] Error: {e}")
+            return []
+
+class ImageSearchProvider:
+    def __init__(self):
+        self.ddgs = DDGS()
+
+    def search(self, query: str, max_results: int = 4) -> List[str]:
+        """
+        Searches for images using DuckDuckGo.
+        Returns a list of image URLs.
+        """
+        try:
+            # emit_search(query, "image_search") - handled by agent or omitted for simplicity
+            results = list(self.ddgs.images(query, max_results=max_results))
+            return [r['image'] for r in results if 'image' in r]
+        except Exception as e:
+            print(f"[ImageSearchProvider] Error: {e}")
             return []
 
 class WebSearchProvider:
@@ -55,7 +87,22 @@ class WebSearchProvider:
         Performs a web search using DuckDuckGo.
         """
         try:
+            if query:
+                emit_search(query, "duckduckgo")
+                
             results = list(self.ddgs.text(query, max_results=max_results))
+            
+            # Emit source events
+            for r in results:
+                emit_source(
+                    source_type="web",
+                    domain="duckduckgo.com", # Proxy
+                    url=r.get("href"),
+                    title=r.get("title"),
+                    description=r.get("body"),
+                    items_found=1
+                )
+            
             return results
         except Exception as e:
             print(f"[WebSearchProvider] Error: {e}")
@@ -68,6 +115,9 @@ class GoogleSearchProvider:
         """
         try:
             results = []
+            if query:
+                emit_search(query, "google")
+                
             # googlesearch-python returns simple URLs. We will try to fetch title if possible, 
             # or just return the URL as title for now to keep it fast/offline-ish
             for url in search(query, num_results=max_results, advanced=True):
@@ -78,6 +128,16 @@ class GoogleSearchProvider:
                     "url": url.url,
                     "source": "google"
                 })
+                
+                emit_source(
+                    source_type="web",
+                    domain="google.com", 
+                    url=url.url,
+                    title=url.title,
+                    description=url.description,
+                    items_found=1
+                )
+                
             return results
         except Exception as e:
             print(f"[GoogleSearchProvider] Error: {e}")
@@ -90,6 +150,9 @@ class WikipediaProvider:
         """
         try:
             results = []
+            if query:
+                emit_search(query, "wikipedia")
+                
             # 'search' returns a list of titles
             titles = wikipedia.search(query, results=max_results)
             for title in titles:
@@ -102,6 +165,15 @@ class WikipediaProvider:
                         "url": page.url,
                         "source": "wikipedia"
                     })
+                    
+                    emit_source(
+                        source_type="web",
+                        domain="wikipedia.org",
+                        url=page.url,
+                        title=title,
+                        description=summary[:200],
+                        items_found=1
+                    )
                 except Exception:
                     continue
             return results
@@ -160,6 +232,9 @@ class OpenAlexProvider:
         try:
             # OpenAlex API is free and doesn't explicitly require a key for low volume, 
             # but polite pool is used.
+            if query:
+                emit_search(query, "openalex")
+                
             url = f"https://api.openalex.org/works?search={query}&per-page={max_results}&sort=publication_date:desc"
             response = requests.get(url, timeout=10)
             if response.status_code == 200:
@@ -179,6 +254,16 @@ class OpenAlexProvider:
                         "source": "openalex",
                         "published": str(item.get("publication_year"))
                     })
+                    
+                    emit_source(
+                        source_type="openalex",
+                        domain="openalex.org",
+                        url=landing_page,
+                        title=title,
+                        description=f"Published in {item.get('publication_year')}. Citations: {item.get('cited_by_count')}.",
+                        published_date=str(item.get("publication_year")),
+                        items_found=1
+                    )
                 return results
             return []
         except Exception as e:
@@ -192,6 +277,9 @@ class PubMedProvider:
         """
         try:
             # 1. ESearch to get IDs
+            if query:
+                emit_search(query, "pubmed")
+                
             base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
             search_url = f"{base_url}/esearch.fcgi?db=pubmed&term={query}&retmode=json&retmax={max_results}&sort=date"
             
@@ -219,6 +307,16 @@ class PubMedProvider:
                     "source": "pubmed",
                     "published": item.get("pubdate", "")
                 })
+                
+                emit_source(
+                    source_type="pubmed",
+                    domain="pubmed.ncbi.nlm.nih.gov",
+                    url=f"https://pubmed.ncbi.nlm.nih.gov/{uid}/",
+                    title=item.get("title", ""),
+                    description=f"Journal: {item.get('source', '')}. PubDate: {item.get('pubdate', '')}",
+                    published_date=item.get("pubdate", ""),
+                    items_found=1
+                )
             return results
         except Exception as e:
             print(f"[PubMedProvider] Error: {e}")

@@ -1,5 +1,8 @@
 import sys
 import os
+import logging
+
+logger = logging.getLogger("ai_engine.orchestrator")
 
 # Fix imports for running in different contexts
 try:

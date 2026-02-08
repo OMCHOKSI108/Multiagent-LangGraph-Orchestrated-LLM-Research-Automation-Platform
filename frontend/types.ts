@@ -20,13 +20,15 @@ export interface ResearchJob {
   createdAt: string;
   updatedAt: string;
   logs: LogEntry[];
+  costEstimate?: number;
   reportMarkdown?: string;
+  latexSource?: string;
+  pdfPath?: string;
+  texPath?: string;
   diagrams?: string[];
   images?: string[];
-  // AI Metadata
   modelUsed?: string;
   tokenUsage?: number;
-  costEstimate?: number;
 }
 
 export interface ChatMessage {

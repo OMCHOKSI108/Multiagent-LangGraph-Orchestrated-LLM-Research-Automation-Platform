@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useResearchStore } from '../store';
 import { ArrowRight, AlertCircle, Terminal } from 'lucide-react';
+import { AnimatedBackground } from '../components/AnimatedBackground';
 
 export const Signup = () => {
     const [email, setEmail] = useState('');
@@ -32,14 +33,19 @@ export const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
-            <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 text-zinc-900 font-semibold">
-                <Terminal className="w-5 h-5" /> DeepResearch
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            <AnimatedBackground />
+
+            <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 text-zinc-900 dark:text-white font-semibold z-10">
+                <div className="w-8 h-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg flex items-center justify-center">
+                    <Terminal className="w-4 h-4" />
+                </div>
+                DeepResearch
             </Link>
 
-            <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-card border border-zinc-200 animate-in fade-in zoom-in-95 duration-300">
-                <h1 className="text-2xl font-bold text-zinc-900 mb-2">Create an account</h1>
-                <p className="text-zinc-500 text-sm mb-8">Start your research journey today.</p>
+            <div className="w-full max-w-md bg-white/50 dark:bg-black/50 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 animate-in fade-in zoom-in-95 duration-300 relative z-10">
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Create an account</h1>
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">Start your research journey today.</p>
 
                 {authError && (
                     <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3 text-red-600 text-sm">
@@ -51,8 +57,8 @@ export const Signup = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-zinc-700">Full Name</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={username}
                             onChange={e => setUsername(e.target.value)}
                             className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
@@ -62,8 +68,8 @@ export const Signup = () => {
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-zinc-700">Email</label>
-                        <input 
-                            type="email" 
+                        <input
+                            type="email"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
@@ -73,8 +79,8 @@ export const Signup = () => {
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-medium text-zinc-700">Password</label>
-                        <input 
-                            type="password" 
+                        <input
+                            type="password"
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
@@ -85,8 +91,8 @@ export const Signup = () => {
                         <p className="text-[10px] text-zinc-400">Must be at least 6 characters</p>
                     </div>
 
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={loading}
                         className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-2.5 rounded-lg transition-all mt-4 shadow-subtle hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >

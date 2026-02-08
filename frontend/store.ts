@@ -65,6 +65,7 @@ interface ResearchStore {
   setActiveJob: (id: string) => Promise<void>;
   addChatMessage: (content: string, role: 'user' | 'assistant') => void;
   renameResearch: (id: string, title: string) => Promise<void>;
+  deleteResearch: (id: string) => Promise<void>;
 
   // Live Events
   subscribeToLiveEvents: (id: string) => void;
@@ -241,11 +242,23 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     setActiveJob: async (id) => {
       set({ activeJob: null, chatHistory: [] });
       const job = await api.getResearch(id);
-      set({ activeJob: job });
+      set({
+        activeJob: job,
+        // Fallback to createdAt if startedAt is missing, enables timer immediately
+        startedAt: job.createdAt
+      });
 
       if (job.status !== JobStatus.COMPLETED && job.status !== JobStatus.FAILED) {
         get().startPolling(id);
       }
+    },
+
+    deleteResearch: async (id) => {
+      await api.deleteResearch(id);
+      set((state) => ({
+        researches: state.researches.filter((r) => r.id !== id),
+        activeJob: state.activeJob?.id === id ? null : state.activeJob,
+      }));
     },
 
     addChatMessage: async (content, role) => {
@@ -381,19 +394,41 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     },
 
     // Live Event Actions
-    subscribeToLiveEvents: (id: string) => {
+    subscribeToLiveEvents: async (id: string) => {
       // Clean up any existing subscription
       get().unsubscribeLiveEvents();
 
-      // Reset event state
+      // Reset event state but keep the job context
       set({
         executionEvents: [],
         dataSources: [],
-        currentStage: 'queued',
-        startedAt: null,
-        completedAt: null,
+        currentStage: 'connecting...',
+        eventSource: null,
       });
 
+      // 1. Fetch historical events to hydrate the state
+      try {
+        const history = await api.getResearchEvents(id);
+        if (Array.isArray(history)) {
+          history.forEach(event => {
+            get().addExecutionEvent(event);
+            // Re-hydrate sources from history if present in events
+            if (event.type === 'sources' && event.sources) {
+              get().setDataSources(event.sources);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to fetch event history', e);
+      }
+
+      // 2. Set timers from active job if not set by events
+      const job = get().activeJob;
+      if (job && !get().startedAt) {
+        set({ startedAt: job.createdAt });
+      }
+
+      // 3. Subscribe to new events
       const eventSource = api.subscribeToEvents(
         id,
         (data) => {
@@ -404,7 +439,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
             case 'status':
               set({
                 currentStage: data.current_stage || 'processing',
-                startedAt: data.started_at,
+                startedAt: data.started_at || get().startedAt, // Keep existing if null
                 completedAt: data.completed_at,
               });
               break;

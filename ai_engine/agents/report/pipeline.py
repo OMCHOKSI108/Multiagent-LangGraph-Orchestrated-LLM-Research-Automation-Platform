@@ -18,6 +18,15 @@ from typing import Dict, Optional
 from .domain_templates import detect_domain, get_template, DomainType, DomainTemplate
 from .context_manager import get_section_context
 from .section_writers import get_section_writer
+from .latex_sanitizer import sanitize_latex, validate_latex
+from .citation_validator import validate_citations, get_citation_report
+from .cleanup_agent import AcademicEditorAgent, StructureValidator
+
+# Import event emitter for granular updates
+try:
+    from utils.event_emitter import emit_event
+except ImportError:
+    def emit_event(*args, **kwargs): pass
 
 
 class ReportPipeline:
@@ -61,9 +70,11 @@ class ReportPipeline:
         print(f"[ReportPipeline] Starting multi-stage report generation for job {job_id}")
         
         # Stage 1: Domain classification
+        emit_event("analyzing", "Classifying research domain...", research_id=int(job_id) if str(job_id).isdigit() else None)
         domain = detect_domain(task, findings)
         template = get_template(domain)
         print(f"[ReportPipeline] Detected domain: {domain} ({template['name']})")
+        emit_event("analyzing", f"Detected Domain: {domain}", details={"template": template['name']}, research_id=int(job_id) if str(job_id).isdigit() else None)
         
         # Stage 2: Generate each section
         sections = {}
@@ -71,6 +82,7 @@ class ReportPipeline:
         
         for section_name in section_order:
             print(f"[ReportPipeline] Generating section: {section_name}")
+            emit_event("writing", f"Drafting Section: {section_name.replace('_', ' ').title()}", research_id=int(job_id) if str(job_id).isdigit() else None)
             
             # Get focused context for this section
             context = get_section_context(
@@ -98,12 +110,43 @@ class ReportPipeline:
                 sections[section_name] = result.get("content", "")
         
         # Stage 3: Assemble markdown report
+        emit_event("writing", "Assembling final report...", research_id=int(job_id) if str(job_id).isdigit() else None)
         markdown_report = self._assemble_markdown(sections, task, template)
+        
+        # Stage 3.5: Validate citations
+        citation_issues = validate_citations(markdown_report)
+        total_citation_issues = sum(len(v) for v in citation_issues.values())
+        if total_citation_issues > 0:
+            print(f"[ReportPipeline] Citation Issues: {total_citation_issues}")
+            for issue_type, issues in citation_issues.items():
+                if issues:
+                    print(f"[ReportPipeline]   {issue_type}: {len(issues)}")
+        
+        # Stage 3.6: Academic cleanup pass
+        cleanup_agent = AcademicEditorAgent()
+        cleanup_result = cleanup_agent.run({"content": markdown_report, "use_llm_refinement": False})
+        if cleanup_result.get("content"):
+            markdown_report = cleanup_result["content"]
+            print(f"[ReportPipeline] Cleanup pass completed")
+        
+        # Stage 3.7: Validate structure (IMRAD compliance)
+        structure_validation = StructureValidator.validate(markdown_report)
+        if structure_validation.get("duplicates"):
+            print(f"[ReportPipeline] Duplicate sections: {structure_validation['duplicates']}")
+        if structure_validation.get("order_issues"):
+            print(f"[ReportPipeline] Order issues: {structure_validation['order_issues']}")
         
         # Stage 4: Convert to LaTeX
         latex_source = self._convert_to_latex(markdown_report, task, template)
         
-        # Stage 5: Save files and compile PDF
+        # Stage 5: Sanitize LaTeX (remove Markdown artifacts, fix math, etc.)
+        latex_source = sanitize_latex(latex_source)
+        is_valid, warnings = validate_latex(latex_source)
+        if warnings:
+            for w in warnings:
+                print(f"[ReportPipeline] LaTeX Warning: {w}")
+        
+        # Stage 6: Save files and compile PDF
         md_path = os.path.join(self.output_dir, f"research_{job_id}.md")
         tex_path = os.path.join(self.output_dir, f"research_{job_id}.tex")
         pdf_path = None
@@ -112,6 +155,8 @@ class ReportPipeline:
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(markdown_report)
         print(f"[ReportPipeline] Markdown saved: {md_path}")
+        
+        emit_event("writing", "Compiling PDF document...", research_id=int(job_id) if str(job_id).isdigit() else None)
         
         # Save LaTeX
         with open(tex_path, "w", encoding="utf-8") as f:

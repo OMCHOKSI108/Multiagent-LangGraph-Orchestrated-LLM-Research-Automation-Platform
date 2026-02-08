@@ -50,14 +50,14 @@ interface MarkdownRendererProps {
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content }) => {
   return (
-    <div className="prose prose-sm max-w-none text-zinc-800 dark:text-zinc-200 prose-headings:font-semibold prose-headings:text-zinc-900 dark:prose-headings:text-zinc-100 prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-pre:bg-zinc-50 dark:prose-pre:bg-dark-200 prose-pre:border prose-pre:border-zinc-200 dark:prose-pre:border-dark-300 prose-pre:text-zinc-800 dark:prose-pre:text-zinc-200 prose-blockquote:border-l-4 prose-blockquote:border-zinc-200 dark:prose-blockquote:border-dark-300 prose-blockquote:text-zinc-500 dark:prose-blockquote:text-zinc-400">
+    <div className="prose-research w-full max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '');
             const isMermaid = match && match[1] === 'mermaid';
-            
+
             if (isMermaid) {
               return <MermaidDiagram chart={String(children).replace(/\n$/, '')} />;
             }
@@ -65,12 +65,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
             return match ? (
               <div className="relative group my-4 rounded-lg overflow-hidden border border-zinc-200 dark:border-dark-300">
                 <div className="bg-zinc-100 dark:bg-dark-200 px-3 py-1.5 border-b border-zinc-200 dark:border-dark-300 text-xs font-mono text-zinc-500 dark:text-zinc-400 flex justify-between">
-                    <span>{match[1]}</span>
+                  <span>{match[1]}</span>
                 </div>
                 <pre className="!bg-white dark:!bg-dark-primary !m-0 !p-4 overflow-x-auto">
-                    <code className={`${className} !text-sm !font-mono text-zinc-800 dark:text-zinc-200`} {...props}>
+                  <code className={`${className} !text-sm !font-mono text-zinc-800 dark:text-zinc-200`} {...props}>
                     {children}
-                    </code>
+                  </code>
                 </pre>
               </div>
             ) : (

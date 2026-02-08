@@ -263,9 +263,8 @@ Thumbs.db
 *.tmp
 *.temp
 
-# PDF files (sample papers should be gitignored in production)
-*.pdf
-
+ai_engine/agent/
 # Checkpoints
 data/checkpoints/
 *.db-journal
+

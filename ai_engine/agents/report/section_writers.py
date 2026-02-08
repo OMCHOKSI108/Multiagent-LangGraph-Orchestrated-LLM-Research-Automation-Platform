@@ -12,6 +12,21 @@ from langchain_core.messages import SystemMessage, HumanMessage
 class SectionWriterBase(BaseAgent):
     """Base class for all section writers with common functionality."""
     
+    # Anti-hallucination rules appended to all prompts
+    ANTI_HALLUCINATION_RULES = """
+
+CRITICAL QUALITY RULES:
+1. Do NOT invent citations, journal names, authors, or paper titles
+2. Do NOT use "hypothetical", "conceptualized results", or similar
+3. Do NOT include meta-instructions like "(Word count: X)" or "[To be updated]"
+4. Do NOT promise tables or figures you cannot produce
+5. Do NOT use Markdown syntax (##, **, *, ```) - write plain academic prose
+6. For math formulas, use proper LaTeX: \\frac{a}{b}, not a/b
+7. Every claim must be grounded in the provided research data
+8. If data is insufficient, state limitations instead of inventing content
+9. Write in formal academic tone, past tense for methods/results
+10. Be specific and concise - avoid filler language"""
+    
     def __init__(self, section_name: str, word_target: str, **kwargs):
         self.section_name = section_name
         self.word_target = word_target
@@ -21,7 +36,9 @@ class SectionWriterBase(BaseAgent):
         """Generate the section content based on provided context."""
         print(f"[{self.name}] Writing {self.section_name} section...")
         
+        # Combine prompt with anti-hallucination rules
         full_prompt = f"{self.system_prompt}\n\nTarget length: {self.word_target}"
+        full_prompt += self.ANTI_HALLUCINATION_RULES
         if section_prompt:
             full_prompt += f"\n\nSpecific guidelines: {section_prompt}"
         

@@ -36,27 +36,61 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     agent = AGENTS.get(agent_key)
     job_id = state.get("_job_id", "?")
     
+    # Import event emitter
+    from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_stage_change, emit_error
+
     if not agent:
+        # Try to emit error if possible
+        try:
+            emit_error(f"Agent not found: {agent_key}", research_id=int(job_id) if str(job_id).isdigit() else None)
+        except:
+            pass
         logger.error(f"[Job #{job_id}] Agent not found: {agent_key}")
         return state
     
+    research_id = int(job_id) if str(job_id).isdigit() else None
+    
     try:
         logger.info(f"[Job #{job_id}] Running agent: {agent_key}")
+        
+        # EMIT START EVENT
+        emit_agent_start(agent.name, research_id=research_id)
+        
+        start_time = __import__("time").time()
         result = agent.run(state)
+        elapsed = __import__("time").time() - start_time
+        elapsed_ms = int(elapsed * 1000)
+        
+        # Check if agent reported error in result
+        if isinstance(result, dict) and "error" in result:
+             emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
+             emit_error(f"Agent {agent.name} reported error: {result['error']}", research_id=research_id)
+        else:
+             # EMIT COMPLETE EVENT
+             emit_agent_complete(agent.name, elapsed_ms, success=True, research_id=research_id)
         
         # Store result in findings
         new_findings = state.get("findings", {}).copy()
-        new_findings[agent_key] = result.get("response")
+        if isinstance(result, dict) and "response" in result:
+            new_findings[agent_key] = result.get("response")
+        else:
+             new_findings[agent_key] = result
         
         # Update history
         history = list(state.get("history", []))
-        exec_time = result.get("execution_time", 0)
+        exec_time = result.get("execution_time", 0) if isinstance(result, dict) else elapsed
         history.append(f"{agent.name}: Completed ({exec_time:.1f}s)")
         
         return {**state, "findings": new_findings, "history": history}
         
     except Exception as e:
         logger.error(f"[Job #{job_id}] Agent {agent_key} failed: {e}")
+        
+        # EMIT FAILURE EVENT
+        elapsed_ms = 0 # Approximate
+        emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
+        emit_error(str(e), research_id=research_id)
+        
         history = list(state.get("history", []))
         history.append(f"{agent.name}: FAILED - {str(e)}")
         return {**state, "history": history}

@@ -131,6 +131,12 @@ class ApiService {
     });
   }
 
+  async deleteResearch(id: string): Promise<void> {
+    await this.request(`/research/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getResearchEvents(id: string): Promise<any[]> {
     return this.request<any[]>(`/events/${id}`);
   }
@@ -331,6 +337,9 @@ class ApiService {
       updatedAt: data.updated_at || data.created_at,
       logs: this.extractLogs(result),
       reportMarkdown: reportData.markdown_report,
+      latexSource: reportData.latex_source,
+      pdfPath: reportData.pdf_path,
+      texPath: reportData.tex_path,
       diagrams: this.extractDiagrams(result),
       images: this.extractImages(result),
       modelUsed: result.model_used || 'phi3:mini',
@@ -365,10 +374,19 @@ class ApiService {
 
   private extractImages(result: any): string[] {
     const viz = result.visualization || {};
+    const images: string[] = [];
+
+    // Legacy/Local images
     if (viz.generated_image_path) {
-      return [`${BASE_URL}/${viz.generated_image_path}`];
+      images.push(`${BASE_URL}/${viz.generated_image_path}`);
     }
-    return [];
+
+    // Real search images (from Google/DuckDuckGo)
+    if (viz.image_urls && Array.isArray(viz.image_urls)) {
+      images.push(...viz.image_urls);
+    }
+
+    return images;
   }
 }
 

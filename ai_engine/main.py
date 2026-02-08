@@ -151,6 +151,31 @@ async def run_research(request: ResearchRequest):
         
         logger.info(f"[Job #{job_id}] Research completed successfully")
         
+        # Save result to JSON file as requested
+        try:
+            output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+            os.makedirs(output_dir, exist_ok=True)
+            
+            output_file = os.path.join(output_dir, f"{job_id}.json")
+            import json
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump({
+                    "status": "completed",
+                    "task": request.task,
+                    "result": result.get("results"),
+                    "final_state": result
+                }, f, indent=2, ensure_ascii=False)
+                
+            logger.info(f"[Job #{job_id}] Saved result to {output_file}")
+            
+            # Also save as latest.json for easy access
+            latest_file = os.path.join(output_dir, "latest.json")
+            import shutil
+            shutil.copy2(output_file, latest_file)
+            
+        except Exception as e:
+            logger.error(f"[Job #{job_id}] Failed to save output JSON: {str(e)}")
+
         if research_id:
             emit_stage_change("completed")
         

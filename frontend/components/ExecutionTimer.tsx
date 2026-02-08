@@ -12,61 +12,61 @@ export const ExecutionTimer: React.FC<ExecutionTimerProps> = ({
     completedAt,
     isProcessing,
 }) => {
-    const [elapsed, setElapsed] = useState(0);
+    const [elapsedMs, setElapsedMs] = useState(0);
 
     useEffect(() => {
         if (!startedAt) {
-            setElapsed(0);
+            setElapsedMs(0);
             return;
         }
 
         const start = new Date(startedAt).getTime();
 
-        if (completedAt) {
-            const end = new Date(completedAt).getTime();
-            setElapsed(Math.floor((end - start) / 1000));
-            return;
+        const update = () => {
+            const now = completedAt ? new Date(completedAt).getTime() : Date.now();
+            setElapsedMs(now - start);
+        };
+
+        update(); // Initial update
+
+        if (!completedAt) {
+            const interval = setInterval(update, 83); // ~12fps for millisecond look without killing CPU
+            return () => clearInterval(interval);
         }
-
-        const interval = setInterval(() => {
-            const now = Date.now();
-            setElapsed(Math.floor((now - start) / 1000));
-        }, 1000);
-
-        return () => clearInterval(interval);
     }, [startedAt, completedAt]);
 
-    const formatTime = (seconds: number) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
+    const formatTime = (ms: number) => {
+        const totalSeconds = Math.floor(ms / 1000);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        const millis = Math.floor((ms % 1000) / 10); // 2 digits
 
-        if (hrs > 0) {
-            return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        return (
+            <div className="flex items-baseline font-mono text-zinc-100 leading-none">
+                <span className="text-2xl font-bold">{mins.toString().padStart(2, '0')}</span>
+                <span className="text-zinc-500 mx-0.5">:</span>
+                <span className="text-2xl font-bold">{secs.toString().padStart(2, '0')}</span>
+                <span className="text-base text-zinc-500 ml-1">.{millis.toString().padStart(2, '0')}</span>
+            </div>
+        );
     };
 
     return (
-        <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-            {/* Icon */}
-            <div className="w-6 h-6 flex items-center justify-center">
-                {completedAt ? (
-                    <CheckCircle className="w-5 h-5 text-green-400" />
-                ) : isProcessing ? (
-                    <Play className="w-5 h-5 text-cyan-400 animate-pulse" />
-                ) : (
-                    <Clock className="w-5 h-5 text-gray-500" />
+        <div className="flex items-center gap-3 px-4 py-2 bg-black/40 backdrop-blur-md rounded-lg border border-zinc-800/50 shadow-lg">
+            {/* Status Pulse */}
+            <div className="relative flex h-3 w-3">
+                {isProcessing && !completedAt && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
                 )}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${completedAt ? 'bg-green-500' : isProcessing ? 'bg-cyan-500' : 'bg-zinc-500'
+                    }`}></span>
             </div>
 
             {/* Timer Display */}
             <div className="flex flex-col">
-                <span className="text-xl font-mono text-white">
-                    {formatTime(elapsed)}
-                </span>
-                <span className="text-xs text-gray-500">
-                    {completedAt ? 'Total time' : isProcessing ? 'Elapsed' : 'Waiting...'}
+                {formatTime(elapsedMs)}
+                <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold self-end -mt-1">
+                    {completedAt ? 'Completed' : 'Elapsed'}
                 </span>
             </div>
         </div>

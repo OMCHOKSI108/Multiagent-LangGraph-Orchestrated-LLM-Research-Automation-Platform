@@ -40,26 +40,22 @@ class VisualizationAgent(BaseAgent):
             response = self.llm.invoke(messages)
             result = self._extract_json(response.content)
             
-            # --- AI Image Generation (Stable Diffusion) ---
+            # --- AI Image Search (Google Images) ---
             try:
-                from utils.vision import VisionProvider
-                vision = VisionProvider()
+                # 1. Google Image Search (Real Images)
+                from utils.providers import ImageSearchProvider
+                img_search = ImageSearchProvider()
                 
+                image_urls = []
                 if "image_gen_prompt" in result:
-                    prompt = result["image_gen_prompt"]
-                    print(f"[{self.name}] Generating AI Image: '{prompt}'")
-                    
-                    # Create safe filename
-                    import re
-                    safe_task = re.sub(r'[^a-zA-Z0-9]', '_', state.get("task", "research"))[:20]
-                    path = f"generated_images/{safe_task}.png"
-                    
-                    # Generate
-                    img_path = vision.generate_image(prompt, path)
-                    result["generated_image_path"] = img_path
+                    search_query = result.get("image_search_query", result["image_gen_prompt"])
+                    search_query = search_query.replace("realistic", "").replace("high resolution", "").strip()
+                    print(f"[{self.name}] Searching Google Images for: '{search_query}'")
+                    image_urls = img_search.search(search_query, max_results=4)
+                    result["image_urls"] = image_urls
                     
             except Exception as v_err:
-                print(f"[{self.name}] Vision Error: {v_err}")
+                print(f"[{self.name}] Image Search Error: {v_err}")
             # ----------------------------------------------
 
             return {

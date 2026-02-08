@@ -33,75 +33,60 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
         }
     }, [events, isPaused]);
 
-    const formatTime = (timestamp: string) => {
-        try {
-            const date = new Date(timestamp);
-            return date.toLocaleTimeString('en-US', { hour12: false });
-        } catch {
-            return '--:--:--';
-        }
-    };
-
     return (
-        <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+        <div className="h-full flex flex-col font-mono text-xs">
+            {/* Header - Transparent */}
+            <div className="flex items-center justify-between px-2 py-2 mb-2">
                 <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm font-medium text-gray-200">Live Activity</span>
-                    {isProcessing && (
-                        <span className="flex items-center gap-1 text-[10px] text-green-400">
-                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                            Live
-                        </span>
-                    )}
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-emerald-400 font-bold tracking-wider uppercase text-[10px]">Live Feed</span>
                 </div>
-                <button
-                    onClick={() => setIsPaused(!isPaused)}
-                    className={`text-xs px-2 py-1 rounded ${isPaused ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300'
-                        }`}
-                >
-                    {isPaused ? 'Resume' : 'Pause'}
-                </button>
+                <div className="text-[10px] text-zinc-500">
+                    {events.length} EVENTS
+                </div>
             </div>
 
-            {/* Log Content - More compact */}
+            {/* Log Content - Transparent & Minimal */}
             <div
                 ref={scrollRef}
-                className="h-40 overflow-y-auto p-2 font-mono text-[11px] space-y-0.5"
+                className="flex-1 overflow-y-auto space-y-1.5 px-2 custom-scrollbar mask-gradient-b"
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
             >
                 {events.length === 0 ? (
-                    <div className="text-gray-500 text-center py-8">
-                        Waiting for activity...
-                    </div>
+                    <div className="text-zinc-500 dark:text-zinc-600 italic px-2">Waiting for signal...</div>
                 ) : (
                     events.map((event, idx) => {
-                        const config = severityConfig[event.severity] || severityConfig.info;
-                        const Icon = config.icon;
+                        const isLatest = idx === events.length - 1;
+                        let colorClass = "text-zinc-500 dark:text-zinc-400";
+                        if (event.severity === 'info') colorClass = "text-blue-600 dark:text-blue-400";
+                        if (event.severity === 'success') colorClass = "text-emerald-600 dark:text-emerald-400";
+                        if (event.severity === 'warn') colorClass = "text-amber-600 dark:text-amber-400";
+                        if (event.severity === 'error') colorClass = "text-red-600 dark:text-red-400";
 
                         return (
                             <div
                                 key={event.event_id || idx}
-                                className={`flex items-start gap-2 px-2 py-0.5 rounded ${config.bg}`}
+                                className={`flex gap-3 items-start animate-fade-in ${isLatest ? 'opacity-100' : 'opacity-80 hover:opacity-100'
+                                    } transition-opacity duration-300 bg-white/40 dark:bg-black/20 hover:bg-white/60 dark:hover:bg-black/40 p-2 rounded`}
                             >
-                                <span className="text-gray-500 shrink-0">
-                                    {formatTime(event.timestamp)}
+                                <span className="text-zinc-500 dark:text-zinc-600 shrink-0 select-none text-[10px] pt-0.5">
+                                    {new Date(event.timestamp).toLocaleTimeString('en-US', { hour12: false })}
                                 </span>
-                                <Icon className={`w-3 h-3 mt-0.5 shrink-0 ${config.color}`} />
-                                <span className={`${config.color} break-all`}>
-                                    {event.message}
-                                </span>
+                                <div className="flex-1 break-words">
+                                    <span className={`font-bold mr-2 uppercase text-[10px] tracking-wide ${colorClass}`}>
+                                        [{event.severity}]
+                                    </span>
+                                    <span className="text-zinc-700 dark:text-zinc-300">
+                                        {event.message}
+                                    </span>
+                                </div>
                             </div>
                         );
                     })
-                )}
-
-                {isProcessing && (
-                    <div className="flex items-center gap-2 px-2 py-1 text-gray-400">
-                        <span className="w-2 h-4 bg-cyan-400 animate-pulse" />
-                    </div>
                 )}
             </div>
         </div>
