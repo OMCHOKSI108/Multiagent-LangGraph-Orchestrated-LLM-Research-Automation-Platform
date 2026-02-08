@@ -356,3 +356,44 @@ class HtmlScraperProvider:
         except Exception as e:
             print(f"[HtmlScraperProvider] Error: {e}")
             return str(e)
+
+class NewsSearchProvider:
+    def __init__(self):
+        self.ddgs = DDGS()
+
+    def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Searches for news using DuckDuckGo News.
+        """
+        try:
+            if query:
+                emit_search(query, "news")
+                
+            # DuckDuckGo News search
+            results = list(self.ddgs.news(query, max_results=max_results))
+            
+            normalized_results = []
+            for r in results:
+                # DDGS news results typically have: title, body, url, source, date
+                normalized_results.append({
+                    "title": r.get("title"),
+                    "summary": r.get("body"),
+                    "url": r.get("url"),
+                    "source": r.get("source"),
+                    "published": r.get("date")
+                })
+                
+                emit_source(
+                    source_type="news",
+                    domain=r.get("source", "news"),
+                    url=r.get("url"),
+                    title=r.get("title"),
+                    description=r.get("body", "")[:200],
+                    published_date=r.get("date"),
+                    items_found=1
+                )
+            
+            return normalized_results
+        except Exception as e:
+            print(f"[NewsSearchProvider] Error: {e}")
+            return []

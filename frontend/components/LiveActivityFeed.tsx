@@ -57,7 +57,7 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                 onMouseLeave={() => setIsPaused(false)}
             >
                 {events.length === 0 ? (
-                    <div className="text-zinc-500 dark:text-zinc-600 italic px-2">Waiting for signal...</div>
+                    <div className="text-zinc-500 dark:text-zinc-400 italic px-2">Waiting for signal...</div>
                 ) : (
                     events.map((event, idx) => {
                         const isLatest = idx === events.length - 1;
@@ -73,7 +73,7 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                                 className={`flex gap-3 items-start animate-fade-in ${isLatest ? 'opacity-100' : 'opacity-80 hover:opacity-100'
                                     } transition-opacity duration-300 bg-white/40 dark:bg-black/20 hover:bg-white/60 dark:hover:bg-black/40 p-2 rounded`}
                             >
-                                <span className="text-zinc-500 dark:text-zinc-600 shrink-0 select-none text-[10px] pt-0.5">
+                                <span className="text-zinc-500 dark:text-zinc-400 shrink-0 select-none text-[10px] pt-0.5">
                                     {new Date(event.timestamp).toLocaleTimeString('en-US', { hour12: false })}
                                 </span>
                                 <div className="flex-1 break-words">

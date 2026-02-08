@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useResearchStore } from '../store';
-import { ArrowRight, AlertCircle, Terminal } from 'lucide-react';
-import { AnimatedBackground } from '../components/AnimatedBackground';
+import { Terminal, AlertCircle } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 
 export const Login = () => {
     const [email, setEmail] = useState('');
@@ -25,7 +27,6 @@ export const Login = () => {
         setLoading(true);
         try {
             await login(email, password);
-            // Navigation happens via the isAuthenticated useEffect above
         } catch (e) {
             // Error is handled in store
         } finally {
@@ -34,70 +35,83 @@ export const Login = () => {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            <AnimatedBackground />
-
-            <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 text-zinc-900 dark:text-white font-semibold z-10">
-                <div className="w-8 h-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg flex items-center justify-center">
-                    <Terminal className="w-4 h-4" />
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
+            <div className="w-full max-w-md space-y-8">
+                <div className="flex flex-col items-center text-center">
+                    <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center mb-4">
+                        <Terminal className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Enter your credentials to access the workspace
+                    </p>
                 </div>
-                DeepResearch
-            </Link>
 
-            <div className="w-full max-w-md bg-white/50 dark:bg-black/50 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 animate-in fade-in zoom-in-95 duration-300 relative z-10">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Welcome back</h1>
-                <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">Enter your credentials to access your workspace.</p>
-
-                {authError && (
-                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3 text-red-600 text-sm">
-                        <AlertCircle className="w-5 h-5 shrink-0" />
-                        <span>{authError}</span>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-zinc-700">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
-                            placeholder="name@company.com"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <div className="flex justify-between items-center">
-                            <label className="text-xs font-medium text-zinc-700">Password</label>
-                            <a href="#" className="text-xs text-zinc-500 hover:text-zinc-900">Forgot password?</a>
-                        </div>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
-                            placeholder="••••••••"
-                            required
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-2.5 rounded-lg transition-all mt-4 shadow-subtle hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>Sign In <ArrowRight className="w-4 h-4" /></>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sign in</CardTitle>
+                        <CardDescription>
+                            Use your email and password to log in
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {authError && (
+                            <div className="mb-4 p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>{authError}</span>
+                            </div>
                         )}
-                    </button>
-                </form>
-
-                <div className="mt-8 pt-6 border-t border-zinc-100 text-center text-sm text-zinc-500">
-                    Don't have an account? <Link to="/signup" className="font-medium text-zinc-900 hover:underline">Sign up</Link>
-                </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
+                                    Email
+                                </label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="name@example.com"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
+                                        Password
+                                    </label>
+                                    <Link
+                                        to="#"
+                                        className="text-sm font-medium text-primary hover:underline"
+                                        onClick={(e) => e.preventDefault()}
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                            <Button type="submit" className="w-full" isLoading={loading}>
+                                Sign In
+                            </Button>
+                        </form>
+                    </CardContent>
+                    <CardFooter className="flex justify-center border-t p-4">
+                        <p className="text-sm text-muted-foreground">
+                            Don't have an account?{' '}
+                            <Link to="/signup" className="font-medium text-primary hover:underline">
+                                Sign up
+                            </Link>
+                        </p>
+                    </CardFooter>
+                </Card>
             </div>
         </div>
     );

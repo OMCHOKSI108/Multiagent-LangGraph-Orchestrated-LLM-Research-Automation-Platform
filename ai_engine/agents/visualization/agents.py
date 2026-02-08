@@ -40,22 +40,41 @@ class VisualizationAgent(BaseAgent):
             response = self.llm.invoke(messages)
             result = self._extract_json(response.content)
             
-            # --- AI Image Search (Google Images) ---
+            # --- AI Image Search & Download ---
             try:
                 # 1. Google Image Search (Real Images)
                 from utils.providers import ImageSearchProvider
+                from utils.image_downloader import download_image
+                
                 img_search = ImageSearchProvider()
                 
                 image_urls = []
+                local_images = []
+                
                 if "image_gen_prompt" in result:
                     search_query = result.get("image_search_query", result["image_gen_prompt"])
                     search_query = search_query.replace("realistic", "").replace("high resolution", "").strip()
                     print(f"[{self.name}] Searching Google Images for: '{search_query}'")
-                    image_urls = img_search.search(search_query, max_results=4)
-                    result["image_urls"] = image_urls
+                    
+                    # Search
+                    raw_urls = img_search.search(search_query, max_results=4)
+                    
+                    # Download locally
+                    job_id = state.get("_job_id", "unknown")
+                    print(f"[{self.name}] Downloading images for Job {job_id}...")
+                    
+                    for url in raw_urls:
+                        local_path = download_image(url, job_id)
+                        if local_path:
+                            # Only add if download was successful to keep lists validated
+                            local_images.append(local_path)
+                            image_urls.append({"original": url, "local": local_path})
+                    
+                    result["image_urls"] = local_images # Keep for backward compatibility
+                    result["images_metadata"] = image_urls # New robust structure
                     
             except Exception as v_err:
-                print(f"[{self.name}] Image Search Error: {v_err}")
+                print(f"[{self.name}] Image Search/Download Error: {v_err}")
             # ----------------------------------------------
 
             return {

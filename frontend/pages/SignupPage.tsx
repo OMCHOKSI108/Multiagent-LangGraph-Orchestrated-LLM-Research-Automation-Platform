@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useResearchStore } from '../store';
-import { ArrowRight, AlertCircle, Terminal } from 'lucide-react';
-import { AnimatedBackground } from '../components/AnimatedBackground';
+import { Terminal, AlertCircle } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 
 export const Signup = () => {
     const [email, setEmail] = useState('');
@@ -24,7 +26,6 @@ export const Signup = () => {
         setLoading(true);
         try {
             await signup(email, password, username);
-            // Navigation happens via the isAuthenticated useEffect above
         } catch (e) {
             // Handled in store
         } finally {
@@ -33,80 +34,91 @@ export const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            <AnimatedBackground />
-
-            <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 text-zinc-900 dark:text-white font-semibold z-10">
-                <div className="w-8 h-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg flex items-center justify-center">
-                    <Terminal className="w-4 h-4" />
+        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
+            <div className="w-full max-w-md space-y-8">
+                <div className="flex flex-col items-center text-center">
+                    <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center mb-4">
+                        <Terminal className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight">Create an account</h2>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Start your research journey today
+                    </p>
                 </div>
-                DeepResearch
-            </Link>
 
-            <div className="w-full max-w-md bg-white/50 dark:bg-black/50 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 animate-in fade-in zoom-in-95 duration-300 relative z-10">
-                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">Create an account</h1>
-                <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-8">Start your research journey today.</p>
-
-                {authError && (
-                    <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3 text-red-600 text-sm">
-                        <AlertCircle className="w-5 h-5 shrink-0" />
-                        <span>{authError}</span>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-zinc-700">Full Name</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
-                            placeholder="John Doe"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-zinc-700">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
-                            placeholder="name@company.com"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-medium text-zinc-700">Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            className="w-full bg-white border border-zinc-300 rounded-lg px-3 py-2.5 text-sm text-zinc-900 focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all placeholder-zinc-400"
-                            placeholder="••••••••"
-                            required
-                            minLength={6}
-                        />
-                        <p className="text-[10px] text-zinc-400">Must be at least 6 characters</p>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium py-2.5 rounded-lg transition-all mt-4 shadow-subtle hover:shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>Create Account <ArrowRight className="w-4 h-4" /></>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sign up</CardTitle>
+                        <CardDescription>
+                            Enter your information to create an account
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {authError && (
+                            <div className="mb-4 p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>{authError}</span>
+                            </div>
                         )}
-                    </button>
-                </form>
-
-                <div className="mt-8 pt-6 border-t border-zinc-100 text-center text-sm text-zinc-500">
-                    Already have an account? <Link to="/login" className="font-medium text-zinc-900 hover:underline">Log in</Link>
-                </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none" htmlFor="username">
+                                    Full Name
+                                </label>
+                                <Input
+                                    id="username"
+                                    placeholder="John Doe"
+                                    value={username}
+                                    onChange={e => setUsername(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none" htmlFor="email">
+                                    Email
+                                </label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    placeholder="name@example.com"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium leading-none" htmlFor="password">
+                                    Password
+                                </label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                    minLength={6}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                    Must be at least 6 characters
+                                </p>
+                            </div>
+                            <Button type="submit" className="w-full" isLoading={loading}>
+                                Create Account
+                            </Button>
+                        </form>
+                    </CardContent>
+                    <CardFooter className="flex justify-center border-t p-4">
+                        <p className="text-sm text-muted-foreground">
+                            Already have an account?{' '}
+                            <Link to="/login" className="font-medium text-primary hover:underline">
+                                Log in
+                            </Link>
+                        </p>
+                    </CardFooter>
+                </Card>
             </div>
         </div>
     );

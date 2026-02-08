@@ -33,6 +33,8 @@ from .critique.agents import ReviewerAdversarialCritiqueAgent, HallucinationDete
 from .scraper.agents import DataScraperAgent
 from .visualization.agents import VisualizationAgent
 
+from .news.agent import NewsAgent
+
 # Instantiate All Agents with Specialized Models
 AGENTS: Dict[str, BaseAgent] = {
     # Orchestrator (Reasoning)
@@ -40,6 +42,9 @@ AGENTS: Dict[str, BaseAgent] = {
 
     # Scraper (New)
     "data_scraper": DataScraperAgent(),
+    
+    # News (New)
+    "news": NewsAgent(),
     
     # Discovery (Reasoning)
     "domain_intelligence": DomainIntelligenceAgent(model_name=config.MODEL_REASONING),

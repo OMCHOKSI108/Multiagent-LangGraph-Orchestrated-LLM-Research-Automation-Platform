@@ -1,0 +1,62 @@
+site_name: Deep Research Engine
+site_description: 'Autonomous multi-agent research platform documentation.'
+site_author: 'Sans'
+repo_url: 'https://github.com/OMCHOKSI108/Multiagent-LangGraph-Orchestrated-LLM-Research-Automation-Platform'
+repo_name: 'Deep Research Engine'
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    logo: material/robot-happy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - tables
+  - admonition
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Features: features.md
+  - AI Agents:
+    - Overview: agents/overview.md
+    - Orchestrator: agents/orchestrator.md
+    - Scraper: agents/scraper.md
+    - Report: agents/report.md
+    - Visualization: agents/visualization.md
+    - Critique: agents/critique.md
+    - Other Agents: agents/others.md
+  - Backend API: backend.md
+  - Frontend Guide: frontend.md
+  - Installation: installation.md

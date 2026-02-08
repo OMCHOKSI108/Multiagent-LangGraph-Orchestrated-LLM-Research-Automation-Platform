@@ -1,189 +1,93 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ===== CSS Variables (shadcn-style) ===== */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 216 34% 17%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
   }
 }
 
-/* ===== Base Styles ===== */
 @layer base {
   * {
-    @apply border-[hsl(var(--border))];
+    @apply border-border;
   }
-  
+
   body {
-    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* ===== Scrollbar ===== */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #d4d4d8 transparent;
+/* Scoped Research Prose Styles */
+@layer utilities {
+  .prose-research {
+    @apply prose prose-zinc dark:prose-invert max-w-none;
+    @apply prose-headings:font-display prose-headings:tracking-tight;
+    @apply prose-a:text-primary prose-a:no-underline hover:prose-a:underline;
+    @apply prose-pre:bg-secondary prose-pre:border prose-pre:border-border;
+  }
 }
 
-:root.dark * {
-  scrollbar-color: #21262d transparent;
+/* Minimal Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-*::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
 
-*::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-  border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 10px;
 }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
-  background-clip: content-box;
-}
-
-:root.dark *::-webkit-scrollbar-thumb {
-  background: #21262d;
-  background-clip: content-box;
-}
-
-:root.dark *::-webkit-scrollbar-thumb:hover {
-  background: #30363d;
-  background-clip: content-box;
-}
-
-/* ===== iOS Input Zoom Fix ===== */
-@media screen and (-webkit-min-device-pixel-ratio: 0) {
-  select, textarea, input {
-    font-size: 16px !important;
-  }
-}
-
-/* ===== Loading Spinner ===== */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.loading-spinner {
-  animation: spin 1s linear infinite;
-}
-
-/* ===== Smooth Transitions ===== */
-.transition-theme {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-/* ===== Glassmorphism Utilities ===== */
-@layer utilities {
-  .glass {
-    @apply bg-white/30 dark:bg-black/30 backdrop-blur-xl border border-white/20 dark:border-white/10;
-  }
-  
-  .glass-card {
-    @apply bg-white/40 dark:bg-black/40 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-lg;
-  }
-  
-  .animate-in {
-    animation: fade-in 0.3s ease-out;
-  }
-
-  .prose-research {
-    @apply prose prose-zinc dark:prose-invert max-w-none;
-    @apply prose-headings:font-semibold prose-headings:tracking-tight;
-    @apply prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl;
-    @apply prose-p:leading-7 prose-li:leading-7;
-    @apply prose-code:bg-zinc-100 dark:prose-code:bg-zinc-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded;
-    @apply prose-pre:bg-zinc-900 dark:prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-zinc-200 dark:prose-pre:border-zinc-700;
-    @apply prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline;
-    @apply prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-50/50 dark:prose-blockquote:bg-blue-900/20 prose-blockquote:px-4 prose-blockquote:py-1 prose-blockquote:rounded-r-lg;
-    @apply prose-table:border-collapse prose-th:bg-zinc-100 dark:prose-th:bg-zinc-800 prose-th:px-4 prose-th:py-2;
-  }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ===== Chaotic Blob Animations (OpenSearch style) ===== */
-@keyframes chaoticBlob {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-    border-radius: 42% 58% 45% 55% / 60% 30% 70% 40%;
-  }
-  20% {
-    transform: scale(1.2) rotate(20deg);
-    border-radius: 53% 47% 60% 40% / 32% 68% 33% 67%;
-  }
-  40% {
-    transform: scale(0.8) rotate(-20deg);
-    border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
-  }
-  60% {
-    transform: scale(1.1) rotate(10deg);
-    border-radius: 30% 70% 50% 50% / 60% 30% 70% 40%;
-  }
-  80% {
-    transform: scale(0.9) rotate(-10deg);
-    border-radius: 40% 60% 60% 40% / 50% 50% 30% 70%;
-  }
-}
-
-.chaotic-blob {
-  animation: chaoticBlob 6s ease-in-out infinite;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.1);
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }

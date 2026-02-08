@@ -1,6 +1,6 @@
 import { JobStatus, ResearchJob, User, UsageStats, Memory, SearchResponse } from '../types';
 
-const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+const BASE_URL = ''; // Use relative path for proxy
 
 class ApiService {
   private getHeaders(): HeadersInit {

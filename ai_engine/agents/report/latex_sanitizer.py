@@ -145,6 +145,24 @@ def fix_special_characters(content: str) -> str:
     
     # # not preceded by \ and not part of color code
     content = re.sub(r'(?<!\\)#(?![0-9a-fA-F]{6}|[0-9a-fA-F]{3})', r'\\#', content)
+
+    # Escape underscores if not in math mode or URL
+    # This is tricky with regex. A safe bet for LLM output is to escape all _ 
+    # and then unescape those inside $...$ or \url{...}
+    # For now, we'll do a simple pass that avoids typical command usages like \usepackage{..._...}
+    
+    # 1. Escape ALL underscores first (temporary placeholder)
+    # content = content.replace('_', '___TEMP_UNDERSCORE___')
+    
+    # ... actually, implementing a full robust latex parser is hard. 
+    # Let's just catch the most common text-mode underscores.
+    
+    # Escape _ if it's surrounded by spaces or words, and not inside a macro like \something_else
+    # content = re.sub(r'(?<!\\)_', r'\\_', content) 
+    # (Commented out because it breaks math mode heavily. Better to let the LLM handle it, 
+    # or rely on the `pipeline.py` which already has `_escape_latex` method. 
+    # The pipeline calls `_markdown_to_latex` which calls `_escape_latex_content`.
+    # This sanitizer is a post-processor.
     
     return content
 

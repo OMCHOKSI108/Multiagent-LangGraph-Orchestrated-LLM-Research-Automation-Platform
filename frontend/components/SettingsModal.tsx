@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useResearchStore } from '../store';
 import { X, User, Key, BarChart3, Check, AlertTriangle, Loader2, LogOut, Brain } from 'lucide-react';
+import { toast } from 'sonner';
 import { UsageChart } from './UsageChart';
 import { MemoryPanel } from './MemoryPanel';
 
@@ -156,8 +157,8 @@ const NavButton = ({ active, onClick, icon: Icon, label }: any) => (
     <button
         onClick={onClick}
         className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all ${active
-                ? 'bg-white dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 shadow-subtle border border-zinc-200 dark:border-dark-300'
-                : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-dark-200 hover:text-zinc-900 dark:hover:text-zinc-100'
+            ? 'bg-white dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 shadow-subtle border border-zinc-200 dark:border-dark-300'
+            : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-dark-200 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
     >
         <Icon className="w-4 h-4" />
@@ -243,6 +244,26 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
         setKeys((prev: any) => ({ ...prev, [provider]: value }));
     };
 
+    const handleGenerateKey = async (provider: string) => {
+        try {
+            // Only generate for "custom" or internal DRE key if needed, 
+            // but for external providers (Gemini/Groq) user usually inputs them.
+            // If the user wants to generate a DRE API key for programmatic access:
+            if (provider === 'dre') {
+                // Use the api service to generate
+                const newKey = await import('../services/api').then(m => m.api.generateApiKey());
+                // Show it to user or copy to clipboard
+                navigator.clipboard.writeText(newKey);
+                alert(`API Key Generated and copied to clipboard:\n${newKey}`);
+            } else {
+                alert("For external providers like Gemini or Groq, you must generate a key in their respective developer consoles.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Failed to generate API Key");
+        }
+    };
+
     const handleTest = async (provider: string) => {
         setTesting(provider);
         try {
@@ -282,6 +303,31 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                 </p>
             </div>
 
+            {/* Personal Access Token Section */}
+            <div className="bg-zinc-50 dark:bg-dark-primary/50 p-4 rounded-xl border border-zinc-200 dark:border-dark-300">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-900">
+                            <Key className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 font-display block">
+                                Personal Access Token
+                            </label>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Key for accessing Antigravity API programmatically
+                            </span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => handleGenerateKey('dre')}
+                        className="px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm"
+                    >
+                        Generate New Key
+                    </button>
+                </div>
+            </div>
+
             <div className="space-y-6">
                 {['gemini', 'groq'].map(provider => (
                     <div key={provider} className="group bg-zinc-50 dark:bg-dark-primary/50 p-4 rounded-xl border border-zinc-200 dark:border-dark-300 transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
@@ -316,6 +362,13 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                                     className="w-full px-4 py-2.5 bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all font-mono shadow-sm"
                                 />
                             </div>
+                            <button
+                                onClick={() => handleGenerateKey(provider)}
+                                className="px-3 py-2.5 bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-dark-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all shadow-sm hover:shadow-md active:scale-95"
+                                title="Generate Key"
+                            >
+                                <Key className="w-4 h-4" />
+                            </button>
                             <button
                                 onClick={() => handleTest(provider)}
                                 disabled={testing === provider || !keys[provider]}

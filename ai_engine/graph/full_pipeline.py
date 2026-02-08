@@ -1,9 +1,16 @@
-from typing import TypedDict, Dict, Any, List, Optional
+from typing import TypedDict, Dict, Any, List, Optional, Annotated
 from langgraph.graph import StateGraph, END
 import logging
 import os
+import operator
 
 logger = logging.getLogger("ai_engine.pipeline")
+
+# ============================
+# State Reducers
+# ============================
+def merge_dicts(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    return {**a, **b}
 
 # ============================
 # State Definition
@@ -13,12 +20,12 @@ class ResearchState(TypedDict):
     paper_url: Optional[str]
     next_step: Optional[str]
     
-    # Shared Memory
+    # Shared Memory with Reducers for Parallel Execution
     research_summary: Optional[str]
-    findings: Dict[str, Any]
+    findings: Annotated[Dict[str, Any], merge_dicts]
     
     # Logs & Tracing
-    history: List[str]
+    history: Annotated[List[str], operator.add]
     _job_id: Optional[str]  # For correlation
 
 
@@ -70,18 +77,20 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
              emit_agent_complete(agent.name, elapsed_ms, success=True, research_id=research_id)
         
         # Store result in findings
-        new_findings = state.get("findings", {}).copy()
+        # For parallel execution, we just return the new findings for this key
+        # The reducer will merge them
+        findings_update = {}
         if isinstance(result, dict) and "response" in result:
-            new_findings[agent_key] = result.get("response")
+            findings_update[agent_key] = result.get("response")
         else:
-             new_findings[agent_key] = result
+             findings_update[agent_key] = result
         
         # Update history
-        history = list(state.get("history", []))
         exec_time = result.get("execution_time", 0) if isinstance(result, dict) else elapsed
-        history.append(f"{agent.name}: Completed ({exec_time:.1f}s)")
+        history_update = [f"{agent.name}: Completed ({exec_time:.1f}s)"]
         
-        return {**state, "findings": new_findings, "history": history}
+        # Return ONLY the updates (Reducers handle the rest)
+        return {"findings": findings_update, "history": history_update}
         
     except Exception as e:
         logger.error(f"[Job #{job_id}] Agent {agent_key} failed: {e}")
@@ -91,9 +100,8 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
         emit_error(str(e), research_id=research_id)
         
-        history = list(state.get("history", []))
-        history.append(f"{agent.name}: FAILED - {str(e)}")
-        return {**state, "history": history}
+        history_update = [f"{agent.name}: FAILED - {str(e)}"]
+        return {"history": history_update}
 
 
 # Orchestrator
@@ -102,12 +110,14 @@ def orchestrator_node(state: ResearchState) -> ResearchState:
     # Extract next_step from orchestrator response
     response = result.get("response", {})
     next_step = response.get("next_step") if isinstance(response, dict) else None
-    return {**state, "next_step": next_step}
+    # No history/findings update needed here strictly, but good practice
+    return {"next_step": next_step}
 
 # Pipeline A Nodes
 def domain_node(state): return run_agent("domain_intelligence", state)
 def historical_node(state): return run_agent("historical_review", state)
 def slr_node(state): return run_agent("slr", state)
+def news_node(state): return run_agent("news", state) # New News Agent
 def gap_node(state): return run_agent("gap_synthesis", state)
 def innovation_node(state): return run_agent("innovation_novelty", state)
 
@@ -138,6 +148,7 @@ workflow.add_node("orchestrator", orchestrator_node)
 workflow.add_node("domain_intelligence", domain_node)
 workflow.add_node("historical_review", historical_node)
 workflow.add_node("slr", slr_node)
+workflow.add_node("news", news_node) # New
 workflow.add_node("gap_synthesis", gap_node)
 workflow.add_node("innovation", innovation_node)
 
@@ -171,10 +182,16 @@ workflow.add_conditional_edges("orchestrator", route_strategy, {
     "domain_intelligence": "domain_intelligence"
 })
 
-# Pipeline A Flow
+# Pipeline A Flow (Parallelized)
 workflow.add_edge("domain_intelligence", "historical_review")
-workflow.add_edge("historical_review", "slr")
+workflow.add_edge("domain_intelligence", "slr")
+workflow.add_edge("domain_intelligence", "news")
+
+# All three converge to gap_synthesis
+workflow.add_edge("historical_review", "gap_synthesis")
 workflow.add_edge("slr", "gap_synthesis")
+workflow.add_edge("news", "gap_synthesis")
+
 workflow.add_edge("gap_synthesis", "innovation")
 
 # Pipeline B Flow

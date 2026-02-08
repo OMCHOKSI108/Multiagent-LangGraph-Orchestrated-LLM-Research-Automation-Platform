@@ -110,6 +110,32 @@ class BaseAgent:
         """Rough token estimation (4 chars ≈ 1 token for English)."""
         return len(text) // 4
 
+    def _smart_truncate(self, text: str, max_chars: int) -> str:
+        """
+        Truncates text while attempting to preserve JSON structure for lists/dicts.
+        """
+        if len(text) <= max_chars:
+            return text
+            
+        # Try to parse as JSON
+        try:
+            data = json.loads(text)
+            if isinstance(data, list):
+                # Truncate list by items
+                while len(json.dumps(data)) > max_chars and len(data) > 0:
+                    data.pop()
+                return json.dumps(data)
+            elif isinstance(data, dict):
+                # Truncate dict by keys
+                while len(json.dumps(data)) > max_chars and len(data) > 0:
+                    data.popitem()
+                return json.dumps(data)
+        except:
+            pass
+            
+        # Fallback to string slicing
+        return text[:max_chars] + "...(truncated)"
+
     def _truncate_context(self, state: Dict[str, Any], max_tokens: int) -> str:
         """
         Intelligently truncates context to fit within token limits.
@@ -122,10 +148,12 @@ class BaseAgent:
             "_job_id": state.get("_job_id", "")
         }
         core_str = json.dumps(core)
-        remaining_tokens = max_tokens - self._estimate_tokens(core_str) - 500  # Buffer for system prompt
+        # Convert max_tokens to approx chars (1 token ~= 4 chars)
+        max_chars = max_tokens * 4
+        remaining_chars = max_chars - len(core_str) - 2000  # Buffer
         
         findings = state.get("findings", {})
-        if not findings:
+        if not findings or remaining_chars <= 0:
             return json.dumps(state)
         
         # Prioritize most recent/relevant agent outputs
@@ -140,14 +168,14 @@ class BaseAgent:
             if key in findings:
                 entry = findings[key]
                 entry_str = json.dumps(entry) if isinstance(entry, dict) else str(entry)
-                entry_tokens = self._estimate_tokens(entry_str)
                 
-                if entry_tokens < remaining_tokens:
+                if len(entry_str) < remaining_chars:
                     truncated_findings[key] = entry
-                    remaining_tokens -= entry_tokens
+                    remaining_chars -= len(entry_str)
                 else:
-                    # Truncate this entry to fit
-                    truncated_findings[key] = {"summary": str(entry)[:remaining_tokens * 4]}
+                    # Truncate this entry to fit functionality
+                    truncated_findings[key] = self._smart_truncate(entry_str, remaining_chars)
+                    remaining_chars = 0
                     break
         
         result = {**core, "findings": truncated_findings}
