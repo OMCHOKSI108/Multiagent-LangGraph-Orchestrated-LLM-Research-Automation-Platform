@@ -163,14 +163,20 @@ async function startWorker() {
     await recoverStaleJobs();
     await markExhaustedJobs();
 
-    // Main loop
+    // Main loop with iteration counter for periodic tasks
+    let iteration = 0;
+    const STALE_CHECK_INTERVAL = 60; // Check every 60 iterations (5 mins at 5s polling)
+
     while (true) {
         await processQueue();
         await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL));
 
-        // Periodically check for stale jobs (every 5 minutes)
-        if (Date.now() % (5 * 60 * 1000) < POLLING_INTERVAL) {
+        iteration++;
+
+        // Periodically check for stale jobs
+        if (iteration % STALE_CHECK_INTERVAL === 0) {
             await recoverStaleJobs();
+            iteration = 0; // Reset to prevent overflow
         }
     }
 }

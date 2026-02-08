@@ -82,6 +82,7 @@ export const Workspace = () => {
     const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
     const [showActivityFeed, setShowActivityFeed] = useState(true);
     const [sourcesModalOpen, setSourcesModalOpen] = useState(false);
+    const [exportLoading, setExportLoading] = useState<'md' | 'pdf' | 'tex' | null>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -225,60 +226,43 @@ export const Workspace = () => {
                             </div>
                         )}
 
-                        {/* Logs Stream (Inline) */}
-                        {isProcessing && (
-                            <div className="pl-12">
-                                <div className="bg-zinc-50 dark:bg-dark-200 border border-zinc-200 dark:border-dark-300 rounded-lg p-4 font-mono text-xs space-y-1.5 text-zinc-600 dark:text-zinc-400 max-h-56 overflow-y-auto shadow-inner">
-                                    {activeJob.logs.map(log => (
-                                        <div key={log.id} className="flex gap-3 opacity-90">
-                                            <span className="text-zinc-400 dark:text-zinc-500 select-none">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                                            <span>{log.message}</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 animate-pulse mt-3 font-semibold">
-                                        <Loader2 className="w-3 h-3 animate-spin" /> Processing...
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Chat History */}
                         {chatHistory.map((msg) => {
                             const isStreamingMsg = msg.role === 'assistant' && msg.content === '' && isProcessing;
                             return (
-                            <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                {msg.role === 'assistant' ? (
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center shrink-0">
-                                        <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                    </div>
-                                ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-dark-200 border border-zinc-200 dark:border-dark-300 flex items-center justify-center shrink-0 text-zinc-600 dark:text-zinc-400 text-xs font-bold">
-                                        YOU
-                                    </div>
-                                )}
-
-                                <div className="max-w-[80%]">
-                                    <div className={`text-sm leading-relaxed p-4 rounded-xl ${msg.role === 'user'
-                                        ? 'bg-zinc-100 dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 rounded-tr-none'
-                                        : 'bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 text-zinc-900 dark:text-zinc-100 rounded-tl-none shadow-subtle'
-                                        }`}>
-                                        {isStreamingMsg ? (
-                                            <MessageBoxLoading />
-                                        ) : msg.role === 'assistant' ? (
-                                            <MarkdownRenderer content={msg.content || '...'} />
-                                        ) : (
-                                            msg.content
-                                        )}
-                                    </div>
-                                    {/* Actions for assistant messages */}
-                                    {msg.role === 'assistant' && msg.content && !isStreamingMsg && (
-                                        <div className="mt-1.5 pl-1 opacity-0 hover:opacity-100 transition-opacity">
-                                            <MessageActions content={msg.content} />
+                                <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                    {msg.role === 'assistant' ? (
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 flex items-center justify-center shrink-0">
+                                            <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-dark-200 border border-zinc-200 dark:border-dark-300 flex items-center justify-center shrink-0 text-zinc-600 dark:text-zinc-400 text-xs font-bold">
+                                            YOU
                                         </div>
                                     )}
+
+                                    <div className="max-w-[80%]">
+                                        <div className={`text-sm leading-relaxed p-4 rounded-xl ${msg.role === 'user'
+                                            ? 'bg-zinc-100 dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 rounded-tr-none'
+                                            : 'bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 text-zinc-900 dark:text-zinc-100 rounded-tl-none shadow-subtle'
+                                            }`}>
+                                            {isStreamingMsg ? (
+                                                <MessageBoxLoading />
+                                            ) : msg.role === 'assistant' ? (
+                                                <MarkdownRenderer content={msg.content || '...'} />
+                                            ) : (
+                                                msg.content
+                                            )}
+                                        </div>
+                                        {/* Actions for assistant messages */}
+                                        {msg.role === 'assistant' && msg.content && !isStreamingMsg && (
+                                            <div className="mt-1.5 pl-1 opacity-0 hover:opacity-100 transition-opacity">
+                                                <MessageActions content={msg.content} />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
+                            );
                         })}
 
                         <div ref={chatEndRef} />
@@ -319,9 +303,9 @@ export const Workspace = () => {
                 </div>
             </div>
 
-            {/* RIGHT: Results Panel */}
+            {/* RIGHT: Results Panel - hidden on small screens */}
             {isRightPanelOpen && (
-                <div className="w-[45%] shrink-0 flex flex-col bg-white dark:bg-dark-primary border-l border-zinc-200 dark:border-dark-300 transition-all duration-300">
+                <div className="hidden xl:flex w-[480px] 2xl:w-[45%] shrink-0 flex-col bg-white dark:bg-dark-primary border-l border-zinc-200 dark:border-dark-300 transition-all duration-300">
                     {/* Tabs */}
                     <div className="h-14 flex items-center px-4 border-b border-zinc-200 dark:border-dark-300 bg-white/80 dark:bg-dark-primary/80 backdrop-blur-sm shrink-0">
                         <div className="flex items-center gap-1 bg-zinc-100/80 dark:bg-dark-200/80 p-1 rounded-lg">
@@ -347,36 +331,39 @@ export const Workspace = () => {
                             ))}
                         </div>
                         <div className="ml-auto flex items-center gap-1">
-                        {activeJob.reportMarkdown && (
-                            <>
-                                <button
-                                    onClick={() => exportMarkdown(activeJob.id)}
-                                    title="Export Markdown"
-                                    className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors text-xs font-medium"
-                                >
-                                    <Download className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => exportPDF(activeJob.id)}
-                                    title="Export PDF"
-                                    className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors text-xs font-medium"
-                                >
-                                    <FileText className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => exportLatex(activeJob.id)}
-                                    title="Export LaTeX"
-                                    className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors text-xs font-medium"
-                                >
-                                    <FileCode className="w-3.5 h-3.5" />
-                                </button>
-                                <div className="w-px h-5 bg-zinc-200 dark:bg-dark-300 mx-1" />
-                            </>
-                        )}
-                        <button className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors">
-                            <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                    </div>
+                            {activeJob.reportMarkdown && (
+                                <>
+                                    <button
+                                        onClick={async () => { setExportLoading('md'); await exportMarkdown(activeJob.id); setExportLoading(null); }}
+                                        disabled={exportLoading !== null}
+                                        title="Export Markdown"
+                                        className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors text-xs font-medium disabled:opacity-50"
+                                    >
+                                        {exportLoading === 'md' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button
+                                        onClick={async () => { setExportLoading('pdf'); await exportPDF(activeJob.id); setExportLoading(null); }}
+                                        disabled={exportLoading !== null}
+                                        title="Export PDF"
+                                        className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors text-xs font-medium disabled:opacity-50"
+                                    >
+                                        {exportLoading === 'pdf' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <button
+                                        onClick={async () => { setExportLoading('tex'); await exportLatex(activeJob.id); setExportLoading(null); }}
+                                        disabled={exportLoading !== null}
+                                        title="Export LaTeX"
+                                        className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors text-xs font-medium disabled:opacity-50"
+                                    >
+                                        {exportLoading === 'tex' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileCode className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <div className="w-px h-5 bg-zinc-200 dark:bg-dark-300 mx-1" />
+                                </>
+                            )}
+                            <button className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-md transition-colors">
+                                <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Content Area */}
@@ -385,6 +372,10 @@ export const Workspace = () => {
                             <div className="max-w-none animate-in fade-in duration-300">
                                 {activeJob.reportMarkdown ? (
                                     <MarkdownRenderer content={activeJob.reportMarkdown} />
+                                ) : activeJob.status === JobStatus.FAILED ? (
+                                    <EmptyState icon={FileText} message="Report generation failed" subMessage="Check logs for details or try starting a new research." />
+                                ) : activeJob.status === JobStatus.COMPLETED ? (
+                                    <EmptyState icon={FileText} message="No report available" subMessage="The research completed but no report was generated." />
                                 ) : (
                                     <EmptyState icon={FileText} message="Generating report..." subMessage="This usually takes 2-3 minutes based on depth." />
                                 )}

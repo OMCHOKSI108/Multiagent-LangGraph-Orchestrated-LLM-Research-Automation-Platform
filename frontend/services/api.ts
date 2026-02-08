@@ -55,8 +55,10 @@ class ApiService {
   }
 
   async updatePassword(current: string, newPass: string): Promise<void> {
-    // Backend doesn't have this endpoint yet - stub for now
-    console.warn('updatePassword not implemented in backend');
+    await this.request('/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword: current, newPassword: newPass }),
+    });
   }
 
   async getMe(): Promise<User> {
@@ -123,7 +125,7 @@ class ApiService {
   }
 
   async renameResearch(id: string, title: string): Promise<void> {
-    await this.request(`/events/research/${id}/rename`, {
+    await this.request(`/research/${id}/rename`, {
       method: 'PATCH',
       body: JSON.stringify({ title }),
     });
@@ -317,6 +319,9 @@ class ApiService {
     // Backend uses snake_case, frontend uses camelCase
     const result = data.result_json || {};
 
+    // Support both old (scientific_writing) and new (multi_stage_report) keys
+    const reportData = result.multi_stage_report || result.scientific_writing || {};
+
     return {
       id: String(data.id),
       topic: data.task || data.title || 'Untitled Research',
@@ -325,11 +330,11 @@ class ApiService {
       createdAt: data.created_at,
       updatedAt: data.updated_at || data.created_at,
       logs: this.extractLogs(result),
-      reportMarkdown: result.scientific_writing?.markdown_report,
+      reportMarkdown: reportData.markdown_report,
       diagrams: this.extractDiagrams(result),
       images: this.extractImages(result),
-      modelUsed: 'phi3:mini', // Could be extracted from result
-      tokenUsage: 0,
+      modelUsed: result.model_used || 'phi3:mini',
+      tokenUsage: result.token_usage || 0,
     };
   }
 

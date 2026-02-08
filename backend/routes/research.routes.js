@@ -108,4 +108,33 @@ router.post('/search', async (req, res) => {
     }
 });
 
+// Rename Research
+// PATCH /research/:id/rename
+router.patch('/:id/rename', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title } = req.body;
+
+        if (!title || typeof title !== 'string') {
+            return res.status(400).json({ error: "Title is required" });
+        }
+
+        const result = await db.query(
+            "UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2 RETURNING id, title",
+            [title.trim(), id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Research not found" });
+        }
+
+        logger.info(`[Node] Renamed research #${id} to "${title.trim()}"`);
+        res.json({ success: true, research: result.rows[0] });
+
+    } catch (err) {
+        logger.error(`[Rename] ${err.message}`);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 module.exports = router;

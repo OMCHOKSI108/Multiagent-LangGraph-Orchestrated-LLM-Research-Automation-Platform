@@ -32,7 +32,10 @@ router.get('/:id/markdown', async (req, res) => {
         let markdown = '';
         const rj = result_json;
 
-        if (rj.scientific_writing && rj.scientific_writing.markdown_report) {
+        // Support both new multi_stage_report and old scientific_writing keys
+        if (rj.multi_stage_report && rj.multi_stage_report.markdown_report) {
+            markdown = rj.multi_stage_report.markdown_report;
+        } else if (rj.scientific_writing && rj.scientific_writing.markdown_report) {
             markdown = rj.scientific_writing.markdown_report;
         } else if (rj.scientific_writing && rj.scientific_writing.response) {
             markdown = rj.scientific_writing.response;
@@ -87,11 +90,13 @@ router.get('/:id/pdf', async (req, res) => {
             return res.status(400).json({ error: 'Research not yet completed' });
         }
 
-        // Extract markdown content
+        // Extract markdown content - support both old and new keys
         let markdown = '';
         const rj = result_json;
 
-        if (rj.scientific_writing && rj.scientific_writing.markdown_report) {
+        if (rj.multi_stage_report && rj.multi_stage_report.markdown_report) {
+            markdown = rj.multi_stage_report.markdown_report;
+        } else if (rj.scientific_writing && rj.scientific_writing.markdown_report) {
             markdown = rj.scientific_writing.markdown_report;
         } else if (rj.scientific_writing && rj.scientific_writing.response) {
             markdown = rj.scientific_writing.response;
@@ -168,17 +173,19 @@ router.get('/:id/latex', async (req, res) => {
             return res.status(400).json({ error: 'Research not yet completed' });
         }
 
-        // Extract LaTeX from result
+        // Extract LaTeX from result - support both old and new keys
         let latex = '';
         const rj = result_json;
 
-        if (rj.latex_generation && rj.latex_generation.latex_source) {
+        if (rj.multi_stage_report && rj.multi_stage_report.latex_source) {
+            latex = rj.multi_stage_report.latex_source;
+        } else if (rj.latex_generation && rj.latex_generation.latex_source) {
             latex = rj.latex_generation.latex_source;
         } else if (rj.latex_generation && rj.latex_generation.response) {
             latex = rj.latex_generation.response;
         } else {
             // Generate minimal LaTeX wrapper
-            const content = rj.scientific_writing?.response || rj.scientific_writing?.markdown_report || JSON.stringify(rj, null, 2);
+            const content = rj.multi_stage_report?.markdown_report || rj.scientific_writing?.response || rj.scientific_writing?.markdown_report || JSON.stringify(rj, null, 2);
             latex = `\\documentclass{article}
 \\usepackage[utf8]{inputenc}
 \\usepackage{hyperref}

@@ -32,10 +32,18 @@ class ReportPipeline:
     5. Converts to LaTeX and compiles PDF
     """
     
-    def __init__(self, output_dir: Optional[str] = None):
+    def __init__(self, output_dir: Optional[str] = None, model_name: Optional[str] = None):
+        """
+        Initialize the report pipeline.
+        
+        Args:
+            output_dir: Directory to write output files
+            model_name: Optional LLM model name to use for all section writers
+        """
         self.output_dir = output_dir or os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "..", "..", "output")
         )
+        self.model_name = model_name  # Will use default if None
         os.makedirs(self.output_dir, exist_ok=True)
         
     def generate_report(self, findings: dict, task: str, job_id: str = "unknown") -> dict:
@@ -76,8 +84,11 @@ class ReportPipeline:
             # Get section-specific prompt
             section_prompt = template.get("section_prompts", {}).get(section_name, "")
             
-            # Get the writer and generate
-            writer = get_section_writer(section_name)
+            # Get the writer and generate, passing model_name if configured
+            writer_kwargs = {}
+            if self.model_name:
+                writer_kwargs['model_name'] = self.model_name
+            writer = get_section_writer(section_name, **writer_kwargs)
             result = writer.run(context, section_prompt)
             
             if "error" in result:
@@ -363,6 +374,18 @@ class ReportPipeline:
 # AGENT WRAPPER FOR PIPELINE INTEGRATION
 # ============================================
 
+# Import event emitter for live transparency
+try:
+    from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_stage_change
+except ImportError:
+    # Fallback if running standalone
+    def emit_agent_start(*args, **kwargs): pass
+    def emit_agent_complete(*args, **kwargs): pass
+    def emit_stage_change(*args, **kwargs): pass
+
+import time
+
+
 class MultiStageReportAgent:
     """Wrapper to make ReportPipeline compatible with agent-based pipeline."""
     
@@ -371,22 +394,49 @@ class MultiStageReportAgent:
         self.pipeline = ReportPipeline()
     
     def run(self, state: dict) -> dict:
-        """Run the multi-stage report generation."""
+        """Run the multi-stage report generation with live event emission."""
         findings = state.get("findings", {})
         task = state.get("task", "Research Report")
         job_id = state.get("_job_id", "unknown")
+        research_id = int(job_id) if str(job_id).isdigit() else None
         
-        result = self.pipeline.generate_report(findings, task, job_id)
+        start_time = time.time()
         
-        return {
-            "response": {
-                "markdown_report": result["markdown_report"],
-                "latex_source": result["latex_source"],
-                "domain": result["domain"],
-                "template": result["template"],
-                "tex_path": result["tex_path"],
-                "pdf_path": result["pdf_path"]
-            },
-            "raw": result["markdown_report"],
-            "agent": self.name
-        }
+        # Emit agent start
+        emit_agent_start(self.name, research_id=research_id)
+        emit_stage_change("report_generation", research_id=research_id)
+        
+        try:
+            result = self.pipeline.generate_report(findings, task, job_id)
+            
+            elapsed = time.time() - start_time
+            elapsed_ms = int(elapsed * 1000)
+            
+            # Emit success
+            emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
+            
+            return {
+                "response": {
+                    "markdown_report": result["markdown_report"],
+                    "latex_source": result["latex_source"],
+                    "domain": result["domain"],
+                    "template": result["template"],
+                    "tex_path": result["tex_path"],
+                    "pdf_path": result["pdf_path"]
+                },
+                "raw": result["markdown_report"],
+                "agent": self.name,
+                "execution_time": elapsed
+            }
+        except Exception as e:
+            elapsed = time.time() - start_time
+            elapsed_ms = int(elapsed * 1000)
+            
+            # Emit failure
+            emit_agent_complete(self.name, elapsed_ms, success=False, research_id=research_id)
+            
+            return {
+                "error": str(e),
+                "raw": f"Report generation failed: {e}",
+                "agent": self.name
+            }

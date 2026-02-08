@@ -86,4 +86,47 @@ router.get('/me', require('../middleware/auth'), async (req, res) => {
     }
 });
 
+// Change Password
+// POST /auth/password
+router.post('/password', require('../middleware/auth'), async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.id;
+
+        // Validation
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: "Current and new password are required" });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: "New password must be at least 6 characters" });
+        }
+
+        // Get current user
+        const userResult = await db.query("SELECT password_hash FROM users WHERE id = $1", [userId]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Verify current password
+        const valid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+        if (!valid) {
+            return res.status(400).json({ error: "Current password is incorrect" });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const newHash = await bcrypt.hash(newPassword, salt);
+
+        // Update password
+        await db.query("UPDATE users SET password_hash = $1 WHERE id = $2", [newHash, userId]);
+
+        res.json({ success: true, message: "Password updated successfully" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 module.exports = router;

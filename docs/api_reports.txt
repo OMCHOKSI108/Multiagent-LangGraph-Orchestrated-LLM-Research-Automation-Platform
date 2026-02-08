@@ -1130,7 +1130,7 @@ TABLE OF CONTENTS
      Cost     : $0 (local inference)
 
   2. Google Gemini (Online - if GEMINI_API_KEY set)
-     Model    : gemini-1.5-flash
+     Model    : gemini-2.5-flash
      Cost     : $0.00035/1K prompt, $0.0014/1K completion
 
   3. Groq (Online - if GROQ_API_KEY set)
@@ -1189,7 +1189,7 @@ TABLE OF CONTENTS
     phi3:mini            : $0.0000 prompt, $0.0000 completion  (local)
     gemma2:2b            : $0.0000 prompt, $0.0000 completion  (local)
     qwen2.5-coder:1.5b   : $0.0000 prompt, $0.0000 completion  (local)
-    gemini-1.5-flash     : $0.00035 prompt, $0.0014 completion
+    gemini-2.5-flash     : $0.00035 prompt, $0.0014 completion
     llama3-70b-8192      : $0.0008 prompt, $0.0008 completion
 
   Functions:

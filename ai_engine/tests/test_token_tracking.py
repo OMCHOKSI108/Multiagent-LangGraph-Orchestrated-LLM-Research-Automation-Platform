@@ -69,7 +69,7 @@ class TestTokenTracker:
         assert cost_ollama == 0.0
         
         # Test Gemini model
-        cost_gemini = self.tracker.calculate_cost("gemini-1.5-flash", 1000, 500)
+        cost_gemini = self.tracker.calculate_cost("gemini-2.5-flash", 1000, 500)
         assert cost_gemini > 0
         # 1000 * 0.00035 + 500 * 0.0014 = 0.35 + 0.7 = 1.05 (per 1K tokens)
         assert abs(cost_gemini - 1.05) < 0.01
