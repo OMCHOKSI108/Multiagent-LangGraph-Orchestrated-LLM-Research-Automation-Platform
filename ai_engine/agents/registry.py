@@ -19,6 +19,7 @@ from .chatbot.agents import InteractivePaperChatbotAgent, ReviewerStyleCritiqueA
 # Import Shared Agents
 from .memory.agents import MemoryKnowledgeGraphAgent, CitationGraphAnalysisAgent
 from .report.agents import ScientificWritingAgent, LaTeXGenerationAgent
+from .report.pipeline import MultiStageReportAgent
 from .critique.agents import ReviewerAdversarialCritiqueAgent, HallucinationDetectionAgent
 
 # Import Scraper
@@ -68,5 +69,8 @@ AGENTS: Dict[str, BaseAgent] = {
     "hallucination_detection": HallucinationDetectionAgent(model_name=config.MODEL_CRITICAL),
     
     # Visualization (New)
-    "visualization": VisualizationAgent(model_name=config.MODEL_CODING) # CodeLlama is good for Syntax
+    "visualization": VisualizationAgent(model_name=config.MODEL_CODING), # CodeLlama is good for Syntax
+    
+    # Multi-Stage Report Generation (NEW - replaces single-shot writing)
+    "multi_stage_report": MultiStageReportAgent()
 }

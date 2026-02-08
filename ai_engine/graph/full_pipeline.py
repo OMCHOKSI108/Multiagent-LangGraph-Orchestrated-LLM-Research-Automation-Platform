@@ -85,6 +85,9 @@ def critique_node(state): return run_agent("reviewer_style_critique", state)
 
 # Shared Nodes
 def visualization_node(state): return run_agent("visualization", state)
+def multi_stage_report_node(state): return run_agent("multi_stage_report", state)
+
+# Legacy nodes (kept for compatibility)
 def write_node(state): return run_agent("scientific_writing", state)
 def latex_node(state): return run_agent("latex_generation", state)
 
@@ -112,6 +115,9 @@ workflow.add_node("critique", critique_node)
 
 # Output
 workflow.add_node("visualization", visualization_node)
+workflow.add_node("multi_stage_report", multi_stage_report_node)
+
+# Keep legacy nodes for backwards compatibility (not used in main flow)
 workflow.add_node("writing", write_node)
 workflow.add_node("latex", latex_node)
 
@@ -146,10 +152,9 @@ workflow.add_edge("technical_verification", "critique")
 workflow.add_edge("innovation", "visualization")
 workflow.add_edge("critique", "visualization")
 
-# Final output
-workflow.add_edge("visualization", "writing")
-workflow.add_edge("writing", "latex")
-workflow.add_edge("latex", END)
+# Final output - now uses multi-stage report generation
+workflow.add_edge("visualization", "multi_stage_report")
+workflow.add_edge("multi_stage_report", END)
 
 # ============================
 # Compile with Checkpointing (if available)

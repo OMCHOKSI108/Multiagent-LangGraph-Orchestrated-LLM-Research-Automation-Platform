@@ -27,7 +27,6 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
     const scrollRef = useRef<HTMLDivElement>(null);
     const [isPaused, setIsPaused] = useState(false);
 
-    // Auto-scroll to bottom unless paused
     useEffect(() => {
         if (!isPaused && scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -44,37 +43,37 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
     };
 
     return (
-        <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="bg-zinc-950 rounded-lg border border-zinc-700 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-700">
                 <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-cyan-400" />
-                    <span className="text-sm font-medium text-gray-200">Live Activity</span>
+                    <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="text-xs font-medium text-zinc-300">Live Activity</span>
                     {isProcessing && (
-                        <span className="flex items-center gap-1 text-xs text-green-400">
-                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        <span className="flex items-center gap-1 text-[10px] text-green-400">
+                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
                             Live
                         </span>
                     )}
                 </div>
                 <button
                     onClick={() => setIsPaused(!isPaused)}
-                    className={`text-xs px-2 py-1 rounded ${isPaused ? 'bg-yellow-600 text-white' : 'bg-gray-700 text-gray-300'
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${isPaused ? 'bg-yellow-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'
                         }`}
                 >
                     {isPaused ? 'Resume' : 'Pause'}
                 </button>
             </div>
 
-            {/* Log Content */}
+            {/* Log Content - More compact */}
             <div
                 ref={scrollRef}
-                className="h-64 overflow-y-auto p-2 font-mono text-xs space-y-1"
+                className="h-40 overflow-y-auto p-2 font-mono text-[11px] space-y-0.5"
                 onMouseEnter={() => setIsPaused(true)}
                 onMouseLeave={() => setIsPaused(false)}
             >
                 {events.length === 0 ? (
-                    <div className="text-gray-500 text-center py-8">
+                    <div className="text-zinc-500 text-center py-6 text-xs">
                         Waiting for activity...
                     </div>
                 ) : (
@@ -85,13 +84,13 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                         return (
                             <div
                                 key={event.event_id || idx}
-                                className={`flex items-start gap-2 px-2 py-1 rounded ${config.bg}`}
+                                className={`flex items-start gap-2 px-2 py-0.5 rounded ${config.bg}`}
                             >
-                                <span className="text-gray-500 shrink-0">
+                                <span className="text-zinc-500 shrink-0 tabular-nums">
                                     {formatTime(event.timestamp)}
                                 </span>
                                 <Icon className={`w-3 h-3 mt-0.5 shrink-0 ${config.color}`} />
-                                <span className={`${config.color}`}>
+                                <span className={`${config.color} break-all`}>
                                     {event.message}
                                 </span>
                             </div>
@@ -99,10 +98,9 @@ export const LiveActivityFeed: React.FC<LiveActivityFeedProps> = ({ events, isPr
                     })
                 )}
 
-                {/* Cursor indicator when processing */}
                 {isProcessing && (
-                    <div className="flex items-center gap-2 px-2 py-1 text-gray-400">
-                        <span className="w-2 h-4 bg-cyan-400 animate-pulse" />
+                    <div className="flex items-center gap-2 px-2 py-0.5">
+                        <span className="w-1.5 h-3 bg-cyan-400 animate-pulse rounded-sm" />
                     </div>
                 )}
             </div>

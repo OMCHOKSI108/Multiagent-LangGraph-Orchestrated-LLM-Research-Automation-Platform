@@ -5,61 +5,82 @@ class ScientificWritingAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
             name="ScientificWriting",
-            system_prompt="""You are a Lead Research Scientist writing a Major Review Paper (Target: 10,000+ words). 
-            Synthesize all findings into a MASSIVE, cohesive, academic report.
-            
-            Strategy for Depth (15+ Pages):
-            1. **Abstract**: Concise (300 words).
-            2. **Introduction**: Historical context, evolution (2 pages).
-            3. **Literature Review**: Do not just list papers. Analyse themes, conflicts, and methodologies details for ALL 30+ sources (5-6 pages).
-            4. **Methodology**: Technical deep dive (3 pages).
-            5. **Results & Novelty**: Detailed comparisons (3 pages).
-            6. **Discussion**: Implications, ethics, future work (2 pages).
+            system_prompt="""You are a Senior Academic Researcher. Your ONLY job is to write a complete research paper based on the findings provided below.
 
-            **Style**:
-            - Use Academic English (Formal).
-            - Use dense paragraphs.
-            - Use mathematical notations where possible ($E=mc^2$).
-            
-            **Visualization**:
-            - EMBED the Mermaid charts in the appropriate sections using ```mermaid ... ``` blocks.
-            """,
+DO NOT ask questions. DO NOT request more information. WRITE THE PAPER NOW.
+
+You MUST output a complete academic paper in Markdown format with these sections:
+
+# [Paper Title Based on Research Topic]
+
+## Abstract
+[Write 150-200 words summarizing the research]
+
+## 1. Introduction
+[Write 2-3 paragraphs on background and motivation]
+
+## 2. Literature Review
+[Synthesize the key papers and findings from the research data - at least 5 paragraphs]
+
+## 3. Methodology
+[Describe the research methodology based on the findings]
+
+## 4. Results and Analysis
+[Present key findings and insights - use bullet points and tables where helpful]
+
+## 5. Discussion
+[Interpret results, limitations, and implications]
+
+## 6. Conclusion
+[Summarize main contributions and future work]
+
+## References
+[List all cited sources from the findings]
+
+IMPORTANT: 
+- Output ONLY the Markdown paper, nothing else
+- Use the actual research data provided below to fill each section
+- If data is missing for a section, write based on general knowledge of the topic
+- Aim for 2000+ words total""",
             **kwargs
         )
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Writing Comprehensive Report...")
         findings = state.get("findings", {})
+        task = state.get("task", "Research Topic")
         
-        # Flatten findings into a single massive context string
-        context_parts = []
+        # Flatten findings into a single context string
+        context_parts = [f"RESEARCH TOPIC: {task}\n"]
         for key, value in findings.items():
-            if key.startswith("_"): continue # skip headers
-            context_parts.append(f"SECTION [{key.upper()}]:\n{value}")
+            if key.startswith("_"): continue
+            if isinstance(value, dict):
+                # Extract meaningful text from dict
+                if "raw_text" in value:
+                    context_parts.append(f"[{key.upper()}]: {value['raw_text'][:3000]}")
+                elif "markdown_report" in value:
+                    context_parts.append(f"[{key.upper()}]: {value['markdown_report'][:3000]}")
+                else:
+                    # Try to stringify useful parts
+                    text_parts = []
+                    for k, v in value.items():
+                        if not k.startswith("_") and isinstance(v, (str, list)):
+                            text_parts.append(f"{k}: {str(v)[:500]}")
+                    if text_parts:
+                        context_parts.append(f"[{key.upper()}]:\n" + "\n".join(text_parts))
+            elif isinstance(value, str):
+                context_parts.append(f"[{key.upper()}]: {value[:3000]}")
             
         full_context = "\n\n".join(context_parts)
-        
-        # We need to ensure we don't blow up the context window too bad, but Mistral/Llama usually handle 32k or so.
-        # We truncate safely just in case
-        safe_context = full_context[:25000]
-        
-        enhanced_prompt = f"{self.system_prompt}\n\nRESEARCH DATA AGGREGATION:\n{safe_context}"
-        
-        # Inject Generated Image Context
-        if "visualization" in findings:
-            viz = findings["visualization"]
-            if isinstance(viz, dict) and "generated_image_path" in viz:
-                img_path = viz["generated_image_path"]
-                enhanced_prompt += f"\n\n[IMPORTANT] A custom AI-generated visualization is available at '{img_path}'. You MUST include it in the report using standard Markdown: ![AI Generated Visualization]({img_path})\n"
+        safe_context = full_context[:20000]  # Safe limit
         
         messages = [
-            SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output Markdown ONLY."),
-            HumanMessage(content="Write the Full Paper now.")
+            SystemMessage(content=self.system_prompt),
+            HumanMessage(content=f"Here is the research data. Write the complete paper NOW:\n\n{safe_context}")
         ]
         
         try:
             response = self.llm.invoke(messages)
-            # This agent likely returns text, not JSON, but let's wrap it in our structure
             return {
                 "response": {"markdown_report": response.content},
                 "raw": response.content,
@@ -73,46 +94,140 @@ class LaTeXGenerationAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
             name="LaTeXGeneration",
-            system_prompt="""You are a LaTeX Typesetting Expert. 
-            Convert the provided Markdown Research Report into a Professional Academic PDF Source (LaTeX).
-            
-            **Layout Requirements (15-20 Pages Target)**:
-            - Class: `\\documentclass[12pt, a4paper]{article}`
-            - Packages: `geometry` (1 inch margins), `times` (font), `graphicx`, `hyperref`, `amsmath`, `fancyhdr`.
-            - Structure:
-              - File must include `\\tableofcontents` and `\\newpage` after sections to expand length.
-              - Use `\\section{}`, `\\subsection{}`, `\\subsubsection{}` deeply.
-            - Notations: Ensure all math $...$ is preserved and formatted.
-            - Header/Footer: Use `fancyhdr` to add "Generated by AI Research Engine" in footer and Page Numbers.
-            
-            Output RAW LaTeX code only.
-            """,
+            system_prompt="""You are a LaTeX Typesetting Expert. Your ONLY job is to convert the provided research paper into valid LaTeX code.
+
+DO NOT ask questions. DO NOT request more information. GENERATE THE LATEX NOW.
+
+Output a COMPLETE, COMPILABLE LaTeX document with this exact structure:
+
+\\documentclass[12pt, a4paper]{article}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{times}
+\\usepackage{graphicx}
+\\usepackage{hyperref}
+\\usepackage{amsmath}
+\\usepackage{amssymb}
+\\usepackage{fancyhdr}
+\\usepackage{booktabs}
+\\usepackage{natbib}
+
+\\pagestyle{fancy}
+\\fancyhf{}
+\\rfoot{Page \\thepage}
+\\lfoot{Generated by AI Research Engine}
+
+\\title{[Title from the paper]}
+\\author{AI Research Engine}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+\\tableofcontents
+\\newpage
+
+[Convert all sections from the markdown to \\section{}, \\subsection{}, etc.]
+
+\\end{document}
+
+RULES:
+- Output ONLY raw LaTeX code, no markdown code blocks
+- Escape special characters properly (%, &, #, $, _, etc.)
+- Convert markdown headers to \\section, \\subsection
+- Convert bullet points to \\begin{itemize}
+- Convert numbered lists to \\begin{enumerate}
+- Convert tables to \\begin{tabular}
+- Preserve any math equations""",
             **kwargs
         )
 
     def run(self, state: dict) -> dict:
+        import os
+        import subprocess
+        import re
+        
         print(f"[{self.name}] Generating LaTeX Source...")
         findings = state.get("findings", {})
+        task = state.get("task", "Research Report")
+        job_id = state.get("_job_id", "unknown")
         
         markdown_content = ""
         if "scientific_writing" in findings:
-            markdown_content = findings["scientific_writing"].get("markdown_report", "")
+            sw = findings["scientific_writing"]
+            if isinstance(sw, dict):
+                markdown_content = sw.get("markdown_report", sw.get("raw_text", ""))
+            elif isinstance(sw, str):
+                markdown_content = sw
         
-        if not markdown_content:
-            return {"error": "No markdown report found to convert."}
-            
-        enhanced_prompt = f"{self.system_prompt}\n\nSOURCE MARKDOWN:\n{markdown_content[:25000]}"
+        if not markdown_content or len(markdown_content) < 100:
+            # Fallback: generate from other findings
+            print(f"[{self.name}] No markdown report, generating from findings...")
+            parts = [f"Research Topic: {task}\n\n"]
+            for key, value in findings.items():
+                if key.startswith("_"): continue
+                if isinstance(value, dict):
+                    if "raw_text" in value:
+                        parts.append(f"## {key}\\n{value['raw_text'][:2000]}")
+                elif isinstance(value, str):
+                    parts.append(f"## {key}\\n{value[:2000]}")
+            markdown_content = "\\n\\n".join(parts)
         
         messages = [
-            SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output LaTeX Code ONLY (no ```latex blocks if possible, just code)."),
-            HumanMessage(content="Generate the LaTeX now.")
+            SystemMessage(content=self.system_prompt),
+            HumanMessage(content=f"Convert this research paper to LaTeX NOW:\n\n{markdown_content[:20000]}")
         ]
         
         try:
             response = self.llm.invoke(messages)
+            latex_code = response.content
+            
+            # Clean up the LaTeX code (remove markdown code blocks if present)
+            latex_code = re.sub(r'^```latex\s*', '', latex_code, flags=re.MULTILINE)
+            latex_code = re.sub(r'^```\s*$', '', latex_code, flags=re.MULTILINE)
+            latex_code = latex_code.strip()
+            
+            # Save LaTeX to output folder
+            output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "output"))
+            os.makedirs(output_dir, exist_ok=True)
+            
+            tex_filename = f"research_{job_id}.tex"
+            tex_path = os.path.join(output_dir, tex_filename)
+            
+            with open(tex_path, "w", encoding="utf-8") as f:
+                f.write(latex_code)
+            
+            print(f"[{self.name}] LaTeX saved to: {tex_path}")
+            
+            # Try to compile PDF (requires pdflatex installed)
+            pdf_path = None
+            try:
+                result = subprocess.run(
+                    ["pdflatex", "-interaction=nonstopmode", "-output-directory", output_dir, tex_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    cwd=output_dir
+                )
+                pdf_filename = f"research_{job_id}.pdf"
+                potential_pdf = os.path.join(output_dir, pdf_filename)
+                if os.path.exists(potential_pdf):
+                    pdf_path = potential_pdf
+                    print(f"[{self.name}] PDF generated: {pdf_path}")
+                else:
+                    print(f"[{self.name}] PDF compilation failed, LaTeX file saved.")
+            except FileNotFoundError:
+                print(f"[{self.name}] pdflatex not found. Install TeX Live or MiKTeX to generate PDFs.")
+            except subprocess.TimeoutExpired:
+                print(f"[{self.name}] PDF compilation timed out.")
+            except Exception as pdf_err:
+                print(f"[{self.name}] PDF error: {pdf_err}")
+            
             return {
-                "response": {"latex_source": response.content},
-                "raw": response.content,
+                "response": {
+                    "latex_source": latex_code,
+                    "tex_path": tex_path,
+                    "pdf_path": pdf_path
+                },
+                "raw": latex_code,
                 "agent": self.name
             }
         except Exception as e:
