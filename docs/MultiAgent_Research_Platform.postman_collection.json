@@ -1,0 +1,825 @@
+{
+  "info": {
+    "name": "Multi-Agent LLM Research Automation Platform",
+    "description": "Complete API collection for the Multi-Agent LLM Research Automation Platform. This collection includes all backend and AI Engine endpoints with proper authentication, examples, and test data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "ai_engine_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "research_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "User Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"researcher123\",\n  \"email\": \"researcher@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            },
+            "description": "Register a new user account"
+          },
+          "response": []
+        },
+        {
+          "name": "User Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"researcher@example.com\",\n  \"password\": \"securepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user and get JWT token"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current authenticated user information"
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"securepassword123\",\n  \"newPassword\": \"newsecurepassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password"]
+            },
+            "description": "Change user password"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Generate API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Research API Key\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/user/apikey/generate",
+              "host": ["{{base_url}}"],
+              "path": ["user", "apikey", "generate"]
+            },
+            "description": "Generate a new API key for research operations"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Research History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user/history",
+              "host": ["{{base_url}}"],
+              "path": ["user", "history"]
+            },
+            "description": "Get user's research history"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Research Operations",
+      "item": [
+        {
+          "name": "Start Research Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Impact of transformer architectures on natural language processing\",\n  \"depth\": \"deep\",\n  \"api_key\": \"{{api_key}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/research/start",
+              "host": ["{{base_url}}"],
+              "path": ["research", "start"]
+            },
+            "description": "Start a new research job (async operation)"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Research Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/research/status/{{research_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["research", "status", "{{research_id}}"]
+            },
+            "description": "Check the status of a research job"
+          },
+          "response": []
+        },
+        {
+          "name": "Rename Research",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Research Title\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/research/{{research_id}}/rename",
+              "host": ["{{base_url}}"],
+              "path": ["research", "{{research_id}}", "rename"]
+            },
+            "description": "Rename a research job"
+          },
+          "response": []
+        },
+        {
+          "name": "Unified Web Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"machine learning research trends 2024\",\n  \"providers\": [\"arxiv\", \"pubmed\", \"wikipedia\"],\n  \"max_results\": 10,\n  \"api_key\": \"{{api_key}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/research/search",
+              "host": ["{{base_url}}"],
+              "path": ["research", "search"]
+            },
+            "description": "Perform unified web search across multiple providers"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat & Interaction",
+      "item": [
+        {
+          "name": "Send Chat Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"research_id\": \"{{research_id}}\",\n  \"message\": \"Can you explain the key findings from this research?\",\n  \"api_key\": \"{{api_key}}\",\n  \"session_id\": \"{{session_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/chat/message",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "message"]
+            },
+            "description": "Send a message to the interactive chatbot"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Memory Management",
+      "item": [
+        {
+          "name": "List User Memories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/memories?page=1&limit=20&source=manual",
+              "host": ["{{base_url}}"],
+              "path": ["memories"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "source",
+                  "value": "manual"
+                }
+              ]
+            },
+            "description": "Get paginated list of user memories"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Memory",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Key insight: Transformer models excel at sequence-to-sequence tasks\",\n  \"source\": \"manual\",\n  \"metadata\": {\n    \"tags\": [\"NLP\", \"transformers\"],\n    \"importance\": \"high\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/memories",
+              "host": ["{{base_url}}"],
+              "path": ["memories"]
+            },
+            "description": "Create a new user memory"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Real-time Events",
+      "item": [
+        {
+          "name": "Stream Research Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events/stream/{{research_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["events", "stream", "{{research_id}}"]
+            },
+            "description": "Stream real-time execution events for a research job (SSE)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Export & Reports",
+      "item": [
+        {
+          "name": "Export as Markdown",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/export/{{research_id}}/markdown",
+              "host": ["{{base_url}}"],
+              "path": ["export", "{{research_id}}", "markdown"]
+            },
+            "description": "Export research results as Markdown file"
+          },
+          "response": []
+        },
+        {
+          "name": "Export as PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/export/{{research_id}}/pdf",
+              "host": ["{{base_url}}"],
+              "path": ["export", "{{research_id}}", "pdf"]
+            },
+            "description": "Export research results as PDF file"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Usage & Analytics",
+      "item": [
+        {
+          "name": "Get Usage Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usage/stats?hours=24",
+              "host": ["{{base_url}}"],
+              "path": ["usage", "stats"],
+              "query": [
+                {
+                  "key": "hours",
+                  "value": "24"
+                }
+              ]
+            },
+            "description": "Get token usage statistics and costs"
+          },
+          "response": []
+        },
+        {
+          "name": "Test LLM Connection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"gemini\",\n  \"api_key\": \"your_gemini_api_key_here\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/usage/test-connection",
+              "host": ["{{base_url}}"],
+              "path": ["usage", "test-connection"]
+            },
+            "description": "Test connection to LLM provider"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI Engine Direct",
+      "item": [
+        {
+          "name": "AI Engine Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ai_engine_url}}/health",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check AI Engine service health"
+          },
+          "response": []
+        },
+        {
+          "name": "Run Full Research Pipeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Evolution of convolutional neural networks in computer vision\",\n  \"depth\": \"deep\",\n  \"job_id\": \"12345\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/research",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["research"]
+            },
+            "description": "Run the complete research pipeline directly"
+          },
+          "response": []
+        },
+        {
+          "name": "Unified Search (Direct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"deep learning optimization techniques\",\n  \"providers\": [\"arxiv\", \"google\"],\n  \"max_results\": 15\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/search",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["search"]
+            },
+            "description": "Perform unified search directly on AI Engine"
+          },
+          "response": []
+        },
+        {
+          "name": "Interactive Chatbot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Explain the attention mechanism in transformers\",\n  \"findings\": {\n    \"research_context\": \"From previous analysis of transformer papers\"\n  },\n  \"job_id\": \"chat_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/interactive_chatbot",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "interactive_chatbot"]
+            },
+            "description": "Interact with the paper chatbot agent"
+          },
+          "response": []
+        },
+        {
+          "name": "Domain Intelligence Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Map the research landscape for quantum machine learning\",\n  \"depth\": \"deep\",\n  \"job_id\": \"domain_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/domain_intelligence",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "domain_intelligence"]
+            },
+            "description": "Run domain intelligence mapping agent"
+          },
+          "response": []
+        },
+        {
+          "name": "Gap Synthesis Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Identify research gaps in federated learning\",\n  \"findings\": {\n    \"literature_review\": \"Existing federated learning papers...\"\n  },\n  \"job_id\": \"gap_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/gap_synthesis",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "gap_synthesis"]
+            },
+            "description": "Run gap synthesis agent to identify research opportunities"
+          },
+          "response": []
+        },
+        {
+          "name": "Innovation & Novelty Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Generate novel research ideas combining NLP and computer vision\",\n  \"findings\": {\n    \"gap_analysis\": \"Identified gaps in multimodal learning...\"\n  },\n  \"job_id\": \"novelty_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/innovation_novelty",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "innovation_novelty"]
+            },
+            "description": "Run innovation and novelty generation agent"
+          },
+          "response": []
+        },
+        {
+          "name": "Paper Understanding Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Summarize the key contributions of this paper\",\n  \"paper_url\": \"https://arxiv.org/pdf/1706.03762.pdf\",\n  \"job_id\": \"paper_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/paper_understanding",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "paper_understanding"]
+            },
+            "description": "Run paper understanding and summarization agent"
+          },
+          "response": []
+        },
+        {
+          "name": "Technical Verification Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Verify the mathematical claims in this paper\",\n  \"paper_url\": \"https://arxiv.org/pdf/1706.03762.pdf\",\n  \"findings\": {\n    \"paper_content\": \"Extracted paper text...\"\n  },\n  \"job_id\": \"verify_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/technical_verification",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "technical_verification"]
+            },
+            "description": "Run technical verification agent for claims validation"
+          },
+          "response": []
+        },
+        {
+          "name": "Scientific Writing Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Write an academic abstract for this research\",\n  \"findings\": {\n    \"research_findings\": \"Key results and conclusions...\",\n    \"methodology\": \"Research approach used...\"\n  },\n  \"job_id\": \"writing_001\"\n}"
+            },
+            "url": {
+              "raw": "{{ai_engine_url}}/agent/scientific_writing",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["agent", "scientific_writing"]
+            },
+            "description": "Run scientific writing agent for academic content generation"
+          },
+          "response": []
+        },
+        {
+          "name": "Usage Statistics (Direct)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ai_engine_url}}/usage/stats?hours=24",
+              "host": ["{{ai_engine_url}}"],
+              "path": ["usage", "stats"],
+              "query": [
+                {
+                  "key": "hours",
+                  "value": "24"
+                }
+              ]
+            },
+            "description": "Get token usage statistics directly from AI Engine"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "System Health",
+      "item": [
+        {
+          "name": "Backend Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            },
+            "description": "Check backend service health and status"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set default headers for all requests",
+          "pm.request.headers.add({key: 'User-Agent', value: 'PostmanRuntime/7.32.0'});",
+          "",
+          "// Auto-set Authorization header if JWT token is available",
+          "if (pm.environment.get('jwt_token')) {",
+          "    pm.request.headers.add({key: 'Authorization', value: 'Bearer ' + pm.environment.get('jwt_token')});",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-save JWT token after login",
+          "if (pm.request.url.path.includes('login') && pm.response.code === 200) {",
+          "    const response = pm.response.json();",
+          "    if (response.token) {",
+          "        pm.environment.set('jwt_token', response.token);",
+          "        console.log('JWT token saved to environment');",
+          "    }",
+          "}",
+          "",
+          "// Auto-save API key after generation",
+          "if (pm.request.url.path.includes('apikey') && pm.response.code === 200) {",
+          "    const response = pm.response.json();",
+          "    if (response.key && response.key.key_value) {",
+          "        pm.environment.set('api_key', response.key.key_value);",
+          "        console.log('API key saved to environment');",
+          "    }",
+          "}",
+          "",
+          "// Auto-save research ID after starting research",
+          "if (pm.request.url.path.includes('start') && pm.response.code === 202) {",
+          "    const response = pm.response.json();",
+          "    if (response.job_id) {",
+          "        pm.environment.set('research_id', response.job_id);",
+          "        console.log('Research ID saved to environment');",
+          "    }",
+          "}",
+          "",
+          "// Auto-save session ID from chat responses",
+          "if (pm.request.url.path.includes('message') && pm.response.code === 200) {",
+          "    const response = pm.response.json();",
+          "    if (response.session_id) {",
+          "        pm.environment.set('session_id', response.session_id);",
+          "        console.log('Session ID saved to environment');",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ]
+}
