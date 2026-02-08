@@ -23,7 +23,7 @@ export const Signup = () => {
         setLoading(true);
         try {
             await signup(email, password, username);
-            navigate('/dashboard');
+            // Navigation happens via the isAuthenticated useEffect above
         } catch (e) {
             // Handled in store
         } finally {

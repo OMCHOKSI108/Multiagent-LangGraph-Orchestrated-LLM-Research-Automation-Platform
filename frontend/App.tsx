@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './components/ThemeProvider';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Workspace } from './pages/Workspace';
@@ -14,19 +15,26 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default function App() {
+  const rehydrateAuth = useResearchStore((s) => s.rehydrateAuth);
+
+  useEffect(() => {
+    rehydrateAuth();
+  }, [rehydrateAuth]);
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        
-        {/* Protected Routes wrapped in Sidebar Layout */}
-        <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/research/:id" element={<Workspace />} />
-        </Route>
-      </Routes>
-    </HashRouter>
+    <ThemeProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+
+          {/* Protected Routes wrapped in Sidebar Layout */}
+          <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/research/:id" element={<Workspace />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </ThemeProvider>
   );
 }

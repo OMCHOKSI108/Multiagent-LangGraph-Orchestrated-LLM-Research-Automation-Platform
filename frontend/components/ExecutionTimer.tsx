@@ -48,17 +48,27 @@ export const ExecutionTimer: React.FC<ExecutionTimerProps> = ({
     };
 
     return (
-        <div className="flex items-center gap-2">
-            {completedAt ? (
-                <CheckCircle className="w-4 h-4 text-green-400" />
-            ) : isProcessing ? (
-                <Play className="w-4 h-4 text-cyan-400 animate-pulse" />
-            ) : (
-                <Clock className="w-4 h-4 text-zinc-500" />
-            )}
-            <span className="text-lg font-mono font-semibold text-white tabular-nums">
-                {formatTime(elapsed)}
-            </span>
+        <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+            {/* Icon */}
+            <div className="w-6 h-6 flex items-center justify-center">
+                {completedAt ? (
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                ) : isProcessing ? (
+                    <Play className="w-5 h-5 text-cyan-400 animate-pulse" />
+                ) : (
+                    <Clock className="w-5 h-5 text-gray-500" />
+                )}
+            </div>
+
+            {/* Timer Display */}
+            <div className="flex flex-col">
+                <span className="text-xl font-mono text-white">
+                    {formatTime(elapsed)}
+                </span>
+                <span className="text-xs text-gray-500">
+                    {completedAt ? 'Total time' : isProcessing ? 'Elapsed' : 'Waiting...'}
+                </span>
+            </div>
         </div>
     );
 };

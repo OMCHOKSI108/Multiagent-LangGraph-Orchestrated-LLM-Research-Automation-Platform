@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useResearchStore } from '../store';
-import { X, User, Key, BarChart3, Check, AlertTriangle, Loader2, LogOut } from 'lucide-react';
+import { X, User, Key, BarChart3, Check, AlertTriangle, Loader2, LogOut, Brain } from 'lucide-react';
 import { UsageChart } from './UsageChart';
+import { MemoryPanel } from './MemoryPanel';
 
 export const SettingsModal = () => {
     const { 
@@ -16,7 +17,7 @@ export const SettingsModal = () => {
         updatePassword
     } = useResearchStore();
     
-    const [activeTab, setActiveTab] = useState<'profile' | 'api' | 'usage'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'api' | 'usage' | 'memory'>('profile');
     const modalRef = useRef<HTMLDivElement>(null);
 
     // Handle Escape key and body scroll lock
@@ -54,12 +55,12 @@ export const SettingsModal = () => {
         >
             <div 
                 ref={modalRef}
-                className="bg-white rounded-xl shadow-2xl border border-zinc-200 w-full max-w-4xl h-[600px] flex overflow-hidden animate-in zoom-in-95 duration-200"
+                className="bg-white dark:bg-dark-secondary rounded-xl shadow-2xl border border-zinc-200 dark:border-dark-300 w-full max-w-4xl h-[600px] flex overflow-hidden animate-in zoom-in-95 duration-200"
             >
                 
                 {/* Sidebar Navigation */}
-                <div className="w-64 bg-zinc-50 border-r border-zinc-200 flex flex-col p-4">
-                    <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-6 px-3">Settings</h2>
+                <div className="w-64 bg-zinc-50 dark:bg-dark-primary border-r border-zinc-200 dark:border-dark-300 flex flex-col p-4">
+                    <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-6 px-3">Settings</h2>
                     <div className="space-y-1">
                         <NavButton 
                             active={activeTab === 'profile'} 
@@ -79,11 +80,17 @@ export const SettingsModal = () => {
                             icon={BarChart3} 
                             label="Usage & Billing" 
                         />
+                        <NavButton 
+                            active={activeTab === 'memory'} 
+                            onClick={() => setActiveTab('memory')} 
+                            icon={Brain} 
+                            label="Memory" 
+                        />
                     </div>
-                    <div className="mt-auto pt-4 border-t border-zinc-200">
+                    <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-dark-300">
                         <button 
                             onClick={() => { closeSettings(); logout(); }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         >
                             <LogOut className="w-4 h-4" /> Log Out
                         </button>
@@ -91,16 +98,17 @@ export const SettingsModal = () => {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 flex flex-col bg-white">
-                    <div className="h-16 border-b border-zinc-100 flex items-center justify-between px-8 shrink-0">
-                        <h3 className="text-lg font-semibold text-zinc-900">
+                <div className="flex-1 flex flex-col bg-white dark:bg-dark-secondary">
+                    <div className="h-16 border-b border-zinc-100 dark:border-dark-300 flex items-center justify-between px-8 shrink-0">
+                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                             {activeTab === 'profile' && 'User Profile'}
                             {activeTab === 'api' && 'API Configuration'}
                             {activeTab === 'usage' && 'Usage Analytics'}
+                            {activeTab === 'memory' && 'Memory'}
                         </h3>
                         <button 
                             onClick={closeSettings} 
-                            className="p-2 -mr-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-full transition-colors"
+                            className="p-2 -mr-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-full transition-colors"
                             aria-label="Close settings"
                         >
                             <X className="w-5 h-5" />
@@ -113,13 +121,13 @@ export const SettingsModal = () => {
                         {activeTab === 'usage' && usageStats && (
                             <div className="space-y-8 max-w-2xl">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-5 border border-zinc-200 rounded-xl bg-zinc-50/50">
-                                        <div className="text-sm font-medium text-zinc-500 mb-1">Total Tokens</div>
-                                        <div className="text-2xl font-bold text-zinc-900 font-mono">{(usageStats.totalTokens / 1000).toFixed(1)}k</div>
+                                    <div className="p-5 border border-zinc-200 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
+                                        <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Total Tokens</div>
+                                        <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">{(usageStats.totalTokens / 1000).toFixed(1)}k</div>
                                     </div>
-                                    <div className="p-5 border border-zinc-200 rounded-xl bg-zinc-50/50">
-                                        <div className="text-sm font-medium text-zinc-500 mb-1">Estimated Cost</div>
-                                        <div className="text-2xl font-bold text-zinc-900 font-mono">${usageStats.cost.toFixed(2)}</div>
+                                    <div className="p-5 border border-zinc-200 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
+                                        <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Estimated Cost</div>
+                                        <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">${usageStats.cost.toFixed(2)}</div>
                                     </div>
                                 </div>
                                 <UsageChart data={usageStats.history} />
@@ -129,6 +137,11 @@ export const SettingsModal = () => {
                              <div className="flex items-center justify-center h-full text-zinc-300">
                                 <Loader2 className="w-8 h-8 animate-spin" />
                              </div>
+                        )}
+                        {activeTab === 'memory' && (
+                            <div className="max-w-2xl h-full">
+                                <MemoryPanel />
+                            </div>
                         )}
                     </div>
                 </div>
@@ -144,8 +157,8 @@ const NavButton = ({ active, onClick, icon: Icon, label }: any) => (
         onClick={onClick}
         className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all ${
             active 
-            ? 'bg-white text-zinc-900 shadow-subtle border border-zinc-200' 
-            : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+            ? 'bg-white dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 shadow-subtle border border-zinc-200 dark:border-dark-300' 
+            : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-dark-200 hover:text-zinc-900 dark:hover:text-zinc-100'
         }`}
     >
         <Icon className="w-4 h-4" />
@@ -174,34 +187,34 @@ const ProfileSettings = ({ user, updatePassword }: any) => {
 
     return (
         <div className="max-w-md space-y-8">
-            <div className="flex items-center gap-4 p-4 border border-zinc-100 rounded-xl bg-zinc-50/50">
-                <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center text-lg font-bold text-white">
+            <div className="flex items-center gap-4 p-4 border border-zinc-100 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
+                <div className="w-12 h-12 bg-zinc-900 dark:bg-zinc-100 rounded-full flex items-center justify-center text-lg font-bold text-white dark:text-zinc-900">
                     {user?.name?.[0]}
                 </div>
                 <div>
-                    <div className="font-semibold text-zinc-900">{user?.name}</div>
-                    <div className="text-sm text-zinc-500">{user?.email}</div>
+                    <div className="font-semibold text-zinc-900 dark:text-zinc-100">{user?.name}</div>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400">{user?.email}</div>
                 </div>
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-4">
-                <h4 className="font-medium text-zinc-900 border-b border-zinc-100 pb-2">Change Password</h4>
+                <h4 className="font-medium text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-dark-300 pb-2">Change Password</h4>
                 <div>
-                    <label className="block text-xs font-medium text-zinc-500 mb-1.5">Current Password</label>
+                    <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">Current Password</label>
                     <input 
                         type="password" 
                         value={current}
                         onChange={e => setCurrent(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-dark-primary border border-zinc-300 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all"
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-zinc-500 mb-1.5">New Password</label>
+                    <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">New Password</label>
                     <input 
                         type="password" 
                         value={newPass}
                         onChange={e => setNewPass(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all"
+                        className="w-full px-3 py-2.5 bg-white dark:bg-dark-primary border border-zinc-300 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all"
                     />
                 </div>
                 
@@ -209,7 +222,7 @@ const ProfileSettings = ({ user, updatePassword }: any) => {
                     <button 
                         type="submit" 
                         disabled={!current || !newPass || status === 'loading'}
-                        className="bg-zinc-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-all shadow-subtle hover:shadow-md"
+                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-all shadow-subtle hover:shadow-md"
                     >
                         {status === 'loading' ? 'Updating...' : 'Update Password'}
                     </button>
@@ -245,7 +258,7 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
 
     return (
         <div className="max-w-xl space-y-8">
-            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg text-sm text-blue-700">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 rounded-lg text-sm text-blue-700 dark:text-blue-300">
                 API keys are stored securely in your browser's local storage and are never sent to our servers except to proxy requests to the providers.
             </div>
 
@@ -253,7 +266,7 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                 {['gemini', 'groq'].map(provider => (
                     <div key={provider} className="group">
                         <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium capitalize text-zinc-900">{provider} API Key</label>
+                            <label className="text-sm font-medium capitalize text-zinc-900 dark:text-zinc-100">{provider} API Key</label>
                             {results[provider] && (
                                 <span className={`text-xs font-medium flex items-center gap-1.5 px-2 py-0.5 rounded-full ${results[provider].status === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                                     {results[provider].status === 'ok' ? <Check className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
@@ -269,13 +282,13 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                                     value={keys[provider] || ''}
                                     onChange={e => handleChange(provider, e.target.value)}
                                     placeholder={`sk-...`}
-                                    className="w-full pl-9 pr-4 py-2 bg-white border border-zinc-300 rounded-lg text-sm focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all font-mono"
+                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-dark-primary border border-zinc-300 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all font-mono"
                                 />
                             </div>
                             <button 
                                 onClick={() => handleTest(provider)}
                                 disabled={testing === provider || !keys[provider]}
-                                className="px-4 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-medium text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 disabled:opacity-50 transition-colors"
+                                className="px-4 py-2 bg-white dark:bg-dark-200 border border-zinc-300 dark:border-dark-300 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-dark-300 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-50 transition-colors"
                             >
                                 {testing === provider ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Test'}
                             </button>
@@ -284,10 +297,10 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                 ))}
             </div>
 
-            <div className="pt-6 border-t border-zinc-100 flex justify-end">
+            <div className="pt-6 border-t border-zinc-100 dark:border-dark-300 flex justify-end">
                 <button 
                     onClick={() => onSave(keys)}
-                    className="bg-zinc-900 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 transition-all shadow-card hover:shadow-lg"
+                    className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-card hover:shadow-lg"
                 >
                     Save Changes
                 </button>

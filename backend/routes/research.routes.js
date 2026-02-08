@@ -70,4 +70,42 @@ router.get('/status/:id', async (req, res) => {
 });
 
 
+// Unified Web Search (Proxy to AI Engine)
+// Requires API Key for authentication
+router.post('/search', async (req, res) => {
+    try {
+        const { query, providers, max_results, api_key } = req.body;
+
+        if (!api_key) return res.status(401).json({ error: "API Key Required" });
+        if (!query) return res.status(400).json({ error: "Query Required" });
+
+        // Validate API Key
+        const keyCheck = await db.query(
+            "SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE",
+            [api_key]
+        );
+
+        if (keyCheck.rows.length === 0) {
+            return res.status(403).json({ error: "Invalid or Inactive API Key" });
+        }
+
+        // Proxy to AI Engine
+        const aiResponse = await axios.post(`${AI_ENGINE_URL}/search`, {
+            query,
+            providers: providers || null,
+            max_results: max_results || 10
+        }, { timeout: 15000 });
+
+        res.json(aiResponse.data);
+
+    } catch (err) {
+        if (err.response) {
+            logger.error(`[Search] AI Engine error: ${err.response.status}`);
+            return res.status(502).json({ error: "Search service error" });
+        }
+        logger.error(`[Search] ${err.message}`);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 module.exports = router;

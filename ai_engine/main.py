@@ -10,8 +10,9 @@ if AI_ENGINE_DIR not in sys.path:
     sys.path.insert(0, AI_ENGINE_DIR)
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # ============================
 # Structured Logging Setup
@@ -35,7 +36,15 @@ logger = logging.getLogger("ai_engine")
 # This prevents blocking LLM calls from freezing the async event loop
 executor = ThreadPoolExecutor(max_workers=4)
 
+# Import search router
+from routes.search import router as search_router
+
 app = FastAPI(title="AI Research Engine", version="2.0.0")
+
+# ============================
+# Register Routers
+# ============================
+app.include_router(search_router)
 
 class ResearchRequest(BaseModel):
     task: str
@@ -60,9 +69,36 @@ class ResearchRequest(BaseModel):
         }
     }
 
+class SearchRequest(BaseModel):
+    query: str
+    providers: Optional[List[str]] = None
+    max_results: int = 10
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "ai_engine", "version": "2.0.0"}
+
+@app.get("/usage/stats")
+async def get_usage_stats(hours: int = 24):
+    """Get token usage statistics for the last N hours"""
+    try:
+        from utils.token_tracker import get_usage_stats
+        stats = get_usage_stats(hours)
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get usage stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/usage/job/{job_id}")
+async def get_job_usage(job_id: str):
+    """Get token usage statistics for a specific job"""
+    try:
+        from utils.token_tracker import get_job_usage
+        stats = get_job_usage(job_id)
+        return stats
+    except Exception as e:
+        logger.error(f"Failed to get job usage: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 async def root():
@@ -131,6 +167,116 @@ async def run_research(request: ResearchRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================
+# Unified Web Search Endpoint
+# ============================
+
+@app.post("/search", tags=["Search"])
+async def unified_search(request: SearchRequest):
+    """
+    Unified web search across multiple providers.
+    Returns normalized results from DuckDuckGo, Google, Arxiv, Wikipedia, OpenAlex, PubMed.
+    """
+    from utils.search_service import search_sync
+
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            executor,
+            lambda: search_sync(
+                query=request.query,
+                providers=request.providers,
+                max_results=request.max_results
+            )
+        )
+        return result
+    except Exception as e:
+        logger.error(f"[Search] Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================
+# Streaming Chat Endpoint
+# ============================
+
+@app.post("/agent/interactive_chatbot/stream", tags=["Agents"])
+async def stream_chatbot(request: ResearchRequest):
+    """
+    Streaming version of the interactive chatbot.
+    Returns SSE stream of text chunks.
+    """
+    from agents.registry import AGENTS
+
+    agent = AGENTS.get("interactive_chatbot")
+    if not agent:
+        raise HTTPException(status_code=500, detail="Interactive chatbot agent not found in registry")
+
+    state = {
+        "task": request.task,
+        "paper_url": request.paper_url or "",
+        "findings": request.findings or {},
+        "_job_id": request.job_id or "unknown"
+    }
+
+    async def generate():
+        """Generate streaming response from agent."""
+        try:
+            from config import LLM_MODE, OLLAMA_BASE_URL, MODEL_WRITING
+
+            if LLM_MODE == "offline":
+                from langchain_ollama import ChatOllama
+                llm = ChatOllama(
+                    model=MODEL_WRITING,
+                    base_url=OLLAMA_BASE_URL,
+                    temperature=0.7
+                )
+            else:
+                from config import GEMINI_API_KEY
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-1.5-flash",
+                    google_api_key=GEMINI_API_KEY,
+                    temperature=0.7
+                )
+
+            # Build messages
+            system_prompt = agent.system_prompt
+            context = state.get("findings", {})
+            context_str = ""
+            if context:
+                for key, value in context.items():
+                    if isinstance(value, str):
+                        context_str += f"\n{key}: {value[:500]}"
+                    elif isinstance(value, dict) and "response" in value:
+                        context_str += f"\n{key}: {value['response'][:500]}"
+
+            from langchain_core.messages import SystemMessage, HumanMessage
+            messages = [
+                SystemMessage(content=system_prompt + "\n\nResearch Context:" + context_str),
+                HumanMessage(content=state["task"])
+            ]
+
+            # Stream chunks
+            for chunk in llm.stream(messages):
+                content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                if content:
+                    yield f"data: {content}\n\n"
+
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            logger.error(f"[StreamChat] Error: {str(e)}")
+            yield f"data: [ERROR] {str(e)}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
+
+# ============================
 # Dynamic Agent Endpoints
 # ============================
 from agents.registry import AGENTS
@@ -163,6 +309,10 @@ for agent_slug, agent_instance in AGENTS.items():
 
     app.post(f"/agent/{agent_slug}", tags=["Agents"])(make_handler())
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for console script"""
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()

@@ -57,18 +57,18 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
                     onChange={(e) => setValue(e.target.value)}
                     onBlur={handleSave}
                     onKeyDown={handleKeyDown}
-                    className="bg-gray-700 text-white px-2 py-1 rounded border border-cyan-500 focus:outline-none text-lg font-semibold"
+                    className="bg-white dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 px-2 py-1 rounded border border-indigo-500 dark:border-indigo-400 focus:outline-none text-lg font-semibold"
                     style={{ minWidth: '200px' }}
                 />
                 <button
                     onClick={handleSave}
-                    className="p-1 text-green-400 hover:text-green-300"
+                    className="p-1 text-green-600 dark:text-green-400 hover:text-green-500 dark:hover:text-green-300"
                 >
                     <Check className="w-4 h-4" />
                 </button>
                 <button
                     onClick={handleCancel}
-                    className="p-1 text-red-400 hover:text-red-300"
+                    className="p-1 text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300"
                 >
                     <X className="w-4 h-4" />
                 </button>
@@ -81,8 +81,8 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
             className={`flex items-center gap-2 cursor-pointer group ${className}`}
             onClick={() => setIsEditing(true)}
         >
-            <h1 className="text-xl font-semibold text-white">{title || 'Untitled Research'}</h1>
-            <Edit2 className="w-4 h-4 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{title || 'Untitled Research'}</h1>
+            <Edit2 className="w-4 h-4 text-zinc-400 dark:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
     );
 };

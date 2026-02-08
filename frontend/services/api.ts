@@ -1,6 +1,6 @@
-import { JobStatus, ResearchJob, User, UsageStats } from '../types';
+import { JobStatus, ResearchJob, User, UsageStats, Memory, SearchResponse } from '../types';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
 
 class ApiService {
   private getHeaders(): HeadersInit {
@@ -57,6 +57,11 @@ class ApiService {
   async updatePassword(current: string, newPass: string): Promise<void> {
     // Backend doesn't have this endpoint yet - stub for now
     console.warn('updatePassword not implemented in backend');
+  }
+
+  async getMe(): Promise<User> {
+    const data = await this.request<{ user: { id: number; username: string; email: string } }>('/auth/me');
+    return { id: String(data.user.id), email: data.user.email, name: data.user.username };
   }
 
   // =====================
@@ -180,30 +185,128 @@ class ApiService {
   }
 
   // =====================
+  // MEMORY ENDPOINTS
+  // =====================
+
+  async getMemories(page: number = 1, limit: number = 50): Promise<{ memories: Memory[]; total: number }> {
+    return this.request(`/memories?page=${page}&limit=${limit}`);
+  }
+
+  async createMemory(content: string, source: string = 'manual'): Promise<Memory> {
+    return this.request('/memories', {
+      method: 'POST',
+      body: JSON.stringify({ content, source }),
+    });
+  }
+
+  async deleteMemory(id: number): Promise<void> {
+    await this.request(`/memories/${id}`, { method: 'DELETE' });
+  }
+
+  async searchMemories(query: string): Promise<{ results: Memory[] }> {
+    return this.request('/memories/search', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
+  }
+
+  // =====================
+  // WEB SEARCH ENDPOINT
+  // =====================
+
+  async searchWeb(query: string, providers?: string[]): Promise<SearchResponse> {
+    const apiKey = await this.getOrCreateApiKey();
+    return this.request('/research/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, providers, api_key: apiKey }),
+    });
+  }
+
+  // =====================
+  // EXPORT ENDPOINTS
+  // =====================
+
+  async exportMarkdown(researchId: string): Promise<void> {
+    const token = localStorage.getItem('dre_token');
+    const response = await fetch(`${BASE_URL}/export/${researchId}/markdown`, {
+      headers: token ? { 'x-auth-token': token } : {},
+    });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `research_${researchId}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async exportPDF(researchId: string): Promise<void> {
+    const token = localStorage.getItem('dre_token');
+    const response = await fetch(`${BASE_URL}/export/${researchId}/pdf`, {
+      headers: token ? { 'x-auth-token': token } : {},
+    });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `research_${researchId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async exportLatex(researchId: string): Promise<void> {
+    const token = localStorage.getItem('dre_token');
+    const response = await fetch(`${BASE_URL}/export/${researchId}/latex`, {
+      headers: token ? { 'x-auth-token': token } : {},
+    });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `research_${researchId}.tex`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // =====================
+  // STREAMING CHAT
+  // =====================
+
+  async streamChat(researchId: string, message: string, sessionId?: string): Promise<Response> {
+    const apiKey = await this.getOrCreateApiKey();
+    const token = localStorage.getItem('dre_token');
+
+    return fetch(`${BASE_URL}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'x-auth-token': token } : {}),
+      },
+      body: JSON.stringify({
+        research_id: parseInt(researchId),
+        message,
+        api_key: apiKey,
+        session_id: sessionId,
+      }),
+    });
+  }
+
+  // =====================
   // SETTINGS (MOCK for now)
   // =====================
 
   async testConnection(provider: 'gemini' | 'groq', key: string): Promise<{ latency: number; status: 'ok' | 'error' }> {
-    // This would need a backend endpoint - mock for now
-    return { latency: 150, status: 'ok' };
+    return this.request('/usage/test-connection', {
+      method: 'POST',
+      body: JSON.stringify({ provider, api_key: key }),
+    });
   }
 
   async getUsageStats(): Promise<UsageStats> {
-    // Mock - backend doesn't have this endpoint yet
-    const history = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return {
-        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        tokens: Math.floor(Math.random() * 50000) + 10000,
-        provider: (Math.random() > 0.5 ? 'gemini' : 'groq') as 'gemini' | 'groq',
-      };
-    });
-    return {
-      totalTokens: history.reduce((acc, curr) => acc + curr.tokens, 0),
-      cost: 4.25,
-      history,
-    };
+    return this.request('/usage/stats');
   }
 
   // =====================

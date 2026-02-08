@@ -1,0 +1,1138 @@
+openapi: 3.0.3
+info:
+  title: Multi-Agent LLM Research Automation Platform API
+  description: |
+    Comprehensive API documentation for the Multi-Agent Research Platform.
+    
+    ## Architecture
+    
+    The platform consists of:
+    - **AI Engine** (Python/FastAPI): Core agent orchestration and LLM processing
+    - **Backend** (Node.js/Express): User management, research sessions, and data persistence
+    - **Frontend** (React/TypeScript): User interface and visualization
+    
+    ## Authentication
+    
+    Most endpoints require JWT authentication via the `x-auth-token` header.
+    
+    ## Features
+    
+    - Multi-agent research workflows
+    - Real-time streaming chat
+    - Memory management
+    - Web search integration
+    - Export functionality (Markdown, PDF, LaTeX)
+    - Token usage tracking
+  version: "2.0.0"
+  contact:
+    name: Research Team
+    email: research@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: AI Engine (Python/FastAPI)
+  - url: http://localhost:5000
+    description: Backend (Node.js/Express)
+
+paths:
+  # ===== AI ENGINE ENDPOINTS =====
+  /health:
+    get:
+      tags: ["AI Engine"]
+      summary: Health check
+      description: Check if AI Engine is running
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  service:
+                    type: string
+                    example: "ai_engine"
+                  version:
+                    type: string
+                    example: "2.0.0"
+  
+  /research:
+    post:
+      tags: ["AI Engine"]
+      summary: Run research analysis
+      description: Execute the full multi-agent research pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchRequest'
+      responses:
+        '200':
+          description: Research completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchResponse'
+        '500':
+          description: Research pipeline failed
+  
+  /search:
+    post:
+      tags: ["AI Engine"]
+      summary: Unified web search
+      description: Search across multiple providers with normalized results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid providers specified
+        '500':
+          description: Search failed
+  
+  /search/providers:
+    get:
+      tags: ["AI Engine"]
+      summary: Get available search providers
+      description: List all available search providers and their capabilities
+      responses:
+        '200':
+          description: Available providers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available_providers:
+                    type: array
+                    items:
+                      type: string
+                  default_providers:
+                    type: array
+                    items:
+                      type: string
+                  provider_descriptions:
+                    type: object
+  
+  /agent/{agent_slug}:
+    post:
+      tags: ["AI Engine"]
+      summary: Run individual agent
+      description: Execute a specific agent directly
+      parameters:
+        - name: agent_slug
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: ["orchestrator", "domain_intelligence", "historical_review", "slr", "gap_synthesis", "innovation_novelty", "paper_decomposition", "paper_understanding", "technical_verification", "scientific_writing", "latex_generation"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchRequest'
+      responses:
+        '200':
+          description: Agent execution completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  agent:
+                    type: string
+                  response:
+                    type: object
+                  execution_time:
+                    type: number
+        '500':
+          description: Agent execution failed
+  
+  /agent/interactive_chatbot/stream:
+    post:
+      tags: ["AI Engine"]
+      summary: Streaming chat with agent
+      description: Stream chat responses from the interactive chatbot agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResearchRequest'
+      responses:
+        '200':
+          description: Streaming response
+          content:
+            text/plain:
+              schema:
+                type: string
+  
+  /usage/stats:
+    get:
+      tags: ["AI Engine"]
+      summary: Get token usage statistics
+      description: Retrieve token usage analytics for the specified time period
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+          description: Number of hours to look back
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageStats'
+  
+  /usage/job/{job_id}:
+    get:
+      tags: ["AI Engine"]
+      summary: Get job-specific usage
+      description: Retrieve token usage for a specific research job
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobUsage'
+  
+  # ===== BACKEND ENDPOINTS =====
+  
+  # Authentication
+  /auth/register:
+    post:
+      tags: ["Authentication"]
+      summary: Register new user
+      description: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["email", "password", "name"]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                name:
+                  type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: User already exists or invalid data
+  
+  /auth/login:
+    post:
+      tags: ["Authentication"]
+      summary: User login
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["email", "password"]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid credentials
+  
+  /auth/me:
+    get:
+      tags: ["Authentication"]
+      summary: Get current user
+      description: Retrieve the authenticated user's profile from the JWT token
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+        '404':
+          description: User not found
+
+  /user/password:
+    put:
+      tags: ["Authentication"]
+      summary: Update password
+      description: Change the authenticated user's password
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["currentPassword", "newPassword"]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password updated
+        '400':
+          description: Current password incorrect
+        '401':
+          description: Not authenticated
+
+  # Research
+  /research:
+    post:
+      tags: ["Research"]
+      summary: Create research job
+      description: Submit a new research task
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["task"]
+              properties:
+                task:
+                  type: string
+                  description: Research question or task
+                paper_url:
+                  type: string
+                  format: uri
+                  description: Optional paper URL to analyze
+                depth:
+                  type: string
+                  enum: ["quick", "deep"]
+                  default: "deep"
+      responses:
+        '201':
+          description: Research job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchJob'
+    
+    get:
+      tags: ["Research"]
+      summary: List research jobs
+      description: Get user's research jobs with pagination
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Research jobs list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResearchJob'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+  
+  /research/{id}:
+    get:
+      tags: ["Research"]
+      summary: Get research job details
+      description: Retrieve specific research job with results
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Research job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchJob'
+        '404':
+          description: Research job not found
+  
+  /research/{id}/status:
+    get:
+      tags: ["Research"]
+      summary: Get research status
+      description: Get current execution status and progress
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Research status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    $ref: '#/components/schemas/JobStatus'
+                  progress:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+  
+  /research/search:
+    post:
+      tags: ["Research"]
+      summary: Search web (proxy)
+      description: Proxy to AI Engine search with authentication
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+  
+  # Chat
+  /chat/message:
+    post:
+      tags: ["Chat"]
+      summary: Send chat message
+      description: Send message and get response (non-streaming)
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["message", "research_id"]
+              properties:
+                message:
+                  type: string
+                research_id:
+                  type: integer
+      responses:
+        '200':
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                  message_id:
+                    type: integer
+  
+  /chat/stream:
+    post:
+      tags: ["Chat"]
+      summary: Streaming chat
+      description: Send message and stream response in real-time
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["message", "research_id"]
+              properties:
+                message:
+                  type: string
+                research_id:
+                  type: integer
+      responses:
+        '200':
+          description: Streaming response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  
+  # Memory
+  /memories:
+    get:
+      tags: ["Memory"]
+      summary: List user memories
+      description: Get paginated list of user memories
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: source
+          in: query
+          schema:
+            type: string
+          description: Filter by memory source
+      responses:
+        '200':
+          description: User memories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Memory'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+    
+    post:
+      tags: ["Memory"]
+      summary: Create memory
+      description: Add new memory entry
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["content"]
+              properties:
+                content:
+                  type: string
+                  description: Memory content
+                source:
+                  type: string
+                  description: Source of the memory
+                metadata:
+                  type: object
+                  description: Additional metadata
+      responses:
+        '201':
+          description: Memory created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+  
+  /memories/{id}:
+    delete:
+      tags: ["Memory"]
+      summary: Delete memory
+      description: Remove a memory entry (ownership checked)
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Memory deleted
+        '404':
+          description: Memory not found
+        '403':
+          description: Not authorized to delete this memory
+  
+  /memories/search:
+    post:
+      tags: ["Memory"]
+      summary: Search memories
+      description: Search user memories by keyword
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["query"]
+              properties:
+                query:
+                  type: string
+                  description: Search query
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Memory'
+                  total:
+                    type: integer
+  
+  # Export
+  /export/{id}/markdown:
+    get:
+      tags: ["Export"]
+      summary: Export as Markdown
+      description: Download research results as Markdown file
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Markdown file
+          content:
+            text/markdown:
+              schema:
+                type: string
+        '404':
+          description: Research not found
+  
+  /export/{id}/pdf:
+    get:
+      tags: ["Export"]
+      summary: Export as PDF
+      description: Download research results as PDF file
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Research not found
+  
+  /export/{id}/latex:
+    get:
+      tags: ["Export"]
+      summary: Export as LaTeX
+      description: Download research results as LaTeX file
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: LaTeX file
+          content:
+            application/x-latex:
+              schema:
+                type: string
+        '404':
+          description: Research not found
+  
+  # Usage (Backend Proxy)
+  /usage/stats:
+    get:
+      tags: ["Usage"]
+      summary: Get usage statistics (backend proxy)
+      description: |
+        Backend proxy that fetches usage stats from AI Engine and transforms
+        them for frontend consumption. Falls back to zeros if AI Engine is unreachable.
+      servers:
+        - url: http://localhost:5000
+          description: Backend (Node.js/Express)
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalTokens:
+                    type: integer
+                  cost:
+                    type: number
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                        tokens:
+                          type: integer
+                        provider:
+                          type: string
+                          enum: ["gemini", "groq"]
+
+  /usage/test-connection:
+    post:
+      tags: ["Usage"]
+      summary: Test API key connection
+      description: Validate a Gemini or Groq API key by making a minimal request
+      servers:
+        - url: http://localhost:5000
+          description: Backend (Node.js/Express)
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["provider", "key"]
+              properties:
+                provider:
+                  type: string
+                  enum: ["gemini", "groq"]
+                key:
+                  type: string
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["ok", "error"]
+                  latency:
+                    type: number
+                    description: Response time in milliseconds
+                  error:
+                    type: string
+                    nullable: true
+
+  # Events
+  /events:
+    post:
+      tags: ["Events"]
+      summary: Submit execution event
+      description: Submit real-time execution event (used by AI Engine)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: ["research_id", "event_id", "stage", "message"]
+              properties:
+                research_id:
+                  type: integer
+                event_id:
+                  type: string
+                stage:
+                  type: string
+                severity:
+                  type: string
+                  enum: ["info", "warn", "error", "success"]
+                category:
+                  type: string
+                  enum: ["stage", "source", "agent", "error"]
+                message:
+                  type: string
+                details:
+                  type: object
+      responses:
+        '200':
+          description: Event recorded
+  
+  /events/stream:
+    get:
+      tags: ["Events"]
+      summary: Stream execution events
+      description: Server-sent events stream for real-time updates
+      security:
+        - JWTAuth: []
+      parameters:
+        - name: research_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token in x-auth-token header
+  
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    
+    JobStatus:
+      type: string
+      enum: ["pending", "running", "completed", "failed"]
+    
+    ResearchJob:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        task:
+          type: string
+        paper_url:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        ai_engine_job_id:
+          type: integer
+          nullable: true
+        result_json:
+          type: object
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    ResearchRequest:
+      type: object
+      required: ["task"]
+      properties:
+        task:
+          type: string
+          description: Research question or task
+        paper_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Optional paper URL to analyze
+        depth:
+          type: string
+          enum: ["quick", "deep"]
+          default: "deep"
+        findings:
+          type: object
+          nullable: true
+          description: Previous findings to build upon
+        job_id:
+          type: integer
+          nullable: true
+          description: Correlation ID for tracking
+    
+    ResearchResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "completed"
+        task:
+          type: string
+        result:
+          type: object
+          description: Agent results and findings
+        final_state:
+          type: object
+          description: Complete pipeline state
+    
+    SearchRequest:
+      type: object
+      required: ["query"]
+      properties:
+        query:
+          type: string
+          description: Search query
+        providers:
+          type: array
+          items:
+            type: string
+          default: ["duckduckgo", "arxiv"]
+          description: Search providers to use
+        max_results:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+          description: Maximum results per provider
+    
+    SearchResult:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+        source:
+          type: string
+        favicon:
+          type: string
+          format: uri
+        thumbnail:
+          type: string
+          format: uri
+        published:
+          type: string
+    
+    SearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        total_results:
+          type: integer
+        providers_used:
+          type: array
+          items:
+            type: string
+        execution_time:
+          type: number
+    
+    Memory:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        content:
+          type: string
+        source:
+          type: string
+          nullable: true
+        source_id:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    
+    UsageStats:
+      type: object
+      properties:
+        period_hours:
+          type: integer
+        total_requests:
+          type: integer
+        total_tokens:
+          type: integer
+        total_cost:
+          type: number
+        avg_tokens_per_request:
+          type: number
+        success_rate:
+          type: number
+        by_agent:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              requests:
+                type: integer
+              tokens:
+                type: integer
+              cost:
+                type: number
+        by_model:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              requests:
+                type: integer
+              tokens:
+                type: integer
+              cost:
+                type: number
+    
+    JobUsage:
+      type: object
+      properties:
+        job_id:
+          type: string
+        found:
+          type: boolean
+        agents_used:
+          type: integer
+        total_requests:
+          type: integer
+        total_tokens:
+          type: integer
+        total_cost:
+          type: number
+        total_time_ms:
+          type: integer
+        agents:
+          type: array
+          items:
+            type: string
+        models:
+          type: array
+          items:
+            type: string
+
+tags:
+  - name: "AI Engine"
+    description: "Core LLM processing and agent orchestration"
+  - name: "Authentication"
+    description: "User registration and login"
+  - name: "Research"
+    description: "Research job management"
+  - name: "Chat"
+    description: "Interactive chat interface"
+  - name: "Memory"
+    description: "User memory and context management"
+  - name: "Export"
+    description: "Research result export functionality"
+  - name: "Usage"
+    description: "Token usage analytics and API key validation"
+  - name: "Events"
+    description: "Real-time execution events"

@@ -1,32 +1,157 @@
-```markdown
-# Research and Analysis Platform - Full Project Document
+# Multi-Agent LLM Research Automation Platform
 
-**Version**: 1.0 (February 03, 2026)  
-**Author**: OM (based on ongoing development discussions)  
-**Status**: Planning/Prototyping Phase (Local Ollama development → Cloud API deployment)
+## Architecture Overview
 
-This is a complete project document compiled from all prior discussions and analyses. It incorporates the latest available data (February 2026) from official sources on models, pricing, and frameworks. All assessments are honest and realistic — this remains an ambitious project with high complexity risks.
+### System Components
 
-## Project Overview
+The platform consists of three main services:
 
-The platform is a multi-agent AI system for automated research paper analysis and synthesis.
+1. **AI Engine** (Python/FastAPI)
+   - Core multi-agent orchestration
+   - LLM integration (Ollama, Gemini, Groq)
+   - Research pipeline execution
+   - Token usage tracking
+   - Web search integration
 
-**Core Features**:
-- **Pipeline B**: Single-paper deep analysis (decomposition, understanding, verification, reproducibility, critique, interactive chatbot, reliability scoring).
-- **Full Research Pipeline**: Multi-paper synthesis (domain review, gap identification, novelty generation, LaTeX output).
-- Shared agents for validation, memory, hallucination detection.
-- Input: PDF upload, arXiv ID/URL, LaTeX extraction.
-- Output: Structured reports, critiques, novelty ideas, interactive chat, exports (Markdown/PDF/LaTeX).
+2. **Backend** (Node.js/Express)
+   - User authentication and management
+   - Research session persistence
+   - Real-time event streaming
+   - Memory management system
+   - Export functionality
 
-**Current Development**: Local Ollama (open models like Llama 3.1, Mistral variants) for zero-cost prototyping.  
-**Deployment Goal**: Web app where users provide their own API keys (Gemini, Groq, Hugging Face) and see real-time token/cost tracking.
+3. **Frontend** (React/TypeScript + Vite)
+   - Modern UI with dark/light themes
+   - Real-time research visualization
+   - Streaming chat interface
+   - Memory management
+   - Responsive design
 
-## System Architecture (From Original Diagram)
+### New Features (v2.0)
 
-The original design has **25+ agents** — this is too many for reliable implementation. Real-world multi-agent systems in 2026 (per latest benchmarks) use 5–12 agents max.
+#### Web Search Integration
+- Unified search API across multiple providers
+- Normalized result schema with metadata
+- Provider-agnostic interface
+- Parallel provider queries for performance
 
-### Recommended Simplified Agent Structure (2026 Best Practices)
-Merge overlapping agents based on LangGraph/CrewAI patterns.
+#### Memory Management System
+- User-specific memory storage
+- Context injection into research workflows
+- CRUD operations with search capabilities
+- PostgreSQL-based persistence
+
+#### Streaming Chat
+- Real-time response streaming via SSE
+- Character-by-character response display
+- Message actions (copy, rewrite)
+- Context-aware responses using research data
+
+#### Enhanced Export
+- Multi-format export (Markdown, PDF, LaTeX)
+- Structured report generation
+- Download management
+- Format-specific optimizations
+
+#### Advanced UI/UX
+- Dark/light theme system
+- Responsive design patterns
+- Research timeline visualization
+- Source cards with metadata
+- Animated backgrounds
+- Loading skeletons
+
+### API Architecture
+
+The platform exposes 54 total endpoints:
+
+#### AI Engine (10 endpoints)
+- `/health` - Health check
+- `/research` - Main research pipeline
+- `/search` - Unified web search
+- `/search/providers` - Available providers
+- `/agent/{slug}` - Individual agent execution
+- `/agent/interactive_chatbot/stream` - Streaming chat
+- `/usage/stats` - Token usage statistics
+- `/usage/job/{id}` - Job-specific usage
+
+#### Backend (44 endpoints)
+- **Authentication**: register, login
+- **Research**: CRUD, status tracking, search proxy
+- **Chat**: message, streaming
+- **Memory**: CRUD, search
+- **Export**: markdown, PDF, LaTeX
+- **Events**: submission, streaming
+- **User**: profile, settings
+
+### Data Flow
+
+```
+Frontend → Backend → AI Engine
+    ↓         ↓         ↓
+UI State  PostgreSQL  LLM Providers
+    ↓         ↓         ↓
+React     Research    Agents
+Components Sessions   Pipeline
+```
+
+### Technology Stack
+
+**AI Engine:**
+- Python 3.9+
+- FastAPI for async web framework
+- LangChain for LLM integration
+- LangGraph for agent orchestration
+- SQLite for checkpointing
+
+**Backend:**
+- Node.js 18+
+- Express.js for REST API
+- PostgreSQL for data persistence
+- JWT for authentication
+- Server-Sent Events for streaming
+
+**Frontend:**
+- React 19 with TypeScript
+- Vite for build tooling
+- Tailwind CSS for styling
+- Zustand for state management
+- Lucide React for icons
+
+### Deployment Architecture
+
+The platform supports multiple deployment patterns:
+
+1. **Development**: All services on localhost
+2. **Docker Compose**: Containerized deployment
+3. **Cloud Native**: Separate service deployments
+
+### Security Features
+
+- JWT-based authentication
+- User isolation for memories and research
+- Rate limiting on API endpoints
+- Input validation and sanitization
+- CORS configuration
+- Token-based LLM access
+
+### Performance Optimizations
+
+- LLM connection pooling
+- Parallel search provider queries
+- Response streaming for large outputs
+- Token usage tracking and limits
+- Database query optimization
+- Frontend lazy loading
+
+### Monitoring and Observability
+
+- Structured logging across all services
+- Real-time event streaming
+- Token usage analytics
+- Error tracking and reporting
+- Performance metrics
+- Health check endpoints
 
 #### Core Agents (Target: 8–10 Total)
 1. **Orchestrator Agent** — Routes tasks, manages pipelines.

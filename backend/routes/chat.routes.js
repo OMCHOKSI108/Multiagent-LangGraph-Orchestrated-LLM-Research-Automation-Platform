@@ -80,6 +80,131 @@ router.post('/message', async (req, res) => {
     }
 });
 
+// Streaming Chat via SSE
+// Input: { research_id, message, api_key, session_id (optional) }
+router.post('/stream', async (req, res) => {
+    try {
+        const { research_id, message, api_key } = req.body;
+        let { session_id } = req.body;
+
+        if (!api_key) return res.status(401).json({ error: "API Key Required" });
+        if (!research_id || !message) return res.status(400).json({ error: "Research ID and Message required" });
+
+        // 1. Validate User
+        const keyCheck = await db.query("SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE", [api_key]);
+        if (keyCheck.rows.length === 0) return res.status(403).json({ error: "Invalid API Key" });
+        const user_id = keyCheck.rows[0].user_id;
+
+        // 2. Fetch Research Context
+        const research = await db.query("SELECT result_json, user_id FROM research_logs WHERE id = $1", [research_id]);
+        if (research.rows.length === 0) return res.status(404).json({ error: "Research not found" });
+        if (research.rows[0].user_id !== user_id) return res.status(403).json({ error: "Unauthorized access" });
+
+        const context = research.rows[0].result_json || {};
+
+        // 3. Fetch user memories for context enrichment
+        let memoriesContext = {};
+        try {
+            const memories = await db.query(
+                "SELECT content FROM user_memories WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10",
+                [user_id]
+            );
+            if (memories.rows.length > 0) {
+                memoriesContext.user_memories = memories.rows.map(m => m.content).join('\n');
+            }
+        } catch (memErr) {
+            logger.warn(`[Chat] Could not fetch memories: ${memErr.message}`);
+        }
+
+        // 4. Setup Session
+        if (!session_id) session_id = uuidv4();
+
+        // 5. Save User Message
+        await db.query(
+            "INSERT INTO chat_history (session_id, user_id, role, message) VALUES ($1, $2, $3, $4)",
+            [session_id, user_id, 'user', message]
+        );
+
+        // 6. Set SSE headers
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('X-Session-ID', session_id);
+        res.flushHeaders();
+
+        // 7. Stream from AI Engine
+        logger.info(`[Chat] Streaming for Session ${session_id}`);
+        let fullResponse = '';
+
+        try {
+            const aiResponse = await axios.post(
+                `${AI_ENGINE_URL}/agent/interactive_chatbot/stream`,
+                {
+                    task: message,
+                    findings: { ...context, ...memoriesContext },
+                    depth: "deep"
+                },
+                {
+                    responseType: 'stream',
+                    timeout: 120000
+                }
+            );
+
+            aiResponse.data.on('data', (chunk) => {
+                const text = chunk.toString();
+                // Forward the SSE data directly
+                res.write(text);
+
+                // Collect full response text (strip SSE prefix)
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ') && !line.includes('[DONE]') && !line.includes('[ERROR]')) {
+                        fullResponse += line.substring(6);
+                    }
+                }
+            });
+
+            aiResponse.data.on('end', async () => {
+                // Save bot response to chat_history
+                if (fullResponse.trim()) {
+                    try {
+                        await db.query(
+                            "INSERT INTO chat_history (session_id, user_id, role, message) VALUES ($1, $2, $3, $4)",
+                            [session_id, user_id, 'assistant', fullResponse.trim()]
+                        );
+                    } catch (saveErr) {
+                        logger.error(`[Chat] Save error: ${saveErr.message}`);
+                    }
+                }
+                res.end();
+            });
+
+            aiResponse.data.on('error', (err) => {
+                logger.error(`[Chat] Stream error: ${err.message}`);
+                res.write(`data: [ERROR] ${err.message}\n\n`);
+                res.end();
+            });
+
+        } catch (aiErr) {
+            logger.error(`[Chat] AI Stream Error: ${aiErr.message}`);
+            res.write(`data: [ERROR] AI Service Unavailable\n\n`);
+            res.end();
+        }
+
+        // Cleanup on client disconnect
+        req.on('close', () => {
+            logger.info(`[Chat] Client disconnected for Session ${session_id}`);
+        });
+
+    } catch (err) {
+        logger.error(`[Chat] Stream setup error: ${err.message}`);
+        if (!res.headersSent) {
+            res.status(500).json({ error: "Server error" });
+        }
+    }
+});
+
 // Get Chat History
 router.get('/history/:session_id', async (req, res) => {
     try {
