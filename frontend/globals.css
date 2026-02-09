@@ -7,48 +7,96 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Enterprise Earthy Mode (Forest Green + Orange Palette) */
+    --background: 47 55% 95%;
+    /* Warm cream from #EDE4C2 */
+    --foreground: 116 40% 15%;
+    /* Dark forest green */
+
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 116 40% 15%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
+    --popover-foreground: 116 40% 15%;
+
+    /* Primary Action Color (Forest Green) */
+    --primary: 116 40% 22%;
+    /* #254F22 */
     --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+
+    /* Brand/CTA Color (Vibrant Orange) */
+    --brand: 20 90% 63%;
+    /* #F5824A */
+    --brand-foreground: 0 0% 98%;
+
+    --secondary: 47 55% 88%;
+    /* Lighter cream */
+    --secondary-foreground: 116 40% 22%;
+
+    --muted: 47 55% 90%;
+    /* Light cream */
+    --muted-foreground: 116 20% 45%;
+    /* Muted green */
+
+    --accent: 47 55% 85%;
+    /* Medium cream */
+    --accent-foreground: 116 40% 22%;
+
+    --destructive: 17 79% 35%;
+    /* #A03A13 rust */
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+
+    --border: 47 55% 85%;
+    /* Cream border */
+    --input: 47 55% 90%;
+    --ring: 116 40% 22%;
+    /* Green focus ring */
+
+    --radius: 0.375rem;
+    /* Slightly more rounded for modern feel */
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    /* Enterprise Dark Mode (Deep Forest + Orange) */
+    --background: 116 50% 8%;
+    /* Deep forest green-black #0d1a0c */
+    --foreground: 47 55% 85%;
+    /* Cream text */
+
+    --card: 116 30% 12%;
+    --card-foreground: 47 55% 85%;
+
+    --popover: 116 30% 12%;
+    --popover-foreground: 47 55% 85%;
+
+    --primary: 116 60% 35%;
+    /* Lighter forest green for contrast */
+    --primary-foreground: 116 50% 8%;
+
+    --brand: 20 95% 70%;
+    /* Brighter orange in dark */
+    --brand-foreground: 116 50% 8%;
+
+    --secondary: 116 30% 18%;
+    /* Dark green-gray */
+    --secondary-foreground: 47 55% 85%;
+
+    --muted: 116 30% 15%;
+    /* Darker muted */
+    --muted-foreground: 47 25% 60%;
+    /* Muted cream */
+
+    --accent: 116 30% 18%;
+    --accent-foreground: 47 55% 85%;
+
+    --destructive: 17 79% 50%;
+    /* Brighter rust in dark */
+    --destructive-foreground: 47 55% 85%;
+
+    --border: 116 30% 18%;
+    /* Dark green border */
+    --input: 116 30% 15%;
+    --ring: 116 60% 35%;
   }
 }
 

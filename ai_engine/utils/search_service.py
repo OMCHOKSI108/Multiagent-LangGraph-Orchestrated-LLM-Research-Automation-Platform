@@ -62,10 +62,10 @@ def _normalize_result(raw: Dict[str, Any], source: str) -> Dict[str, Any]:
 def _search_duckduckgo(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using DuckDuckGo provider."""
     try:
-        from .providers import WebSearchProvider
-        provider = WebSearchProvider()
+        from .providers import PROVIDER_REGISTRY
+        provider = PROVIDER_REGISTRY["duckduckgo"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "duckduckgo") for r in raw_results]
+        return [_normalize_result(r, "duckduckgo") for r in raw_results if "error" not in r]
     except Exception as e:
         logger.error(f"[SearchService] DuckDuckGo error: {e}")
         return []
@@ -73,12 +73,11 @@ def _search_duckduckgo(query: str, max_results: int) -> List[Dict[str, Any]]:
 
 def _search_google(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using Google provider."""
-    
     try:
-        from .providers import GoogleSearchProvider
-        provider = GoogleSearchProvider()
+        from .providers import PROVIDER_REGISTRY
+        provider = PROVIDER_REGISTRY["google"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "google") for r in raw_results]
+        return [_normalize_result(r, "google") for r in raw_results if "error" not in r]
     except Exception as e:
         logger.error(f"[SearchService] Google error: {e}")
         return []
@@ -87,10 +86,10 @@ def _search_google(query: str, max_results: int) -> List[Dict[str, Any]]:
 def _search_arxiv(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using Arxiv provider."""
     try:
-        from .providers import ArxivProvider
-        provider = ArxivProvider()
-        raw_results = provider.search_papers(query, max_results=max_results)
-        return [_normalize_result(r, "arxiv") for r in raw_results]
+        from .providers import PROVIDER_REGISTRY
+        provider = PROVIDER_REGISTRY["arxiv"]
+        raw_results = provider.search(query, max_results=max_results)
+        return [_normalize_result(r, "arxiv") for r in raw_results if "error" not in r]
     except Exception as e:
         logger.error(f"[SearchService] Arxiv error: {e}")
         return []
@@ -99,10 +98,10 @@ def _search_arxiv(query: str, max_results: int) -> List[Dict[str, Any]]:
 def _search_wikipedia(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using Wikipedia provider."""
     try:
-        from .providers import WikipediaProvider
-        provider = WikipediaProvider()
+        from .providers import PROVIDER_REGISTRY
+        provider = PROVIDER_REGISTRY["wikipedia"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "wikipedia") for r in raw_results]
+        return [_normalize_result(r, "wikipedia") for r in raw_results if "error" not in r]
     except Exception as e:
         logger.error(f"[SearchService] Wikipedia error: {e}")
         return []
@@ -111,10 +110,10 @@ def _search_wikipedia(query: str, max_results: int) -> List[Dict[str, Any]]:
 def _search_openalex(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using OpenAlex provider."""
     try:
-        from .providers import OpenAlexProvider
-        provider = OpenAlexProvider()
+        from .providers import PROVIDER_REGISTRY
+        provider = PROVIDER_REGISTRY["openalex"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "openalex") for r in raw_results]
+        return [_normalize_result(r, "openalex") for r in raw_results if "error" not in r]
     except Exception as e:
         logger.error(f"[SearchService] OpenAlex error: {e}")
         return []
@@ -123,10 +122,10 @@ def _search_openalex(query: str, max_results: int) -> List[Dict[str, Any]]:
 def _search_pubmed(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using PubMed provider."""
     try:
-        from .providers import PubMedProvider
-        provider = PubMedProvider()
+        from .providers import PROVIDER_REGISTRY
+        provider = PROVIDER_REGISTRY["pubmed"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "pubmed") for r in raw_results]
+        return [_normalize_result(r, "pubmed") for r in raw_results if "error" not in r]
     except Exception as e:
         logger.error(f"[SearchService] PubMed error: {e}")
         return []
@@ -141,6 +140,28 @@ PROVIDER_FUNCTIONS = {
     "openalex": _search_openalex,
     "pubmed": _search_pubmed,
 }
+
+
+class SearchService:
+    """Unified search service wrapper for use by route handlers."""
+
+    def get_available_providers(self) -> List[str]:
+        return AVAILABLE_PROVIDERS.copy()
+
+    async def search(
+        self,
+        query: str,
+        providers: Optional[List[str]] = None,
+        max_results: int = 10,
+    ) -> Dict[str, Any]:
+        import time
+        start = time.time()
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            _search_executor, search_sync, query, providers, max_results
+        )
+        result["execution_time"] = round(time.time() - start, 3)
+        return result
 
 
 def search_sync(

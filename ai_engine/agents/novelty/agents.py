@@ -61,34 +61,54 @@ class BaselineReproductionAgent(BaseAgent):
             name="BaselineReproduction",
             system_prompt="""You are a Benchmarking Engineer. 
             Identify baseline models/methods that must be reproduced to validate the new approach.
-            Output JSON with keys: 'baselines_to_run', 'datasets', 'metrics'.
+            Find existing implementations (GitHub, PapersWithCode) to ensure reproducibility.
+            Output JSON with keys: 'baselines_to_run', 'existing_implementations', 'datasets', 'metrics'.
             """,
             **kwargs
         )
+        self.google_provider = GoogleSearchProvider()
 
     def run(self, state: dict) -> dict:
-        print(f"[{self.name}] Designing Baselines...")
+        print(f"[{self.name}] Designing Baselines & Finding Code...")
         findings = state.get("findings", {})
         
         # We need the innovation proposal to know what to compare against
         proposal = ""
         if "innovation_novelty" in findings:
-            proposal = str(findings["innovation_novelty"])
-        elif "slr" in findings:
-             proposal = str(findings["slr"]) # Fallback to SLR if no innovation yet?
-             
-        enhanced_prompt = f"{self.system_prompt}\n\nPROPOSED APPROACH / CONTEXT:\n{proposal}"
+            proposal_json = findings["innovation_novelty"]
+            if isinstance(proposal_json, dict):
+                proposal = proposal_json.get("novel_contribution", "")
         
-        from langchain_core.messages import SystemMessage, HumanMessage
+        if not proposal and "slr" in findings:
+             proposal = str(findings["slr"])[:500] # Fallback
+             
+        # 1. Search for existing implementations of related work
+        search_query = f"github implementation {proposal} benchmark"
+        results = self.google_provider.search(search_query, max_results=4)
+        
+        implementations_found = []
+        for r in results:
+            if "github.com" in r['link'] or "paperswithcode.com" in r['link']:
+                implementations_found.append({"title": r['title'], "link": r['link']})
+                
+        enhanced_prompt = f"{self.system_prompt}\n\nPROPOSED APPROACH:\n{proposal}\n\nFOUND IMPLEMENTATIONS:\n{implementations_found}"
+        
+        msg_content = str(state)
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=str(state))
+            HumanMessage(content=msg_content)
         ]
         
         try:
             response = self.llm.invoke(messages)
+            json_res = self._extract_json(response.content)
+            
+            if isinstance(json_res, dict):
+                # Augment with real links
+                json_res["_meta_code_links"] = implementations_found
+                
             return {
-                "response": self._extract_json(response.content),
+                "response": json_res,
                 "raw": response.content,
                 "agent": self.name
             }

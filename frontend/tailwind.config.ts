@@ -33,6 +33,10 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
+        brand: {
+          DEFAULT: "hsl(var(--brand))",
+          foreground: "hsl(var(--brand-foreground))",
+        },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
@@ -57,11 +61,25 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        dark: {
-          primary: "#09090b",   // zinc-950
-          secondary: "#18181b", // zinc-900
-          200: "#27272a",       // zinc-800
-          300: "#3f3f46",       // zinc-700
+        // Earthy palette for direct use
+        forest: {
+          50: "#f0f7f0",
+          100: "#dbeadb",
+          500: "#254F22", // Primary green
+          900: "#0d1a0c",  // Dark mode bg
+        },
+        rust: {
+          500: "#A03A13", // Destructive
+          600: "#8b3011",
+        },
+        orange: {
+          DEFAULT: "#F5824A", // Brand
+          500: "#F5824A",
+        },
+        cream: {
+          DEFAULT: "#EDE4C2", // Backgrounds
+          100: "#f5f1e6",
+          200: "#EDE4C2",
         },
       },
       borderRadius: {

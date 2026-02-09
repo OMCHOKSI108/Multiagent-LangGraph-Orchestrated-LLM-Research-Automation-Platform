@@ -195,9 +195,168 @@ DOMAIN_TEMPLATES: dict[str, DomainTemplate] = {
             "conclusion": "Summary, contributions, future directions. 200-300 words.",
             "references": "List all cited sources."
         }
+    },
+
+    "ieee_conference": {
+        "name": "IEEE Conference Paper",
+        "sections": [
+            "abstract",
+            "introduction",
+            "related_work",
+            "methodology",
+            "experiments",
+            "results_discussion",
+            "conclusion",
+            "references"
+        ],
+        "style": "technical",
+        "math_heavy": True,
+        "citation_style": "ieee",
+        "latex_class": "IEEEtran",
+        "latex_preamble": r"""\documentclass[conference,letterpaper]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{fixltx2e}
+\usepackage{gensymb}
+\usepackage{todonotes}
+\usepackage{url}
+\hyphenation{op-tical net-works semi-conduc-tor top-ology}
+""",
+        "section_prompts": {
+            "abstract": "Concise summary of problem, method, and results. 150-250 words. No citations.",
+            "introduction": "Problem context, motivation, contributions. 400-500 words.",
+            "related_work": "Brief review of relevant prior work. 300-400 words.",
+            "methodology": "Technical details, algorithms, system model. 500-700 words.",
+            "experiments": "Setup, datasets, baselines. 300-400 words.",
+            "results_discussion": "Performance analysis, comparison. 400-600 words.",
+            "conclusion": "Summary and future work. 150-200 words.",
+            "references": "Strict IEEE format citations."
+        }
+    },
+
+    "comprehensive_report": {
+        "name": "Comprehensive Research Report",
+        "sections": [
+            "abstract",
+            "introduction",
+            "pipeline_architecture",
+            "data_processing",
+            "mathematical_foundations",
+            "exploratory_analysis",
+            "model_development",
+            "results_discussion",
+            "deployment",
+            "conclusion",
+            "references"
+        ],
+        "style": "detailed",
+        "math_heavy": True,
+        "citation_style": "ieee",
+        "latex_class": "article",
+        "latex_preamble": r"""\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{geometry}
+\geometry{margin=0.9in}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{amsmath, amssymb}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{pgffor}
+\usepackage{siunitx}
+\graphicspath{{fig/}}
+\newcommand{\plotfigure}[3]{
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{#1}
+    \caption{#2}
+    \label{#3}
+  \end{figure}
+}
+""",
+        "section_prompts": {
+            "abstract": "Comprehensive summary of the entire project. 250-350 words.",
+            "introduction": "Context, problem statement, business impact, objectives. 600-800 words.",
+            "pipeline_architecture": "Detailed system flow, diagrams, steps. 400-600 words.",
+            "data_processing": "Data loading, cleaning, feature engineering logic. 500-700 words.",
+            "mathematical_foundations": "Theoretical background of models/algorithms used. 600-900 words.",
+            "exploratory_analysis": "Key insights from data distributions and correlations. 500-700 words.",
+            "model_development": "Training process, hyperparameter tuning, model selection. 500-700 words.",
+            "results_discussion": "Performance metrics, comparison tables, error analysis. 600-900 words.",
+            "deployment": "Implementation details, API, production considerations. 300-500 words.",
+            "conclusion": "Final thoughts, limitations, future work. 300-400 words.",
+            "references": "Detailed bibliography."
+        }
+    },
+    
+    "ieee_conference": {
+        "name": "IEEE Conference Paper",
+        "sections": [
+            "abstract",
+            "introduction",
+            "related_work",
+            "methodology",
+            "experiments",
+            "results_discussion",
+            "conclusion",
+            "references"
+        ],
+        "style": "technical",
+        "math_heavy": True,
+        "citation_style": "ieee",
+        "latex_class": "IEEEtran",
+        "section_prompts": {
+            "abstract": "Concise summary of problem, method, and results. 150-250 words. No citations.",
+            "introduction": "Problem context, motivation, contributions. 400-500 words.",
+            "related_work": "Brief review of relevant prior work. 300-400 words.",
+            "methodology": "Technical details, algorithms, system model. 500-700 words.",
+            "experiments": "Setup, datasets, baselines. 300-400 words.",
+            "results_discussion": "Performance analysis, comparison. 400-600 words.",
+            "conclusion": "Summary and future work. 150-200 words.",
+            "references": "Strict IEEE format citations."
+        }
+    },
+
+    "comprehensive_report": {
+        "name": "Comprehensive Research Report",
+        "sections": [
+            "abstract",
+            "introduction",
+            "pipeline_architecture",
+            "data_processing",
+            "mathematical_foundations",
+            "exploratory_analysis",
+            "model_development",
+            "results_discussion",
+            "deployment",
+            "conclusion",
+            "references"
+        ],
+        "style": "detailed",
+        "math_heavy": True,
+        "citation_style": "ieee",
+        "latex_class": "article",
+        "section_prompts": {
+            "abstract": "Comprehensive summary of the entire project. 250-350 words.",
+            "introduction": "Context, problem statement, business impact, objectives. 600-800 words.",
+            "pipeline_architecture": "Detailed system flow, diagrams, steps. 400-600 words.",
+            "data_processing": "Data loading, cleaning, feature engineering logic. 500-700 words.",
+            "mathematical_foundations": "Theoretical background of models/algorithms used. 600-900 words.",
+            "exploratory_analysis": "Key insights from data distributions and correlations. 500-700 words.",
+            "model_development": "Training process, hyperparameter tuning, model selection. 500-700 words.",
+            "results_discussion": "Performance metrics, comparison tables, error analysis. 600-900 words.",
+            "deployment": "Implementation details, API, production considerations. 300-500 words.",
+            "conclusion": "Final thoughts, limitations, future work. 300-400 words.",
+            "references": "Detailed bibliography."
+        }
     }
 }
-
 # ============================================
 # DOMAIN DETECTION KEYWORDS
 # ============================================
@@ -231,38 +390,59 @@ DOMAIN_KEYWORDS = {
         "system design", "architecture", "implementation", "deployment",
         "scalability", "performance", "latency", "throughput", "efficiency",
         "circuit", "hardware", "software", "embedded", "iot", "sensor"
+    ],
+    "ieee_conference": [
+        "ieee", "conference", "transactions", "proceedings", "symposium"
+    ],
+    "comprehensive_report": [
+        "detailed report", "comprehensive analysis", "full project", "end-to-end", "case study"
     ]
 }
 
 
+# ============================================
+# HELPER FUNCTIONS
+# ============================================
+
 def detect_domain(task: str, findings: dict) -> DomainType:
     """
-    Detect the most likely academic domain based on task and findings.
-    Returns one of: cs_ai, biology, physics, social_sciences, engineering, general
+    Detect the most appropriate academic domain based on task and findings.
+    
+    Args:
+        task: The research task description
+        findings: Dictionary of research findings from previous agents
+        
+    Returns:
+        DomainType: The detected domain key (e.g., 'cs_ai', 'ieee_conference')
     """
     # Combine all text for analysis
-    text_parts = [task.lower()]
+    combined_text = task.lower()
     
+    # Add findings text
     for key, value in findings.items():
-        if key.startswith("_"):
-            continue
-        if isinstance(value, dict):
+        if isinstance(value, str):
+            combined_text += " " + value.lower()
+        elif isinstance(value, dict):
             for v in value.values():
                 if isinstance(v, str):
-                    text_parts.append(v.lower()[:1000])
-        elif isinstance(value, str):
-            text_parts.append(value.lower()[:1000])
+                    combined_text += " " + v.lower()
     
-    combined_text = " ".join(text_parts)
-    
-    # Score each domain by keyword matches
+    # Score each domain based on keyword matches
     scores = {}
     for domain, keywords in DOMAIN_KEYWORDS.items():
-        score = sum(1 for kw in keywords if kw in combined_text)
+        score = 0
+        for keyword in keywords:
+            if keyword.lower() in combined_text:
+                score += 1
         scores[domain] = score
     
-    # Return domain with highest score, defaulting to general
+    # Find best matching domain
+    if not scores:
+        return "general"
+    
     best_domain = max(scores, key=scores.get)
+    
+    # Require minimum score threshold
     if scores[best_domain] < 2:
         return "general"
     
@@ -270,5 +450,13 @@ def detect_domain(task: str, findings: dict) -> DomainType:
 
 
 def get_template(domain: DomainType) -> DomainTemplate:
-    """Get the template for a specific domain."""
+    """
+    Get the template configuration for a specific domain.
+    
+    Args:
+        domain: The domain key to retrieve template for
+        
+    Returns:
+        DomainTemplate: The template configuration dictionary
+    """
     return DOMAIN_TEMPLATES.get(domain, DOMAIN_TEMPLATES["general"])

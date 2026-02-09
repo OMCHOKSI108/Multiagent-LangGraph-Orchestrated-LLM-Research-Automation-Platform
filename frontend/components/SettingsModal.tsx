@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useResearchStore } from '../store';
-import { X, User, Key, BarChart3, Check, AlertTriangle, Loader2, LogOut, Brain } from 'lucide-react';
+import { X, User, Key, BarChart3, Check, AlertTriangle, Loader2, LogOut, Brain, BookOpen, ExternalLink, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { UsageChart } from './UsageChart';
 import { MemoryPanel } from './MemoryPanel';
@@ -18,7 +18,7 @@ export const SettingsModal = () => {
         updatePassword
     } = useResearchStore();
 
-    const [activeTab, setActiveTab] = useState<'profile' | 'api' | 'usage' | 'memory'>('profile');
+    const [activeTab, setActiveTab] = useState<'profile' | 'api' | 'usage' | 'memory' | 'docs'>('profile');
     const modalRef = useRef<HTMLDivElement>(null);
 
     // Handle Escape key and body scroll lock
@@ -87,6 +87,12 @@ export const SettingsModal = () => {
                             icon={Brain}
                             label="Memory"
                         />
+                        <NavButton
+                            active={activeTab === 'docs'}
+                            onClick={() => setActiveTab('docs')}
+                            icon={BookOpen}
+                            label="API Docs"
+                        />
                     </div>
                     <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-dark-300">
                         <button
@@ -106,6 +112,7 @@ export const SettingsModal = () => {
                             {activeTab === 'api' && 'API Configuration'}
                             {activeTab === 'usage' && 'Usage Analytics'}
                             {activeTab === 'memory' && 'Memory'}
+                            {activeTab === 'docs' && 'API Documentation'}
                         </h3>
                         <button
                             onClick={closeSettings}
@@ -144,6 +151,7 @@ export const SettingsModal = () => {
                                 <MemoryPanel />
                             </div>
                         )}
+                        {activeTab === 'docs' && <ApiDocsSettings />}
                     </div>
                 </div>
             </div>
@@ -394,6 +402,96 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                     <Check className="w-4 h-4" />
                     Save Configuration
                 </button>
+            </div>
+        </div>
+    );
+};
+
+const ApiDocsSettings = () => {
+    const [copied, setCopied] = useState(false);
+    const apiKey = localStorage.getItem('dre_api_key') || '';
+
+    const copyKey = () => {
+        if (apiKey) {
+            navigator.clipboard.writeText(apiKey);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl space-y-8">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800 p-6 rounded-xl">
+                <h4 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Interactive API Documentation</h4>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                    Explore all available endpoints with Swagger UI. Test requests directly from your browser.
+                </p>
+                <div className="flex gap-3">
+                    <a
+                        href="http://localhost:8000/docs"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                        Open Swagger UI (AI Engine)
+                    </a>
+                    <a
+                        href="http://localhost:5000/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                        Backend API Status
+                    </a>
+                </div>
+            </div>
+
+            {/* Personal Access Token */}
+            {apiKey && (
+                <div className="p-5 border border-zinc-200 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
+                    <div className="flex items-center justify-between mb-3">
+                        <div>
+                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your API Key</h4>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Use this key in the <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">x-api-key</code> header or <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">api_key</code> body param</p>
+                        </div>
+                        <button
+                            onClick={copyKey}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                        >
+                            {copied ? <><Check className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                        </button>
+                    </div>
+                    <div className="bg-zinc-900 dark:bg-zinc-800 rounded-lg p-3 font-mono text-xs text-green-400 break-all select-all">
+                        {apiKey}
+                    </div>
+                </div>
+            )}
+
+            {/* Quick Reference */}
+            <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-dark-300 pb-2">Quick Reference</h4>
+                <div className="space-y-3">
+                    {[
+                        { method: 'POST', path: '/auth/login', desc: 'Authenticate & get JWT token' },
+                        { method: 'POST', path: '/research/start', desc: 'Start a new research job' },
+                        { method: 'GET', path: '/research/status/:id', desc: 'Check research status' },
+                        { method: 'GET', path: '/events/stream/:id', desc: 'SSE real-time events' },
+                        { method: 'POST', path: '/chat/stream', desc: 'Streaming chat with AI' },
+                        { method: 'GET', path: '/export/:id/markdown', desc: 'Export as Markdown' },
+                        { method: 'GET', path: '/export/:id/pdf', desc: 'Export as PDF' },
+                        { method: 'GET', path: '/export/:id/zip', desc: 'Export all as ZIP' },
+                    ].map((ep, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-dark-200 transition-colors">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+                                ep.method === 'GET' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            }`}>{ep.method}</span>
+                            <code className="text-xs font-mono text-zinc-700 dark:text-zinc-300">{ep.path}</code>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">{ep.desc}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

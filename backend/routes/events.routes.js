@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const logger = require('../utils/logger');
+const auth = require('../middleware/auth');
 
 /**
  * Server-Sent Events (SSE) endpoint for real-time execution updates.
@@ -10,7 +11,7 @@ const logger = require('../utils/logger');
  * 
  * Returns a continuous stream of execution events for the given research.
  */
-router.get('/stream/:research_id', async (req, res) => {
+router.get('/stream/:research_id', auth, async (req, res) => {
     const { research_id } = req.params;
 
     // Set SSE headers
@@ -119,7 +120,7 @@ router.get('/stream/:research_id', async (req, res) => {
  * 
  * GET /events/:research_id
  */
-router.get('/:research_id', async (req, res) => {
+router.get('/:research_id', auth, async (req, res) => {
     try {
         const { research_id } = req.params;
 

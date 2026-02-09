@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResearchStore } from '../store';
-import { Sparkles, ArrowRight, Zap, Clock, Search, Settings } from 'lucide-react';
+import { Sparkles, ArrowRight, Zap, Clock, Search, Settings, Loader2, Trash2, CheckCircle2, AlertCircle, Timer } from 'lucide-react';
 import { AnimatedBackground } from '../components/AnimatedBackground';
+import { JobStatus } from '../types';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { createResearch, user, logout, openSettings } = useResearchStore();
+  const { createResearch, user, logout, openSettings, researches, fetchResearches, deleteResearch, loadingList } = useResearchStore();
   const [topic, setTopic] = useState('');
-  const [depth, setDepth] = useState<'quick' | 'deep'>('quick');
+  const [depth] = useState<'quick' | 'deep'>('deep'); // Default to deep research
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchResearches();
+  }, [fetchResearches]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,69 +125,23 @@ export const Dashboard = () => {
                 )}
               </div>
 
-              {/* Research Depth Selection */}
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setDepth('quick')}
-                  className={`flex-1 flex items-center gap-3 p-4 rounded-xl backdrop-blur-xl border transition-all ${
-                    depth === 'quick'
-                      ? 'bg-white/40 dark:bg-white/10 border-blue-500/50 ring-1 ring-blue-500/30'
-                      : 'bg-white/20 dark:bg-black/20 border-white/20 dark:border-white/10 hover:bg-white/30 dark:hover:bg-white/15'
-                  }`}
-                  disabled={isSubmitting}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    depth === 'quick'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
-                  }`}>
-                    <Zap className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">Quick Scan</div>
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400">~2 min • High level</div>
-                  </div>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => setDepth('deep')}
-                  className={`flex-1 flex items-center gap-3 p-4 rounded-xl backdrop-blur-xl border transition-all ${
-                    depth === 'deep'
-                      ? 'bg-white/40 dark:bg-white/10 border-blue-500/50 ring-1 ring-blue-500/30'
-                      : 'bg-white/20 dark:bg-black/20 border-white/20 dark:border-white/10 hover:bg-white/30 dark:hover:bg-white/15'
-                  }`}
-                  disabled={isSubmitting}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    depth === 'deep'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
-                  }`}>
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-sm font-medium text-zinc-900 dark:text-white">Deep Dive</div>
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400">~10 min • Comprehensive</div>
-                  </div>
-                </button>
-              </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={!topic || isSubmitting}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 backdrop-blur-xl"
+                className="w-full bg-gradient-to-r from-primary to-brand-orange hover:from-primary/90 hover:to-brand-orange/90 text-white font-medium py-6 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 backdrop-blur-xl text-lg"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Starting Research...
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Starting Deep Research...
                   </>
                 ) : (
                   <>
-                    Start Research
+                    <Search className="w-5 h-5" />
+                    Start Deep Research
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
@@ -190,6 +149,61 @@ export const Dashboard = () => {
             </form>
           </div>
         </div>
+
+        {/* Recent Research History */}
+        {researches.length > 0 && (
+          <div className="w-full max-w-2xl mt-12 z-10">
+            <h2 className="text-lg font-medium text-zinc-700 dark:text-zinc-300 mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Recent Research
+            </h2>
+            <div className="space-y-2">
+              {loadingList && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+                </div>
+              )}
+              {researches.slice(0, 8).map((job) => (
+                <div
+                  key={job.id}
+                  className="group flex items-center justify-between bg-white/40 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-xl p-4 cursor-pointer hover:bg-white/60 dark:hover:bg-black/40 transition-all"
+                  onClick={() => navigate(`/research/${job.id}`)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      job.status === JobStatus.COMPLETED ? 'bg-emerald-500' :
+                      job.status === JobStatus.PROCESSING ? 'bg-amber-500 animate-pulse' :
+                      job.status === JobStatus.FAILED ? 'bg-red-500' :
+                      'bg-zinc-300'
+                    }`} />
+                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                      {job.topic}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 ml-4">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      job.status === JobStatus.COMPLETED ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      job.status === JobStatus.PROCESSING ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                      job.status === JobStatus.FAILED ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                    }`}>
+                      {job.status}
+                    </span>
+                    <button
+                      className="p-1.5 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Delete this research?')) deleteResearch(job.id);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="mt-16 text-center">

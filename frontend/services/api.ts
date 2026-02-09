@@ -19,11 +19,26 @@ class ApiService {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      const errorText = await response.text().catch(() => '');
+      let error: { error?: string } = { error: 'Request failed' };
+      try {
+        error = errorText ? JSON.parse(errorText) : error;
+      } catch {
+        // ignore parse error, use fallback
+      }
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return response.json();
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      return undefined as T;
+    }
+
+    return JSON.parse(text) as T;
   }
 
   // =====================
@@ -150,7 +165,9 @@ class ApiService {
     onEvent: (data: any) => void,
     onError?: (error: Event) => void
   ): EventSource {
-    const eventSource = new EventSource(`${BASE_URL}/events/stream/${researchId}`);
+    const token = localStorage.getItem('dre_token');
+    const url = `${BASE_URL}/events/stream/${researchId}${token ? `?token=${token}` : ''}`;
+    const eventSource = new EventSource(url);
 
     eventSource.onmessage = (e) => {
       try {
@@ -279,11 +296,58 @@ class ApiService {
     URL.revokeObjectURL(url);
   }
 
+  async exportZip(researchId: string): Promise<void> {
+    const token = localStorage.getItem('dre_token');
+    const response = await fetch(`${BASE_URL}/export/${researchId}/zip`, {
+      headers: token ? { 'x-auth-token': token } : {},
+    });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `research_${researchId}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async exportPlots(researchId: string): Promise<void> {
+    const token = localStorage.getItem('dre_token');
+    const response = await fetch(`${BASE_URL}/export/${researchId}/plots`, {
+      headers: token ? { 'x-auth-token': token } : {},
+    });
+    if (!response.ok) throw new Error('Export failed');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `research_${researchId}_plots.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Share research publicly
+  async shareResearch(researchId: string): Promise<{ shareToken: string; shareUrl: string }> {
+    const response = await this.request<{ shareToken: string; shareUrl: string }>(
+      `/research/${researchId}/share`,
+      { method: 'POST' }
+    );
+    return response;
+  }
+
+  async getSharedResearch(token: string): Promise<any> {
+    const response = await fetch(`${BASE_URL}/research/shared/${token}`);
+    if (!response.ok) {
+      throw new Error(response.status === 404 ? 'Research not found' : 'Failed to load research');
+    }
+    return response.json();
+  }
+
   // =====================
   // STREAMING CHAT
   // =====================
 
-  async streamChat(researchId: string, message: string, sessionId?: string): Promise<Response> {
+  async streamChat(researchId: string, message: string, sessionId?: string, signal?: AbortSignal): Promise<Response> {
     const apiKey = await this.getOrCreateApiKey();
     const token = localStorage.getItem('dre_token');
 
@@ -299,6 +363,7 @@ class ApiService {
         api_key: apiKey,
         session_id: sessionId,
       }),
+      signal,
     });
   }
 

@@ -1,5 +1,7 @@
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
+from utils.providers import ImageSearchProvider
+from utils.image_downloader import download_image
 
 class VisualizationAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -42,10 +44,7 @@ class VisualizationAgent(BaseAgent):
             
             # --- AI Image Search & Download ---
             try:
-                # 1. Google Image Search (Real Images)
-                from utils.providers import ImageSearchProvider
-                from utils.image_downloader import download_image
-                
+                # Imports at module top
                 img_search = ImageSearchProvider()
                 
                 image_urls = []

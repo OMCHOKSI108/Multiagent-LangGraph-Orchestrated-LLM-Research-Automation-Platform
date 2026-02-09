@@ -1,0 +1,191 @@
+================================================================================
+                        AI ENGINE - AGENT INVENTORY
+================================================================================
+
+TOTAL AGENTS: 27
+
+================================================================================
+                              AGENT DETAILS
+================================================================================
+
+1. OrchestratorAgent (orchestrator)
+   Role: Multi-Agent Orchestrator
+   What it does: Decomposes tasks, assigns roles to other agents (Scraper, 
+   Verifier, Writer, Editor), defines IO contracts, and manages parallel 
+   execution without conflicts.
+
+--------------------------------------------------------------------------------
+
+2. DataScraperAgent (data_scraper)
+   Role: Data Reliability Engineer
+   What it does: Scrapes web data from PDFs, web pages, Arxiv, Wikipedia, 
+   and Google. Converts to Markdown and validates sources with confidence scores.
+
+--------------------------------------------------------------------------------
+
+3. NewsAgent (news)
+   Role: Current Events Gatherer
+   What it does: Gathers current news and events related to a research topic.
+
+--------------------------------------------------------------------------------
+
+4. ScoringAgent (scoring)
+   Role: Source Quality Evaluator
+   What it does: Scores the relevance and quality of scraped sources.
+
+--------------------------------------------------------------------------------
+
+5. DomainIntelligenceAgent (domain_intelligence)
+   Role: Domain Knowledge Gatherer
+   What it does: Gathers domain-specific knowledge and identifies key research areas.
+
+--------------------------------------------------------------------------------
+
+6. HistoricalReviewAgent (historical_review)
+   Role: Historical Context Analyzer
+   What it does: Analyzes the historical evolution of a research topic.
+
+--------------------------------------------------------------------------------
+
+7. SystematicLiteratureReviewAgent (slr)
+   Role: Systematic Reviewer
+   What it does: Conducts systematic literature reviews following PRISMA guidelines.
+
+--------------------------------------------------------------------------------
+
+8. SurveyMetaAnalysisAgent (survey_meta_analysis)
+   Role: Survey Analyst
+   What it does: Performs meta-analysis of survey papers and aggregates findings.
+
+--------------------------------------------------------------------------------
+
+9. GapSynthesisAgent (gap_synthesis)
+   Role: Research Gap Finder
+   What it does: Synthesizes research gaps from literature findings.
+
+--------------------------------------------------------------------------------
+
+10. ResearchQuestionEngineeringAgent (research_question)
+    Role: Question Formulator
+    What it does: Formulates rigorous research questions based on identified gaps.
+
+--------------------------------------------------------------------------------
+
+11. ConceptualFrameworkAgent (conceptual_framework)
+    Role: Framework Designer
+    What it does: Designs conceptual frameworks for research studies.
+
+--------------------------------------------------------------------------------
+
+12. InnovationNoveltyAgent (innovation_novelty)
+    Role: Novelty Evaluator
+    What it does: Evaluates the novelty and innovation level of research contributions.
+
+--------------------------------------------------------------------------------
+
+13. BaselineReproductionAgent (baseline_reproduction)
+    Role: Baseline Reproducer
+    What it does: Reproduces baseline results for validation.
+
+--------------------------------------------------------------------------------
+
+14. ValidationRobustnessAgent (validation_robustness)
+    Role: Robustness Tester
+    What it does: Tests the robustness of experimental results.
+
+--------------------------------------------------------------------------------
+
+15. PaperDecompositionAgent (paper_decomposition)
+    Role: Paper Analyzer
+    What it does: Breaks down a research paper into its core components 
+    (abstract, methodology, results).
+
+--------------------------------------------------------------------------------
+
+16. PaperUnderstandingAgent (paper_understanding)
+    Role: Paper Comprehender
+    What it does: Provides deep comprehension and summarization of research papers.
+
+--------------------------------------------------------------------------------
+
+17. TechnicalVerificationAgent (technical_verification)
+    Role: Technical Verifier
+    What it does: Verifies the technical correctness of claims in a paper.
+
+--------------------------------------------------------------------------------
+
+18. DataSourceValidationAgent (data_source_validation)
+    Role: Source Validator
+    What it does: Validates the authenticity and reliability of data sources.
+
+--------------------------------------------------------------------------------
+
+19. ReproducibilityReasoningAgent (reproducibility_reasoning)
+    Role: Reproducibility Assessor
+    What it does: Assesses the reproducibility of experiments described in a paper.
+
+--------------------------------------------------------------------------------
+
+20. InteractivePaperChatbotAgent (interactive_chatbot)
+    Role: Paper Q&A Bot
+    What it does: Provides an interactive Q&A interface for a specific paper.
+
+--------------------------------------------------------------------------------
+
+21. ReviewerStyleCritiqueAgent (reviewer_style_critique)
+    Role: Peer Reviewer
+    What it does: Provides feedback in the style of a peer reviewer.
+
+--------------------------------------------------------------------------------
+
+22. MemoryKnowledgeGraphAgent (memory_graph)
+    Role: Knowledge Graph Builder
+    What it does: Builds and queries a knowledge graph from research findings.
+
+--------------------------------------------------------------------------------
+
+23. CitationGraphAnalysisAgent (citation_analysis)
+    Role: Citation Network Analyzer
+    What it does: Analyzes citation networks and relationships between papers.
+
+--------------------------------------------------------------------------------
+
+24. ScientificWritingAgent (scientific_writing)
+    Role: Senior NLP Research Scientist
+    What it does: Writes rigorous academic reports with BibTeX-ready citations.
+
+--------------------------------------------------------------------------------
+
+25. LaTeXGenerationAgent (latex_generation)
+    Role: LaTeX Patch Engineer
+    What it does: Converts Markdown to LaTeX using domain templates. 
+    Supports full generation and diff-based patching.
+
+--------------------------------------------------------------------------------
+
+26. MultiStageReportAgent (multi_stage_report)
+    Role: Report Orchestrator
+    What it does: Orchestrates multi-stage report generation with domain-aware sections.
+
+--------------------------------------------------------------------------------
+
+27. ReviewerAdversarialCritiqueAgent (adversarial_critique)
+    Role: Adversarial Critic
+    What it does: Provides adversarial critique to identify weaknesses.
+
+--------------------------------------------------------------------------------
+
+28. HallucinationDetectionAgent (hallucination_detection)
+    Role: Hallucination Prevention Guard
+    What it does: Detects and flags fabricated claims that lack source support.
+
+--------------------------------------------------------------------------------
+
+29. VisualizationAgent (visualization)
+    Role: Data Visualization Expert
+    What it does: Generates Mermaid.js diagrams, AI image prompts, and 
+    searches/downloads images from Google.
+
+================================================================================
+                              END OF INVENTORY
+================================================================================

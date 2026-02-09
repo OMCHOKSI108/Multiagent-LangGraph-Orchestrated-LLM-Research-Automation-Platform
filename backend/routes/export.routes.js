@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const logger = require('../utils/logger');
 const { marked } = require('marked');
+const archiver = require('archiver');
 
 /**
  * Export research result as Markdown.
@@ -209,6 +210,164 @@ ${content}
     } catch (err) {
         logger.error(`[Export] LaTeX error: ${err.message}`);
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * Export research as ZIP bundle (markdown + latex + plots).
+ *
+ * GET /export/:id/zip
+ */
+router.get('/:id/zip', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await db.query(
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Research not found' });
+        }
+
+        const { result_json, task, title } = result.rows[0];
+        if (!result_json) {
+            return res.status(400).json({ error: 'Research not yet completed' });
+        }
+
+        const rj = result_json;
+        const researchTitle = title || task || 'research';
+
+        // Set ZIP headers
+        const filename = `research_${id}.zip`;
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        archive.on('error', (err) => { throw err; });
+        archive.pipe(res);
+
+        // Add Markdown
+        let markdown = '';
+        if (rj.multi_stage_report && rj.multi_stage_report.markdown_report) {
+            markdown = rj.multi_stage_report.markdown_report;
+        } else if (rj.scientific_writing && rj.scientific_writing.markdown_report) {
+            markdown = rj.scientific_writing.markdown_report;
+        } else if (rj.scientific_writing && rj.scientific_writing.response) {
+            markdown = rj.scientific_writing.response;
+        } else {
+            markdown = `# ${researchTitle}\n\n${JSON.stringify(rj, null, 2)}`;
+        }
+        archive.append(markdown, { name: `${researchTitle}.md` });
+
+        // Add LaTeX
+        let latex = '';
+        if (rj.multi_stage_report && rj.multi_stage_report.latex_source) {
+            latex = rj.multi_stage_report.latex_source;
+        } else if (rj.latex_generation && rj.latex_generation.latex_source) {
+            latex = rj.latex_generation.latex_source;
+        }
+        if (latex) {
+            archive.append(latex, { name: `${researchTitle}.tex` });
+        }
+
+        // Add raw JSON
+        archive.append(JSON.stringify(rj, null, 2), { name: 'raw_results.json' });
+
+        // Add Mermaid diagrams as separate files
+        const viz = rj.final_state?.findings?.visualization?.response || rj.visualization || {};
+        let diagramCount = 0;
+        if (viz.timeline_mermaid) {
+            archive.append(viz.timeline_mermaid, { name: `diagrams/timeline.mmd` });
+            diagramCount++;
+        }
+        if (viz.methodology_mermaid) {
+            archive.append(viz.methodology_mermaid, { name: `diagrams/methodology.mmd` });
+            diagramCount++;
+        }
+        if (viz.data_chart_mermaid) {
+            archive.append(viz.data_chart_mermaid, { name: `diagrams/data_chart.mmd` });
+            diagramCount++;
+        }
+
+        await archive.finalize();
+
+    } catch (err) {
+        logger.error(`[Export] ZIP error: ${err.message}`);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+});
+
+/**
+ * Export only plots/diagrams as ZIP.
+ *
+ * GET /export/:id/plots
+ */
+router.get('/:id/plots', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await db.query(
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Research not found' });
+        }
+
+        const { result_json, task, title } = result.rows[0];
+        if (!result_json) {
+            return res.status(400).json({ error: 'Research not yet completed' });
+        }
+
+        const rj = result_json;
+
+        const filename = `research_${id}_plots.zip`;
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        archive.on('error', (err) => { throw err; });
+        archive.pipe(res);
+
+        const viz = rj.final_state?.findings?.visualization?.response || rj.visualization || {};
+        let hasContent = false;
+
+        if (viz.timeline_mermaid) {
+            archive.append(viz.timeline_mermaid, { name: 'timeline.mmd' });
+            hasContent = true;
+        }
+        if (viz.methodology_mermaid) {
+            archive.append(viz.methodology_mermaid, { name: 'methodology.mmd' });
+            hasContent = true;
+        }
+        if (viz.data_chart_mermaid) {
+            archive.append(viz.data_chart_mermaid, { name: 'data_chart.mmd' });
+            hasContent = true;
+        }
+
+        // Include a summary of image URLs if present
+        if (viz.image_urls && Array.isArray(viz.image_urls) && viz.image_urls.length > 0) {
+            const urlList = viz.image_urls.join('\n');
+            archive.append(urlList, { name: 'image_urls.txt' });
+            hasContent = true;
+        }
+
+        if (!hasContent) {
+            archive.append('No diagrams or plots were generated for this research.', { name: 'README.txt' });
+        }
+
+        await archive.finalize();
+
+    } catch (err) {
+        logger.error(`[Export] Plots ZIP error: ${err.message}`);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Server error' });
+        }
     }
 });
 

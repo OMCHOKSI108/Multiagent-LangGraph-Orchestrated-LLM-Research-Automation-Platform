@@ -181,10 +181,41 @@ class BaseAgent:
         result = {**core, "findings": truncated_findings}
         return json.dumps(result)
 
+    def _compute_hash(self, text: str) -> str:
+        import hashlib
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _get_cache_path(self, hash_key: str) -> str:
+        import os
+        cache_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        return os.path.join(cache_dir, f"{hash_key}.json")
+
+    def _get_from_cache(self, hash_key: str) -> Optional[Dict[str, Any]]:
+        import os
+        import json
+        cache_path = self._get_cache_path(hash_key)
+        if os.path.exists(cache_path):
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"[{self.name}] Cache read failed: {e}")
+        return None
+
+    def _save_to_cache(self, hash_key: str, data: Dict[str, Any]):
+        import json
+        cache_path = self._get_cache_path(hash_key)
+        try:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            logger.warning(f"[{self.name}] Cache write failed: {e}")
+
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Executes the agent and returns a parsed JSON dictionary.
-        Includes token limiting, timing, and proper error handling.
+        Includes token limiting, timing, proper error handling, and deterministic caching.
         """
         job_id = state.get("_job_id", "?")
         research_id = int(job_id) if str(job_id).isdigit() else None
@@ -200,6 +231,19 @@ class BaseAgent:
         context_tokens = self._estimate_tokens(context)
         logger.debug(f"[{self.name}] Context tokens: ~{context_tokens}")
         
+        # Deterministic Caching
+        # Hash includes system prompt, model, and context (input)
+        input_signature = f"{self.system_prompt}:{self.model_name}:{context}"
+        input_hash = self._compute_hash(input_signature)
+        
+        cached_result = self._get_from_cache(input_hash)
+        if cached_result:
+            logger.info(f"[{self.name}] Cache HIT. Hash: {input_hash[:8]}")
+            emit_agent_complete(self.name, 0, success=True, research_id=research_id)
+            return cached_result
+
+        logger.info(f"[{self.name}] Cache MISS. Hash: {input_hash[:8]}")
+
         messages = [
             SystemMessage(content=self.system_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
             HumanMessage(content=context)
@@ -216,6 +260,9 @@ class BaseAgent:
             elapsed_ms = int(elapsed * 1000)
             logger.info(f"[{self.name}] Job #{job_id} - Completed in {elapsed:.2f}s")
             
+            output_hash = self._compute_hash(raw_content)
+            logger.info(f"[{self.name}] Output Hash: {output_hash[:8]}")
+
             # Track token usage
             try:
                 track_agent_usage(
@@ -230,15 +277,23 @@ class BaseAgent:
             except Exception as e:
                 logger.warning(f"[{self.name}] Token tracking failed: {e}")
             
-            # Emit agent complete event
-            emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
-            
-            return {
+            # Prepare result
+            result = {
                 "response": parsed_json,
                 "raw": raw_content,
                 "agent": self.name,
-                "execution_time": elapsed
+                "execution_time": elapsed,
+                "input_hash": input_hash,
+                "output_hash": output_hash
             }
+
+            # Save to Cache
+            self._save_to_cache(input_hash, result)
+
+            # Emit agent complete event
+            emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
+            
+            return result
         except Exception as e:
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)

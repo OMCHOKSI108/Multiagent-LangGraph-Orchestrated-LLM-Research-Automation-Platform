@@ -268,5 +268,13 @@ def get_section_context(
         refs = extract_references(findings)
         if refs:
             parts.append(f"\n[AVAILABLE SOURCES]:\n{refs}")
+            
+    # Add Scoring Insight if available
+    if "scoring" in findings:
+        scoring_val = findings["scoring"]
+        if isinstance(scoring_val, dict):
+            # Extract score summary
+            avg_score = scoring_val.get("average_relevance", scoring_val.get("response", {}).get("average_relevance", "N/A"))
+            parts.append(f"\n[QUALITY METRICS]:\nAverage Source Relevance: {avg_score}\n")
     
     return "\n".join(parts)

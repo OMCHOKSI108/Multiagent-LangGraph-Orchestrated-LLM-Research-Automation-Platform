@@ -8,6 +8,7 @@ import { Workspace } from './pages/Workspace';
 import { Login } from './pages/LoginPage';
 import { Signup } from './pages/SignupPage';
 import { LandingPage } from './pages/LandingPage';
+import { SharedView } from './pages/SharedView';
 import { SettingsModal } from './components/SettingsModal';
 import { useResearchStore } from './store';
 
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/shared/:token" element={<SharedView />} />
 
           {/* Protected Routes wrapped in Sidebar Layout */}
           <Route element={<PrivateRoute><Layout /></PrivateRoute>}>

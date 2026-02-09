@@ -11,6 +11,11 @@ module.exports = function (req, res, next) {
         }
     }
 
+    // Support query param for SSE (EventSource doesn't support headers)
+    if (!token && req.query.token) {
+        token = req.query.token;
+    }
+
     if (!token) {
         return res.status(401).json({ error: 'No token, authorization denied' });
     }

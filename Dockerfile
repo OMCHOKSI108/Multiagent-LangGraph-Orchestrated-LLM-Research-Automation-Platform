@@ -1,53 +1,54 @@
 # Multi-Agent LLM Research Automation Platform
-# Root Dockerfile for complete application
+# Root Dockerfile — monolithic build for single-container deployment
 
-FROM python:3.9-slim
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV NODE_ENV=production
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies including Node.js 20
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    nodejs \
-    npm \
+    build-essential \
     postgresql-client \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Ollama
-RUN curl -fsSL https://ollama.ai/install.sh | sh
 
 # Set work directory
 WORKDIR /app
 
-# Copy Python requirements first for better caching
+# --- Python dependencies ---
 COPY ai_engine/requirements.txt ai_engine/
 RUN pip install --no-cache-dir -r ai_engine/requirements.txt
 
-# Copy Node.js dependencies
+# --- Node.js dependencies ---
 COPY backend/package*.json backend/
 RUN cd backend && npm ci --only=production
 
 COPY frontend/package*.json frontend/
-RUN cd frontend && npm ci --only=production
+RUN cd frontend && npm ci
 
-# Copy source code
+# --- Copy source code ---
 COPY . .
 
-# Build frontend
+# --- Build frontend ---
 RUN cd frontend && npm run build
 
-# Create necessary directories
+# --- Create data directories ---
 RUN mkdir -p data/cache data/uploads logs
 
+# Make startup script executable
+RUN chmod +x scripts/run_all.sh
+
 # Expose ports
-EXPOSE 3000 5000 8000 11434
+EXPOSE 3000 5000 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Start all services
-CMD ["./scripts/run_all.sh"]
+CMD ["bash", "scripts/run_all.sh"]

@@ -1,5 +1,6 @@
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
+import json
 
 class GapSynthesisAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -17,12 +18,21 @@ class GapSynthesisAgent(BaseAgent):
         findings = state.get("findings", {})
         
         context = ""
+        # Improved parsing of structured SLR data
         if "slr" in findings:
-            context += f"\nLiterature Review Findings: {findings['slr']}"
+            slr_data = findings["slr"]
+            if isinstance(slr_data, dict):
+                # Extract specific useful fields if available
+                methodologies = slr_data.get("methodologies_matrix", "Not available")
+                stats = slr_data.get("statistical_trends", "Not available")
+                context += f"\nMethodologies Matrix: {methodologies}\nStatistical Trends: {stats}"
+            else:
+                 context += f"\nLiterature Review Findings: {str(slr_data)[:10000]}"
+                 
         if "domain_intelligence" in findings:
              context += f"\nDomain Concepts: {findings['domain_intelligence']}"
              
-        enhanced_prompt = f"{self.system_prompt}\n\nRESEARCH CONTEXT:\n{context[:15000]}"
+        enhanced_prompt = f"{self.system_prompt}\n\nRESEARCH CONTEXT (Structured):\n{context}"
         
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
@@ -47,6 +57,7 @@ class ResearchQuestionEngineeringAgent(BaseAgent):
             system_prompt="""You are a Research Formulation expert. 
             Formulate precise, measurable, and impactful research questions based on gaps.
             Output JSON with keys: 'primary_research_question', 'sub_questions', 'hypotheses'.
+            Ensure hypotheses are testable.
             """,
             **kwargs
         )
@@ -57,7 +68,11 @@ class ResearchQuestionEngineeringAgent(BaseAgent):
         
         gaps = ""
         if "gap_synthesis" in findings:
-            gaps = str(findings["gap_synthesis"])
+            gaps_json = findings["gap_synthesis"]
+            if isinstance(gaps_json, dict):
+                gaps = f"Gaps: {gaps_json.get('identified_gaps', [])}\nContradictions: {gaps_json.get('contradictions', [])}"
+            else:
+                gaps = str(findings["gap_synthesis"])
             
         enhanced_prompt = f"{self.system_prompt}\n\nIDENTIFIED GAPS:\n{gaps}"
         
@@ -83,7 +98,8 @@ class ConceptualFrameworkAgent(BaseAgent):
             name="ConceptualFramework",
             system_prompt="""You are a Theoretical Physicist/Architect. 
             Design a conceptual framework and flow for the proposed research.
-            Output JSON with keys: 'framework_description', 'variables', 'relationships'.
+            Output JSON with keys: 'framework_description', 'variables', 'relationships', 'mermaid_diagram'.
+            For 'mermaid_diagram', provide valid Mermaid.js graph definition (e.g., 'graph TD; A-->B;').
             """,
             **kwargs
         )

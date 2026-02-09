@@ -58,12 +58,14 @@ interface ResearchStore {
   completedAt: string | null;
   eventSource: EventSource | null;
   chatSessionId: string | null;
+  setCurrentStage: (stage: string) => void;
+  setStartedAt: (iso: string) => void;
 
   // Actions
   fetchResearches: () => Promise<void>;
   createResearch: (topic: string, depth: 'quick' | 'deep') => Promise<string>;
   setActiveJob: (id: string) => Promise<void>;
-  addChatMessage: (content: string, role: 'user' | 'assistant') => void;
+  addChatMessage: (content: string, role: 'user' | 'assistant', signal?: AbortSignal) => Promise<void>;
   renameResearch: (id: string, title: string) => Promise<void>;
   deleteResearch: (id: string) => Promise<void>;
 
@@ -124,29 +126,22 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     completedAt: null,
     eventSource: null,
     chatSessionId: null,
+    setCurrentStage: (stage: string) => {
+      set({ currentStage: stage });
+    },
+    setStartedAt: (iso: string) => {
+      set({ startedAt: iso });
+    },
 
     // Auth Actions
     login: async (email, password) => {
       set({ authError: null });
       try {
-        // Mock login for frontend testing
-        if (email === 'omchoksi99@gmail.com' && password === 'sans') {
-          const mockUser = {
-            id: '1',
-            email: 'omchoksi99@gmail.com',
-            name: 'Test User',
-            username: 'testuser'
-          };
-          const mockToken = 'mock-jwt-token-for-frontend-testing';
-          localStorage.setItem('dre_token', mockToken);
-          set({ user: mockUser, isAuthenticated: true });
-          return;
-        }
-
         const { token, user } = await api.login(email, password);
         localStorage.setItem('dre_token', token);
         set({ user, isAuthenticated: true });
       } catch (err: any) {
+        console.error("Login Error:", err);
         set({ authError: err.message || 'Login failed' });
       }
     },
@@ -154,20 +149,6 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     signup: async (email, password, username) => {
       set({ authError: null });
       try {
-        // Mock signup for frontend testing
-        if (email === 'omchoksi99@gmail.com' && password === 'sans') {
-          const mockUser = {
-            id: '1',
-            email: 'omchoksi99@gmail.com',
-            name: username || 'Test User',
-            username: username || 'testuser'
-          };
-          const mockToken = 'mock-jwt-token-for-frontend-testing';
-          localStorage.setItem('dre_token', mockToken);
-          set({ user: mockUser, isAuthenticated: true });
-          return;
-        }
-
         const { token, user } = await api.signup(email, password, username);
         localStorage.setItem('dre_token', token);
         set({ user, isAuthenticated: true });
@@ -179,7 +160,8 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     logout: () => {
       localStorage.removeItem('dre_token');
       localStorage.removeItem('dre_api_key');
-      set({ user: null, isAuthenticated: false, researches: [], activeJob: null, chatHistory: [] });
+      localStorage.removeItem('dre_api_keys');
+      set({ user: null, isAuthenticated: false, researches: [], activeJob: null, chatHistory: [], chatSessionId: null });
     },
 
     clearAuthError: () => set({ authError: null }),
@@ -240,8 +222,31 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     },
 
     setActiveJob: async (id) => {
-      set({ activeJob: null, chatHistory: [] });
+      set({ activeJob: null, chatHistory: [], chatSessionId: null });
       const job = await api.getResearch(id);
+
+      // Extraction Logic
+      const visResponse = job.result_json?.final_state?.findings?.visualization?.response;
+      if (visResponse) {
+        if (visResponse.images_metadata && Array.isArray(visResponse.images_metadata)) {
+          job.images = visResponse.images_metadata.map((img: any) =>
+            img.local ? `http://localhost:5000/${img.local}` : img.original
+          );
+        } else if (visResponse.image_urls && Array.isArray(visResponse.image_urls)) {
+          job.images = visResponse.image_urls;
+        }
+
+        const diagrams = [];
+        if (visResponse.timeline_mermaid) diagrams.push(visResponse.timeline_mermaid);
+        if (visResponse.methodology_mermaid) diagrams.push(visResponse.methodology_mermaid);
+        if (visResponse.data_chart_mermaid) diagrams.push(visResponse.data_chart_mermaid);
+        job.diagrams = diagrams;
+
+        if (!job.reportMarkdown && job.result_json?.final_state?.findings?.multi_stage_report?.response) {
+          job.reportMarkdown = job.result_json.final_state.findings.multi_stage_report.response;
+        }
+      }
+
       set({
         activeJob: job,
         // Fallback to createdAt if startedAt is missing, enables timer immediately
@@ -261,7 +266,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
       }));
     },
 
-    addChatMessage: async (content, role) => {
+    addChatMessage: async (content, role, signal) => {
       const msg: ChatMessage = {
         id: Math.random().toString(36),
         role,
@@ -286,7 +291,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
         try {
           const sessionId = get().chatSessionId;
-          const response = await api.streamChat(activeJob.id, content, sessionId);
+          const response = await api.streamChat(activeJob.id, content, sessionId, signal);
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -361,7 +366,30 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         }
 
         try {
-          const updatedJob = await api.getResearch(id);
+          let updatedJob = await api.getResearch(id);
+
+          // Extraction Logic (Duplicate of setActiveJob)
+          const visResponse = updatedJob.result_json?.final_state?.findings?.visualization?.response;
+          if (visResponse) {
+            if (visResponse.images_metadata && Array.isArray(visResponse.images_metadata)) {
+              updatedJob.images = visResponse.images_metadata.map((img: any) =>
+                img.local ? `http://localhost:5000/${img.local}` : img.original
+              );
+            } else if (visResponse.image_urls && Array.isArray(visResponse.image_urls)) {
+              updatedJob.images = visResponse.image_urls;
+            }
+
+            const diagrams = [];
+            if (visResponse.timeline_mermaid) diagrams.push(visResponse.timeline_mermaid);
+            if (visResponse.methodology_mermaid) diagrams.push(visResponse.methodology_mermaid);
+            if (visResponse.data_chart_mermaid) diagrams.push(visResponse.data_chart_mermaid);
+            updatedJob.diagrams = diagrams;
+
+            if (!updatedJob.reportMarkdown && updatedJob.result_json?.final_state?.findings?.multi_stage_report?.response) {
+              updatedJob.reportMarkdown = updatedJob.result_json.final_state.findings.multi_stage_report.response;
+            }
+          }
+
           set({ activeJob: updatedJob });
           if (updatedJob.status === JobStatus.COMPLETED || updatedJob.status === JobStatus.FAILED) {
             get().stopPolling();

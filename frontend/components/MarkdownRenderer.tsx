@@ -11,7 +11,7 @@ const getMermaid = async () => {
     mermaidInstance.initialize({
       startOnLoad: false,
       theme: 'neutral',
-      securityLevel: 'loose',
+      securityLevel: 'strict',
       fontFamily: 'Inter',
     });
   }

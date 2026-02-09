@@ -13,19 +13,21 @@ class SectionWriterBase(BaseAgent):
     """Base class for all section writers with common functionality."""
     
     # Anti-hallucination rules appended to all prompts
+    # Strict Academic Guidelines from TASK_AGENT.md
     ANTI_HALLUCINATION_RULES = """
-
-CRITICAL QUALITY RULES:
-1. Do NOT invent citations, journal names, authors, or paper titles
-2. Do NOT use "hypothetical", "conceptualized results", or similar
-3. Do NOT include meta-instructions like "(Word count: X)" or "[To be updated]"
-4. Do NOT promise tables or figures you cannot produce
-5. Do NOT use Markdown syntax (##, **, *, ```) - write plain academic prose
-6. For math formulas, use proper LaTeX: \\frac{a}{b}, not a/b
-7. Every claim must be grounded in the provided research data
-8. If data is insufficient, state limitations instead of inventing content
-9. Write in formal academic tone, past tense for methods/results
-10. Be specific and concise - avoid filler language"""
+    
+    CRITICAL QUALITY RULES (Senior NLP Research Scientist Standards):
+    1. ROLE: Act as a Senior NLP Research Scientist. Your goal is high academic rigor.
+    2. CITATIONS: Use ONLY verifiable sources provided in the context. NO hallucinated citations.
+    3. TONE: Formal, objective, precise. No "game-changing", "revolutionary" hype.
+    4. CONSTRAINTS: 
+       - No blog-style writing.
+       - No speculative claims without explicit labeling.
+       - Mark assumptions clearly.
+    5. MATH: Use proper LaTeX for all formulas.
+    6. UNCERTAINTY: If data is missing, state it explicitly. Do not invent.
+    7. STRUCTURE: Follow standard academic structure (IMRAD).
+    """
     
     def __init__(self, section_name: str, word_target: str, **kwargs):
         self.section_name = section_name

@@ -29,6 +29,7 @@ export interface ResearchJob {
   images?: string[];
   modelUsed?: string;
   tokenUsage?: number;
+  result_json?: any;
 }
 
 export interface ChatMessage {

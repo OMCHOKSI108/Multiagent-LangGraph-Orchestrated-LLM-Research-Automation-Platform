@@ -7,17 +7,33 @@ class DataScraperAgent(BaseAgent):
         # ... (init code) ...
         super().__init__(
             name="DataScraper",
-            system_prompt="""You are an expert Data Collector and Web Scraper.
-            Your job is to gather accurate information from the provided topic or URL.
+            system_prompt="""Your Role: Data Reliability Engineer
             
-            1. If given a URL, determine if it's a PDF or a webpage and extract key info.
-            2. If given a Topic, perform a multi-source search to compile a dataset.
+            Short basic instruction:
+            Scrape web data and validate it for research use.
             
-            Output JSON with keys: 
+            What you should do:
+            - Scrape content from provided URLs.
+            - Convert to Markdown.
+            - Cross-check claims against at least two sources.
+            
+            Your Goal:
+            Provide clean, citation-ready research inputs.
+            
+            Result:
+            - Markdown dataset
+            - Source list
+            - Confidence score per claim
+            
+            Constraint:
+            - No anonymous or unverifiable sources.
+            - Log scraping failures.
+            
+            Output JSON with keys:
             'source_type' (pdf/web/arxiv),
-            'extracted_content_summary', 
-            'key_data_points' (list of facts/stats),
-            'raw_url'
+            'markdown_content',
+            'sources': [{"url": "...", "confidence": 0.0-1.0}],
+            'key_data_points' (list of facts/stats)
             """,
             **kwargs
         )

@@ -4,13 +4,14 @@ import logging
 
 logger = logging.getLogger("ai_engine.orchestrator")
 
-# Fix imports for running in different contexts
 try:
     from ..base import BaseAgent
 except ImportError:
-    # Fallback when running from different path
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    from agents.base import BaseAgent
+    import sys
+    import os
+    # Add parent directory to path to find agents package
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from ai_engine.agents.base import BaseAgent
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -18,18 +19,40 @@ class OrchestratorAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
             name="Orchestrator",
-            system_prompt="""You are the Research Project Manager.
-            Analyze the user's request and decide the optimal research pipeline.
-            
-            Available Pipelines:
-            1. "paper_analysis": If the user provides a specific paper URL or asks to analyze a specific paper.
-            2. "literature_review": If the user asks for a general topic research, survey, or new innovation proposal.
-            
-            Output JSON with keys:
-            'next_step': One of ["paper_analysis", "literature_review"],
-            'plan': A brief explanation of the chosen strategy,
-            'reasoning': Why you chose this path.
-            """,
+            system_prompt="""Your Role: Multi-Agent Orchestrator
+
+ABSOLUTE RULE: EDIT ONLY — DO NOT REDESIGN
+
+Agent Ordering (MUST follow this sequence):
+Scraper → Verifier → Writer → Editor → QA → Compiler
+
+Role Assignments:
+- Scraper: Data collection from ArXiv, IEEE, ACM. NO blogs or unverified sources.
+- Verifier: Source validation. All claims must be verifiable.
+- Writer: Content drafting in Markdown.
+- Editor: LaTeX integration ONLY. Diff-based edits only.
+- QA: Quality assurance before compilation.
+- Compiler: PDF generation after QA passes.
+
+Critical Constraints:
+- Editor is the ONLY agent allowed to modify LaTeX
+- NO parallel LaTeX writes
+- All LaTeX edits MUST be diff-based (no full regeneration)
+- User confirmation required before applying LaTeX edits
+- Preserve labels, refs, and numbering in LaTeX
+
+Output JSON with keys:
+'next_step': One of ["paper_analysis", "literature_review"],
+'plan': "Brief explanation of chosen strategy",
+'reasoning': "Why you chose this path",
+'delegation': {
+    "scraper": "Task description...",
+    "verifier": "Task description...",
+    "writer": "Task description...",
+    "editor": "Task description..."
+},
+'constraints_acknowledged': true
+""",
             **kwargs
         )
 

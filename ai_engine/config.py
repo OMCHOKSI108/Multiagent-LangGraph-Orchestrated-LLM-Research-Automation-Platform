@@ -30,3 +30,36 @@ MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")          # Critique (R
 
 # Common Settings
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", 4096))
+
+# Search Provider Configuration
+SEARCH_PROVIDERS = {
+    "available": [
+        "duckduckgo",
+        "google",
+        "arxiv", 
+        "wikipedia",
+        "openalex",
+        "pubmed"
+    ],
+    "default": [
+        "duckduckgo",
+        "arxiv"
+    ],
+    "descriptions": {
+        "duckduckgo": "General web search with privacy focus",
+        "google": "Google search (requires API key)",
+        "arxiv": "Academic papers and preprints",
+        "wikipedia": "Wikipedia encyclopedia articles",
+        "openalex": "Open access scientific literature", 
+        "pubmed": "Medical and life science literature"
+    },
+    "config": {
+        "google": {
+            "api_key": os.getenv("GOOGLE_SEARCH_API_KEY"),
+            "cx": os.getenv("GOOGLE_SEARCH_CX")
+        },
+        "pubmed": {
+            "email": os.getenv("PUBMED_EMAIL", "research@example.com")
+        }
+    }
+}

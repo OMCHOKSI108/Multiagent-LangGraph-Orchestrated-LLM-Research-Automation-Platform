@@ -16,7 +16,12 @@ from .orchestrator.orchestrator import OrchestratorAgent
 from .discovery.agents import DomainIntelligenceAgent, HistoricalReviewAgent
 from .review.agents import SystematicLiteratureReviewAgent, SurveyMetaAnalysisAgent
 from .synthesis.agents import GapSynthesisAgent, ResearchQuestionEngineeringAgent, ConceptualFrameworkAgent
-from .novelty.agents import InnovationNoveltyAgent, BaselineReproductionAgent, ValidationRobustnessAgent
+try:
+    from .novelty.agents import InnovationNoveltyAgent, BaselineReproductionAgent, ValidationRobustnessAgent
+except ImportError:
+    InnovationNoveltyAgent = None
+    BaselineReproductionAgent = None
+    ValidationRobustnessAgent = None
 
 # Import Pipeline B Agents
 from .understanding.agents import PaperDecompositionAgent, PaperUnderstandingAgent
@@ -34,9 +39,20 @@ from .scraper.agents import DataScraperAgent
 from .visualization.agents import VisualizationAgent
 
 from .news.agent import NewsAgent
+from .scoring.agents import ScoringAgent
+
+# Import Topic Agents (PHASE 0)
+from .topic.agents import TopicDiscoveryAgent, TopicLockAgent
+
+# Import Re-Research Agent (PHASE 5)
+from .reresearch.agents import SectionReResearchAgent
 
 # Instantiate All Agents with Specialized Models
 AGENTS: Dict[str, BaseAgent] = {
+    # PHASE 0: Topic Discovery (MUST run first)
+    "topic_discovery": TopicDiscoveryAgent(),
+    "topic_lock": TopicLockAgent(),
+    
     # Orchestrator (Reasoning)
     "orchestrator": OrchestratorAgent(), # Uses default reasoning model
 
@@ -45,6 +61,9 @@ AGENTS: Dict[str, BaseAgent] = {
     
     # News (New)
     "news": NewsAgent(),
+
+    # Scoring (New)
+    "scoring": ScoringAgent(),
     
     # Discovery (Reasoning)
     "domain_intelligence": DomainIntelligenceAgent(model_name=config.MODEL_REASONING),
@@ -59,9 +78,9 @@ AGENTS: Dict[str, BaseAgent] = {
     "gap_synthesis": GapSynthesisAgent(),
     "research_question": ResearchQuestionEngineeringAgent(),
     "conceptual_framework": ConceptualFrameworkAgent(),
-    "innovation_novelty": InnovationNoveltyAgent(),
-    "baseline_reproduction": BaselineReproductionAgent(),
-    "validation_robustness": ValidationRobustnessAgent(),
+    "innovation_novelty": InnovationNoveltyAgent() if InnovationNoveltyAgent else None,
+    "baseline_reproduction": BaselineReproductionAgent() if BaselineReproductionAgent else None,
+    "validation_robustness": ValidationRobustnessAgent() if ValidationRobustnessAgent else None,
     
     # Pipeline B (Reasoning/Critical)
     "paper_decomposition": PaperDecompositionAgent(model_name=config.MODEL_REASONING),
@@ -84,5 +103,8 @@ AGENTS: Dict[str, BaseAgent] = {
     "visualization": VisualizationAgent(model_name=config.MODEL_CODING), # CodeLlama is good for Syntax
     
     # Multi-Stage Report Generation (NEW - replaces single-shot writing)
-    "multi_stage_report": MultiStageReportAgent()
+    "multi_stage_report": MultiStageReportAgent(),
+    
+    # PHASE 5: Section Re-Research (for scoped edits)
+    "section_reresearch": SectionReResearchAgent(model_name=config.MODEL_REASONING)
 }

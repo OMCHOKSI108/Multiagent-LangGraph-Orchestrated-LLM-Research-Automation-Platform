@@ -59,10 +59,12 @@ class DataSourceValidationAgent(BaseAgent):
             name="DataSourceValidation",
             system_prompt="""You are a Data Auditor. 
             Check the citation quality and dataset availability mentioned in the paper.
-            Output JSON with keys: 'dataset_availability', 'citation_quality_score', 'references_check'.
+            Verify if datasets mentioned are publically available via web search.
+            Output JSON with keys: 'dataset_availability', 'citation_quality_score', 'references_check', 'public_datasets_found'.
             """,
             **kwargs
         )
+        self.google_provider = GoogleSearchProvider()
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Auditing Data & Citations...")
@@ -72,9 +74,30 @@ class DataSourceValidationAgent(BaseAgent):
         if "paper_understanding" in findings:
             context = str(findings["paper_understanding"])
             
-        enhanced_prompt = f"{self.system_prompt}\n\nPAPER CONTEXT:\n{context}"
+        # 1. Ask LLM to extract dataset names first
+        extract_prompt = f"Extract distinct dataset names used in this paper from the context. Return JSON list strings under key 'datasets'. Context: {context[:5000]}"
         
-        from langchain_core.messages import SystemMessage, HumanMessage
+        validated_datasets = []
+        try:
+            extraction = self.llm.invoke([HumanMessage(content=extract_prompt)])
+            extracted_json = self._extract_json(extraction.content)
+            datasets = extracted_json.get("datasets", []) if isinstance(extracted_json, dict) else []
+            
+            # 2. Verify each dataset
+            for ds in datasets:
+                print(f"[{self.name}] Verifying dataset: {ds}")
+                results = self.google_provider.search(f"{ds} dataset download", max_results=2)
+                is_available = any("github" in r['link'] or "kaggle" in r['link'] or "huggingface" in r['link'] or "edu" in r['link'] for r in results)
+                validated_datasets.append({
+                    "name": ds,
+                    "available": is_available,
+                    "links": [r['link'] for r in results[:1]]
+                })
+        except Exception as ex:
+            print(f"[{self.name}] Extraction Warning: {ex}")
+        
+        enhanced_prompt = f"{self.system_prompt}\n\nPAPER CONTEXT:\n{context[:10000]}\n\nDATASET VERIFICATION:\n{validated_datasets}"
+        
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
             HumanMessage(content=str(state))
@@ -97,6 +120,7 @@ class ReproducibilityReasoningAgent(BaseAgent):
             name="ReproducibilityReasoning",
             system_prompt="""You are a Reproducibility Engineer. 
             Assess if the paper provides enough detail to be reproduced.
+            Look for code availability signs (GitHub links, pseudo-code).
             Output JSON with keys: 'reproducibility_score', 'missing_details', 'code_availability'.
             """,
             **kwargs
@@ -112,9 +136,15 @@ class ReproducibilityReasoningAgent(BaseAgent):
         if "paper_understanding" in findings:
             context += f"\nUnderstanding: {findings['paper_understanding']}"
             
-        enhanced_prompt = f"{self.system_prompt}\n\nPAPER DETAILS:\n{context[:10000]}"
+        # Heuristic check for code
+        lower_context = context.lower()
+        has_github = "github.com" in lower_context or "gitlab" in lower_context
+        has_pseudocode = "algorithm" in lower_context and "input" in lower_context and "output" in lower_context
         
-        from langchain_core.messages import SystemMessage, HumanMessage
+        augmented_info = f"\nCODE CHECK:\n- Github Link Found: {has_github}\n- Pseudo-code Indicators: {has_pseudocode}"
+            
+        enhanced_prompt = f"{self.system_prompt}\n\nPAPER DETAILS:\n{context[:10000]}{augmented_info}"
+        
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
             HumanMessage(content=str(state))

@@ -50,7 +50,7 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                     onClick={() => handleNavigate('/dashboard')}
                 >
                     <Plus className="w-4 h-4" />

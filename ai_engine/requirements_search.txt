@@ -1,0 +1,36 @@
+# Core AI Engine Dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
+pydantic==2.5.0
+python-dotenv==1.0.0
+
+# LangChain and LLM Dependencies
+langchain==0.1.0
+langchain-core==0.1.0
+langchain-ollama==0.1.0
+langchain-google-genai==1.0.0
+langchain-groq==0.1.0
+langgraph==0.0.26
+
+# Search Provider Dependencies
+duckduckgo-search==4.1.1
+googlesearch-python==1.2.3
+arxiv==2.1.0
+wikipedia==1.4.0
+requests==2.31.0
+
+# PDF and Document Processing
+pypdf==3.17.4
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Data Processing
+pandas==2.1.4
+numpy==1.24.3
+
+# Async and Threading
+asyncio-throttle==1.0.2
+aiofiles==23.2.1
+
+# Logging and Monitoring
+structlog==23.2.0

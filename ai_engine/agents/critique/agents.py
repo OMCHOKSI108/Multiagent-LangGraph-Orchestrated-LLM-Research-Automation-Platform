@@ -45,9 +45,30 @@ class HallucinationDetectionAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
             name="HallucinationDetection",
-            system_prompt="""You are a Fact Checker. 
-            Verify that every claim in the text is supported by the cited evidence.
-            Output JSON with keys: 'hallucinations', 'unsupported_claims'.
+            system_prompt="""Your Role: Hallucination Prevention Guard
+            
+            Short basic instruction:
+            Block unsupported content.
+            
+            What you should do:
+            - Verify every factual claim.
+            - Flag uncertain statements.
+            
+            Your Goal:
+            Zero hallucinated facts.
+            
+            Result:
+            - Approved content
+            - Rejected content with reasons
+            
+            Constraint:
+            - "I don't know" is acceptable.
+            
+            Output JSON with keys:
+            'status': "APPROVED" or "REJECTED",
+            'hallucinations': ["Claim 1", "Claim 2"],
+            'verified_claims': ["Claim A", "Claim B"],
+            'confidence_score': 0.0-1.0
             """,
             **kwargs
         )

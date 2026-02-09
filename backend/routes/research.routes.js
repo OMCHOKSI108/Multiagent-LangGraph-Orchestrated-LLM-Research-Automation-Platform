@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const axios = require('axios');
+const auth = require('../middleware/auth');
+const { v4: uuidv4 } = require('uuid');
+const winston = require('winston');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 
@@ -169,6 +172,98 @@ router.delete('/:id', async (req, res) => {
         logger.error(`[Delete] ${err.message}`);
         res.status(500).json({ error: "Server error" });
     }
+});
+
+// Share research publicly
+router.post('/:id/share', auth, async (req, res) => {
+  try {
+    const researchId = req.params.id;
+    const userId = req.user.id;
+    
+    // Verify user owns this research
+    const research = await db.query(
+      'SELECT * FROM research_logs WHERE id = $1 AND user_id = $2',
+      [researchId, userId]
+    );
+    
+    if (research.rows.length === 0) {
+      return res.status(404).json({ error: 'Research not found' });
+    }
+    
+    // Generate share token
+    const shareToken = uuidv4().replace(/-/g, ''); // Remove hyphens for cleaner URLs
+    
+    // Update research with share token
+    await db.query(
+      'UPDATE research_logs SET share_token = $1 WHERE id = $2',
+      [shareToken, researchId]
+    );
+    
+    const shareUrl = `${req.protocol}://${req.get('host')}/#/shared/${shareToken}`;
+    
+    res.json({
+      shareToken,
+      shareUrl,
+      message: 'Research shared successfully'
+    });
+  } catch (error) {
+    winston.error('Error sharing research:', error);
+    res.status(500).json({ error: 'Failed to share research' });
+  }
+});
+
+// Get shared research (public endpoint - no auth)
+router.get('/shared/:token', async (req, res) => {
+  try {
+    const shareToken = req.params.token;
+    
+    // Get research by share token
+    const research = await db.query(
+      `SELECT r.*, u.username 
+       FROM research_logs r 
+       JOIN users u ON r.user_id = u.id 
+       WHERE r.share_token = $1`,
+      [shareToken]
+    );
+    
+    if (research.rows.length === 0) {
+      return res.status(404).json({ error: 'Shared research not found' });
+    }
+    
+    const researchData = research.rows[0];
+    
+    // Get execution events
+    const events = await db.query(
+      'SELECT * FROM execution_events WHERE research_id = $1 ORDER BY created_at ASC',
+      [researchData.id]
+    );
+    
+    // Get data sources
+    const sources = await db.query(
+      'SELECT * FROM data_sources WHERE research_id = $1',
+      [researchData.id]
+    );
+    
+    res.json({
+      research: {
+        id: researchData.id,
+        topic: researchData.topic,
+        status: researchData.status,
+        depth: researchData.depth,
+        result_json: researchData.result_json,
+        report_markdown: researchData.report_markdown,
+        latex_source: researchData.latex_source,
+        created_at: researchData.created_at,
+        updated_at: researchData.updated_at,
+        username: researchData.username
+      },
+      events: events.rows,
+      sources: sources.rows
+    });
+  } catch (error) {
+    winston.error('Error fetching shared research:', error);
+    res.status(500).json({ error: 'Failed to fetch shared research' });
+  }
 });
 
 module.exports = router;
