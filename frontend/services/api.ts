@@ -589,4 +589,11 @@ class ApiService {
   }
 }
 
-export const api = new ApiService();
+// ── Demo Mode ───────────────────────────────────────────────────────────────
+// When VITE_DEMO_MODE=true the entire API layer is replaced with a client-side
+// mock that works without any backend — ideal for Vercel preview deployments.
+import { mockApi } from './mockApi';
+
+const IS_DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+
+export const api: ApiService = IS_DEMO ? (mockApi as any) : new ApiService();
