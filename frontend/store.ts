@@ -855,7 +855,19 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
           console.error('SSE error:', error);
           const activeStatus = get().activeJob?.status;
           const shouldReconnect = activeStatus === JobStatus.PROCESSING || activeStatus === JobStatus.QUEUED;
-          if (!shouldReconnect) return;
+          if (!shouldReconnect) {
+            // Even if status doesn't match, try once more — the job might
+            // have been re-queued and activeJob hasn't been refreshed yet.
+            api.getResearch(id).then((freshJob) => {
+              if (subscriptionSeq !== liveSubscriptionSeq) return;
+              set({ activeJob: freshJob });
+              const freshStatus = freshJob?.status;
+              if (freshStatus === JobStatus.PROCESSING || freshStatus === JobStatus.QUEUED) {
+                get().subscribeToLiveEvents(id);
+              }
+            }).catch(() => {});
+            return;
+          }
           if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
           liveReconnectTimer = setTimeout(() => {
             if (subscriptionSeq !== liveSubscriptionSeq) return;

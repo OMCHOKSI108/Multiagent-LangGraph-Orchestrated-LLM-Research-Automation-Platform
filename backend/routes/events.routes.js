@@ -59,7 +59,12 @@ router.get('/stream/:research_id', auth, async (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx buffering
     res.flushHeaders();
+
+    // Disable Node.js request timeout for long-lived SSE connections
+    req.setTimeout(0);
+    res.setTimeout(0);
 
     logger.info(`[SSE] Client connected for research #${research_id}`);
 
@@ -69,6 +74,12 @@ router.get('/stream/:research_id', auth, async (req, res) => {
 
     // Send initial connection event
     res.write(`data: ${JSON.stringify({ type: 'connected', research_id })}\n\n`);
+
+    // Heartbeat every 15s to keep the connection alive through proxies/browsers
+    const heartbeatInterval = setInterval(() => {
+        if (isCompleted) return;
+        try { res.write(': heartbeat\n\n'); } catch (e) { /* connection may be closed */ }
+    }, 15000);
 
     // Polling function to check for new events
     const pollEvents = async () => {
@@ -168,6 +179,7 @@ router.get('/stream/:research_id', auth, async (req, res) => {
     req.on('close', () => {
         isCompleted = true;
         clearInterval(pollInterval);
+        clearInterval(heartbeatInterval);
         logger.info(`[SSE] Client disconnected for research #${research_id}`);
     });
 });
