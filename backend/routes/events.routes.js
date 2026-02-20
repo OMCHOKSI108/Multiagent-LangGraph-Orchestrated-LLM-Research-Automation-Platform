@@ -47,6 +47,13 @@ router.get('/token/:research_id', auth, async (req, res) => {
  */
 router.get('/stream/:research_id', auth, async (req, res) => {
     const { research_id } = req.params;
+    const userId = req.user.id;
+
+    // Verify ownership before streaming
+    const ownership = await db.query('SELECT id FROM research_logs WHERE id = $1 AND user_id = $2', [research_id, userId]);
+    if (ownership.rows.length === 0) {
+        return res.status(403).json({ error: 'Not authorized' });
+    }
 
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -255,7 +262,7 @@ router.post('/source', async (req, res) => {
  * 
  * PATCH /events/research/:id/rename
  */
-router.patch('/research/:id/rename', async (req, res) => {
+router.patch('/research/:id/rename', auth, async (req, res) => {
     try {
         const { id } = req.params;
         const { title } = req.body;
@@ -264,10 +271,14 @@ router.patch('/research/:id/rename', async (req, res) => {
             return res.status(400).json({ error: 'Title required' });
         }
 
-        await db.query(
-            `UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2`,
-            [title, id]
+        const result = await db.query(
+            `UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, title`,
+            [title, id, req.user.id]
         );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Research not found or not authorized' });
+        }
 
         res.json({ success: true, title });
     } catch (err) {

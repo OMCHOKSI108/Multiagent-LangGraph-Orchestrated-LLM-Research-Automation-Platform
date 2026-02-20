@@ -147,8 +147,8 @@ router.post('/:id/topic', auth, async (req, res) => {
            result_json = NULL,
            retry_count = 0,
            updated_at = NOW()
-       WHERE id = $3::int`,
-      [normalizedTopic, normalizedTopic, researchId]
+       WHERE id = $3::int AND user_id = $4::int`,
+      [normalizedTopic, normalizedTopic, researchId, req.user.id]
     );
     if (updateResult.rowCount === 0) {
       return res.status(404).json({ error: "Research not found" });
@@ -207,8 +207,8 @@ router.patch('/:id/rename', auth, async (req, res) => {
     }
 
     const result = await db.query(
-      "UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2 RETURNING id, title",
-      [title.trim(), id]
+      "UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, title",
+      [title.trim(), id, req.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -233,21 +233,16 @@ router.delete('/:id', auth, async (req, res) => {
 
     // First check if research exists and belongs to user
     const checkResult = await db.query(
-      "SELECT id, user_id FROM research_logs WHERE id = $1",
-      [id]
+      "SELECT id, user_id FROM research_logs WHERE id = $1 AND user_id = $2",
+      [id, userId]
     );
 
     if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: "Research not found" });
-    }
-
-    // Optional: Check ownership if user is authenticated
-    if (userId && checkResult.rows[0].user_id !== userId) {
-      return res.status(403).json({ error: "Not authorized to delete this research" });
+      return res.status(404).json({ error: "Research not found or not authorized" });
     }
 
     // Delete research and related data
-    await db.query("DELETE FROM research_logs WHERE id = $1", [id]);
+    await db.query("DELETE FROM research_logs WHERE id = $1 AND user_id = $2", [id, userId]);
 
     logger.info(`[Node] Deleted research #${id}`);
     res.json({ success: true, message: "Research deleted" });

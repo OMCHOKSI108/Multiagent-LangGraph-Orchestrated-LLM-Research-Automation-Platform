@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const logger = require('../utils/logger');
+const auth = require('../middleware/auth');
 const { marked } = require('marked');
 const archiver = require('archiver');
 const puppeteer = require('puppeteer-core');
@@ -124,13 +125,13 @@ async function getPdfBrowser() {
  *
  * GET /export/:id/markdown
  */
-router.get('/:id/markdown', async (req, res) => {
+router.get('/:id/markdown', auth, async (req, res) => {
     try {
         const { id } = req.params;
 
         const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
-            [id]
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
@@ -168,13 +169,13 @@ router.get('/:id/markdown', async (req, res) => {
  *
  * GET /export/:id/pdf
  */
-router.get('/:id/pdf', async (req, res) => {
+router.get('/:id/pdf', auth, async (req, res) => {
     try {
         const { id } = req.params;
 
         const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
-            [id]
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
@@ -262,7 +263,7 @@ ${renderedBody}
  * POST /export/compile
  * Body: { researchId, content }
  */
-router.post('/compile', async (req, res) => {
+router.post('/compile', auth, async (req, res) => {
     try {
         const { researchId, content } = req.body;
 
@@ -273,7 +274,7 @@ router.post('/compile', async (req, res) => {
         // Fetch title/task for metadata if needed
         let title = 'Document';
         if (researchId) {
-            const result = await db.query('SELECT title, task FROM research_logs WHERE id = $1', [researchId]);
+            const result = await db.query('SELECT title, task FROM research_logs WHERE id = $1 AND user_id = $2', [researchId, req.user.id]);
             if (result.rows.length > 0) {
                 title = result.rows[0].title || result.rows[0].task || title;
             }
@@ -332,13 +333,13 @@ ${renderedBody}
  *
  * GET /export/:id/latex
  */
-router.get('/:id/latex', async (req, res) => {
+router.get('/:id/latex', auth, async (req, res) => {
     try {
         const { id } = req.params;
 
         const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
-            [id]
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
@@ -389,13 +390,13 @@ ${content}
  *
  * GET /export/:id/zip
  */
-router.get('/:id/zip', async (req, res) => {
+router.get('/:id/zip', auth, async (req, res) => {
     try {
         const { id } = req.params;
 
         const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
-            [id]
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
@@ -466,13 +467,13 @@ router.get('/:id/zip', async (req, res) => {
  *
  * GET /export/:id/plots
  */
-router.get('/:id/plots', async (req, res) => {
+router.get('/:id/plots', auth, async (req, res) => {
     try {
         const { id } = req.params;
 
         const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1',
-            [id]
+            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
         );
 
         if (result.rows.length === 0) {
