@@ -512,6 +512,9 @@ class ApiService {
       depth: 'deep', // Backend doesn't track this currently
       createdAt: data.created_at,
       updatedAt: data.updated_at || data.created_at,
+      startedAt: data.started_at || data.created_at,
+      completedAt: data.completed_at || null,
+      currentStage: data.current_stage || null,
       logs: this.extractLogs(result),
       reportMarkdown,
       latexSource,

@@ -19,6 +19,9 @@ export interface ResearchJob {
   depth: 'quick' | 'deep';
   createdAt: string;
   updatedAt: string;
+  startedAt?: string;
+  completedAt?: string | null;
+  currentStage?: string | null;
   logs: LogEntry[];
   costEstimate?: number;
   reportMarkdown?: string;

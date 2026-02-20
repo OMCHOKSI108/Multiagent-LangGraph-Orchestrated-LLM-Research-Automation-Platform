@@ -422,9 +422,31 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
       set({
         activeJob: job,
-        // Fallback to createdAt if startedAt is missing, enables timer immediately
-        startedAt: job.createdAt
+        startedAt: job.startedAt || job.createdAt,
+        completedAt: job.completedAt || null,
+        currentStage: job.currentStage || (job.status === 'completed' ? 'completed' : ''),
       });
+
+      // Hydrate execution events and data sources from DB
+      // (works for BOTH completed and in-progress jobs)
+      try {
+        const [eventsData, sourcesData] = await Promise.all([
+          api.getResearchEvents(id),
+          api.getResearchSources(id),
+        ]);
+        if (eventsData && Array.isArray(eventsData)) {
+          set({ executionEvents: eventsData });
+        }
+        if (sourcesData && Array.isArray(sourcesData)) {
+          // Merge DB sources with any sources extracted from result_json
+          const existing = get().dataSources;
+          const existingUrls = new Set(existing.map((s: any) => s.url));
+          const newSources = sourcesData.filter((s: any) => !existingUrls.has(s.url));
+          get().setDataSources([...existing, ...newSources]);
+        }
+      } catch (err) {
+        console.warn('Failed to hydrate events/sources:', err);
+      }
 
       const existingSessionId = getChatSession(id);
       if (existingSessionId) {
