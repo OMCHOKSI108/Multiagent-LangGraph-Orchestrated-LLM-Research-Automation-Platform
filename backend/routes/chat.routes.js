@@ -4,6 +4,7 @@ const db = require('../config/db');
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
+const auth = require('../middleware/auth');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 
@@ -50,12 +51,18 @@ router.post('/message', async (req, res) => {
                 depth: "deep"
             });
 
-            const botResponse = aiResponse.data.response.response; // { agent: ..., response: { response: "text", raw: ... } } usually
-            // The agent.run returns { response: "text", raw: ..., agent: ... }
-            // So aiResponse.data.response IS that dict.
-            // aiResponse.data.response.response IS the text.
+            // Accept different payload shapes from AI engine without breaking chat.
+            const payload = aiResponse?.data || {};
+            let botResponse = payload?.response?.response;
+            if (botResponse == null) botResponse = payload?.response;
+            if (botResponse == null) botResponse = payload;
 
             const replyText = typeof botResponse === 'string' ? botResponse : JSON.stringify(botResponse);
+            
+            // Validate response before proceeding
+            if (!replyText || typeof replyText !== 'string') {
+                throw new Error('Invalid agent response format: empty or non-string response');
+            }
 
             // 7. Save Bot Response
             await db.query(
@@ -129,7 +136,7 @@ router.post('/stream', async (req, res) => {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
-        res.setHeader('Access-Control-Allow-Origin', '*');
+        // CORS is handled by global middleware — do not override here
         res.setHeader('X-Session-ID', session_id);
         res.flushHeaders();
 
@@ -206,12 +213,16 @@ router.post('/stream', async (req, res) => {
 });
 
 // Get Chat History
-router.get('/history/:session_id', async (req, res) => {
+router.get('/history/:session_id', auth, async (req, res) => {
     try {
         const { session_id } = req.params;
+        const userId = req.user?.id;
         const result = await db.query(
-            "SELECT role, message, created_at FROM chat_history WHERE session_id = $1 ORDER BY created_at ASC",
-            [session_id]
+            `SELECT role, message, created_at
+             FROM chat_history
+             WHERE session_id = $1 AND user_id = $2
+             ORDER BY created_at ASC`,
+            [session_id, userId]
         );
         res.json(result.rows);
     } catch (err) {

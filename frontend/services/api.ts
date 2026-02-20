@@ -1,8 +1,13 @@
-import { JobStatus, ResearchJob, User, UsageStats, Memory, SearchResponse } from '../types';
+/// <reference types="vite/client" />
 
-const BASE_URL = ''; // Use relative path for proxy
+import { JobStatus, ResearchJob, User, UsageStats, Memory, SearchResponse, LLMStatus } from '../types';
+
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
 class ApiService {
+  public readonly BASE_URL = BASE_URL;
+  private apiKeyPromise: Promise<string> | null = null;
+
   private getHeaders(): HeadersInit {
     const token = localStorage.getItem('dre_token');
     return {
@@ -38,7 +43,12 @@ class ApiService {
       return undefined as T;
     }
 
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch (parseError) {
+      console.warn('API response parse error:', parseError, 'Response text:', text);
+      throw new Error('Invalid response format from server');
+    }
   }
 
   // =====================
@@ -81,6 +91,14 @@ class ApiService {
     return { id: String(data.user.id), email: data.user.email, name: data.user.username };
   }
 
+  async updateProfile(name: string): Promise<User> {
+    const data = await this.request<{ user: { id: number; username: string; email: string } }>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ username: name }),
+    });
+    return { id: String(data.user.id), email: data.user.email, name: data.user.username };
+  }
+
   // =====================
   // API KEY MANAGEMENT
   // =====================
@@ -94,12 +112,21 @@ class ApiService {
   }
 
   private async getOrCreateApiKey(): Promise<string> {
-    let key = localStorage.getItem('dre_api_key');
-    if (!key) {
-      key = await this.generateApiKey();
-      localStorage.setItem('dre_api_key', key);
+    const existingKey = localStorage.getItem('dre_api_key');
+    if (existingKey) return existingKey;
+
+    if (!this.apiKeyPromise) {
+      this.apiKeyPromise = this.generateApiKey()
+        .then((key) => {
+          localStorage.setItem('dre_api_key', key);
+          return key;
+        })
+        .finally(() => {
+          this.apiKeyPromise = null;
+        });
     }
-    return key;
+
+    return this.apiKeyPromise;
   }
 
   // =====================
@@ -146,6 +173,19 @@ class ApiService {
     });
   }
 
+  async selectTopic(id: string, topic: string): Promise<void> {
+    // This method assumes `this.request` is the intended underlying fetch helper,
+    // as `this.fetchWithAuth` is not defined in the current class.
+    await this.request(`/research/${id}/topic`, {
+      method: 'POST',
+      body: JSON.stringify({ topic }),
+    });
+  }
+
+  async getTopicSuggestions(id: string): Promise<{ topic_locked: boolean; selected_topic: string | null; topic_suggestions: any[] }> {
+    return this.request(`/research/${id}/suggestions`);
+  }
+
   async deleteResearch(id: string): Promise<void> {
     await this.request(`/research/${id}`, {
       method: 'DELETE',
@@ -154,6 +194,10 @@ class ApiService {
 
   async getResearchEvents(id: string): Promise<any[]> {
     return this.request<any[]>(`/events/${id}`);
+  }
+
+  async getResearchSources(id: string): Promise<any[]> {
+    return this.request<any[]>(`/events/${id}/sources`);
   }
 
   /**
@@ -165,6 +209,7 @@ class ApiService {
     onEvent: (data: any) => void,
     onError?: (error: Event) => void
   ): EventSource {
+    // EventSource cannot send custom headers, so pass auth token in query.
     const token = localStorage.getItem('dre_token');
     const url = `${BASE_URL}/events/stream/${researchId}${token ? `?token=${token}` : ''}`;
     const eventSource = new EventSource(url);
@@ -207,6 +252,12 @@ class ApiService {
       sessionId: data.session_id,
       reply: data.reply,
     };
+  }
+
+  async getChatHistory(sessionId: string): Promise<Array<{ role: 'user' | 'assistant'; message: string; created_at: string }>> {
+    return this.request(`/chat/history/${encodeURIComponent(sessionId)}`, {
+      method: 'GET',
+    });
   }
 
   // =====================
@@ -296,6 +347,26 @@ class ApiService {
     URL.revokeObjectURL(url);
   }
 
+  // --- NEW: Compile Latex (Simulated) ---
+  async compileLatex(researchId: string, content: string): Promise<Blob> {
+    const token = localStorage.getItem('dre_token');
+    const response = await fetch(`${BASE_URL}/export/compile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'x-auth-token': token } : {}),
+      },
+      body: JSON.stringify({ researchId, content }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Compilation failed');
+    }
+
+    return await response.blob();
+  }
+  // ---------------------------------------
+
   async exportZip(researchId: string): Promise<void> {
     const token = localStorage.getItem('dre_token');
     const response = await fetch(`${BASE_URL}/export/${researchId}/zip`, {
@@ -382,6 +453,37 @@ class ApiService {
     return this.request('/usage/stats');
   }
 
+  async healthCheck(): Promise<{ status: string }> {
+    return this.request('/health', { method: 'GET' });
+  }
+
+  async getProviders(): Promise<any> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const response = await fetch(`${aiEngineUrl}/providers`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch providers: HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  // =====================
+  // LLM STATUS
+  // =====================
+
+  /**
+   * Fetches the current LLM provider status (OFFLINE/ONLINE mode,
+   * active provider, key count, model config).
+   * Calls the AI engine directly since it owns the LLM configuration.
+   */
+  async getLLMStatus(): Promise<LLMStatus> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const response = await fetch(`${aiEngineUrl}/llm/status`);
+    if (!response.ok) {
+      throw new Error(`LLM status check failed: HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
   // =====================
   // DATA MAPPING
   // =====================
@@ -389,9 +491,19 @@ class ApiService {
   private mapBackendToFrontend(data: any): ResearchJob {
     // Backend uses snake_case, frontend uses camelCase
     const result = data.result_json || {};
+    const findings = result?.final_state?.findings || {};
+    const reportResult = findings.multi_stage_report || result.multi_stage_report || result.scientific_writing || {};
+    const vizResult = findings.visualization?.response || result.visualization || {};
 
-    // Support both old (scientific_writing) and new (multi_stage_report) keys
-    const reportData = result.multi_stage_report || result.scientific_writing || {};
+    // Normalize report shape across old/new pipeline outputs.
+    const reportMarkdown =
+      reportResult.markdown_report ||
+      reportResult.response ||
+      data.report_markdown;
+    const latexSource =
+      reportResult.latex_source ||
+      result.latex_generation?.latex_source ||
+      data.latex_source;
 
     return {
       id: String(data.id),
@@ -401,14 +513,15 @@ class ApiService {
       createdAt: data.created_at,
       updatedAt: data.updated_at || data.created_at,
       logs: this.extractLogs(result),
-      reportMarkdown: reportData.markdown_report,
-      latexSource: reportData.latex_source,
-      pdfPath: reportData.pdf_path,
-      texPath: reportData.tex_path,
-      diagrams: this.extractDiagrams(result),
-      images: this.extractImages(result),
+      reportMarkdown,
+      latexSource,
+      pdfPath: reportResult.pdf_path,
+      texPath: reportResult.tex_path,
+      diagrams: this.extractDiagrams(vizResult),
+      images: this.extractImages(vizResult),
       modelUsed: result.model_used || 'phi3:mini',
       tokenUsage: result.token_usage || 0,
+      result_json: result,
     };
   }
 
@@ -416,7 +529,12 @@ class ApiService {
     switch (status?.toLowerCase()) {
       case 'queued': return JobStatus.QUEUED;
       case 'processing': return JobStatus.PROCESSING;
+      case 'retry':
+      case 'retrying':
+      case 'stale':
+        return JobStatus.PROCESSING;
       case 'completed': return JobStatus.COMPLETED;
+      case 'cancelled':
       case 'failed': return JobStatus.FAILED;
       default: return JobStatus.QUEUED;
     }
@@ -428,8 +546,7 @@ class ApiService {
     return [];
   }
 
-  private extractDiagrams(result: any): string[] {
-    const viz = result.visualization || {};
+  private extractDiagrams(viz: any): string[] {
     const diagrams: string[] = [];
     if (viz.timeline_mermaid) diagrams.push(viz.timeline_mermaid);
     if (viz.methodology_mermaid) diagrams.push(viz.methodology_mermaid);
@@ -437,13 +554,27 @@ class ApiService {
     return diagrams;
   }
 
-  private extractImages(result: any): string[] {
-    const viz = result.visualization || {};
+  private extractImages(viz: any): string[] {
     const images: string[] = [];
+    const joinPath = (path: string) => {
+      if (/^https?:\/\//i.test(path)) return path;
+      const cleaned = path.startsWith('/') ? path : `/${path}`;
+      return `${BASE_URL}${cleaned}`;
+    };
 
     // Legacy/Local images
     if (viz.generated_image_path) {
-      images.push(`${BASE_URL}/${viz.generated_image_path}`);
+      images.push(joinPath(viz.generated_image_path));
+    }
+
+    if (viz.images_metadata && Array.isArray(viz.images_metadata)) {
+      for (const img of viz.images_metadata) {
+        if (img?.local) {
+          images.push(joinPath(img.local));
+        } else if (img?.original) {
+          images.push(img.original);
+        }
+      }
     }
 
     // Real search images (from Google/DuckDuckGo)

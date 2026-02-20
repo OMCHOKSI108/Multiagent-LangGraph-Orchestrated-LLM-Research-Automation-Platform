@@ -1,21 +1,13 @@
 from typing import Dict, Any, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_ollama import ChatOllama
 
-# Conditional imports for optional cloud providers
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    HAS_GOOGLE = True
-except ImportError:
-    ChatGoogleGenerativeAI = None
-    HAS_GOOGLE = False
-
-try:
-    from langchain_groq import ChatGroq
-    HAS_GROQ = True
-except ImportError:
-    ChatGroq = None
-    HAS_GROQ = False
+# ============================
+# LLM Provider Abstraction
+# ============================
+# All LLM instantiation is now handled by the llm/ package.
+# This provides automatic mode switching (OFFLINE/ONLINE),
+# multi-key rotation for Groq, and rate-limit handling.
+from llm.factory import get_llm_provider
 
 try:
     import config
@@ -34,44 +26,10 @@ import time
 from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_error
 # Import token tracking
 from utils.token_tracker import track_agent_usage
+from utils.metrics import inc as metrics_inc, timing as metrics_timing
 
 logger = logging.getLogger("ai_engine.agents")
 
-# ============================
-# LLM Connection Pool (Singleton)
-# ============================
-_LLM_CACHE: Dict[str, Any] = {}
-
-def get_cached_llm(model_name: str, provider: str = "ollama"):
-    """Returns a cached LLM instance to avoid redundant connections."""
-    cache_key = f"{provider}:{model_name}"
-    
-    if cache_key not in _LLM_CACHE:
-        if provider == "ollama":
-            _LLM_CACHE[cache_key] = ChatOllama(
-                base_url=config.OLLAMA_BASE_URL,
-                model=model_name,
-                temperature=0.7
-            )
-        elif provider == "gemini" and HAS_GOOGLE:
-            _LLM_CACHE[cache_key] = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
-                google_api_key=config.GEMINI_API_KEY,
-                temperature=0.7
-            )
-        elif provider == "groq" and HAS_GROQ:
-            _LLM_CACHE[cache_key] = ChatGroq(
-                model_name="llama3-70b-8192",
-                groq_api_key=config.GROQ_API_KEY,
-                temperature=0.7
-            )
-        else:
-            # Fallback to Ollama if provider not available
-            logger.warning(f"Provider {provider} not available, falling back to Ollama")
-            return get_cached_llm(model_name, "ollama")
-        logger.info(f"Created new LLM connection: {cache_key}")
-    
-    return _LLM_CACHE[cache_key]
 
 
 class BaseAgent:
@@ -91,20 +49,17 @@ class BaseAgent:
         self.llm = self._get_llm()
 
     def _get_llm(self):
-        """Returns the configured LLM client based on LLM_MODE."""
-        if config.LLM_MODE == "offline":
-            logger.info(f"[{self.name}] Using Ollama: {self.model_name}")
-            return get_cached_llm(self.model_name, "ollama")
-        elif config.LLM_MODE == "online":
-            if config.GEMINI_API_KEY:
-                logger.info(f"[{self.name}] Using Gemini")
-                return get_cached_llm(self.model_name, "gemini")
-            elif config.GROQ_API_KEY:
-                logger.info(f"[{self.name}] Using Groq")
-                return get_cached_llm(self.model_name, "groq")
-        
-        # Fallback to Ollama
-        return get_cached_llm(self.model_name, "ollama")
+        """
+        Returns the configured LLM client via the provider factory.
+
+        The factory reads LLM_STATUS from config and returns the appropriate
+        provider (OllamaProvider or GroqProvider). Caching, key rotation,
+        and fallback logic are handled inside the factory.
+        """
+        provider = get_llm_provider(self.model_name)
+        logger.info(f"[{self.name}] Using {provider.provider_name}: {self.model_name}")
+        return provider.get_langchain_llm()
+
 
     def _estimate_tokens(self, text: str) -> int:
         """Rough token estimation (4 chars ≈ 1 token for English)."""
@@ -225,6 +180,11 @@ class BaseAgent:
         
         # Emit agent start event
         emit_agent_start(self.name, research_id=research_id)
+        # Metrics: count agent run
+        try:
+            metrics_inc(f"agent_runs_{self.name}")
+        except Exception:
+            pass
         
         # Token-limited context
         context = self._truncate_context(state, self.max_context_tokens)
@@ -240,6 +200,11 @@ class BaseAgent:
         if cached_result:
             logger.info(f"[{self.name}] Cache HIT. Hash: {input_hash[:8]}")
             emit_agent_complete(self.name, 0, success=True, research_id=research_id)
+            try:
+                metrics_inc(f"agent_success_{self.name}")
+                metrics_timing(f"agent_execution_ms_{self.name}", 0)
+            except Exception:
+                pass
             return cached_result
 
         logger.info(f"[{self.name}] Cache MISS. Hash: {input_hash[:8]}")
@@ -259,6 +224,11 @@ class BaseAgent:
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)
             logger.info(f"[{self.name}] Job #{job_id} - Completed in {elapsed:.2f}s")
+            try:
+                metrics_inc(f"agent_success_{self.name}")
+                metrics_timing(f"agent_execution_ms_{self.name}", elapsed_ms)
+            except Exception:
+                pass
             
             output_hash = self._compute_hash(raw_content)
             logger.info(f"[{self.name}] Output Hash: {output_hash[:8]}")
@@ -317,6 +287,11 @@ class BaseAgent:
             # Emit agent failure event
             emit_agent_complete(self.name, elapsed_ms, success=False, research_id=research_id)
             emit_error(f"Agent {self.name}: {str(e)}", recoverable=True, research_id=research_id)
+            try:
+                metrics_inc(f"agent_failure_{self.name}")
+                metrics_timing(f"agent_execution_ms_{self.name}", elapsed_ms)
+            except Exception:
+                pass
             
             return {"error": str(e), "raw": "Error during execution", "agent": self.name}
 

@@ -4,6 +4,15 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
+function getJwtSecretOrThrow(res) {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+        res.status(500).json({ error: "Authentication service unavailable" });
+        return null;
+    }
+    return jwtSecret;
+}
+
 // Signup
 router.post('/signup', async (req, res) => {
     try {
@@ -38,6 +47,9 @@ router.post('/signup', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
     try {
+        const jwtSecret = getJwtSecretOrThrow(res);
+        if (!jwtSecret) return;
+
         const { email, password } = req.body;
 
         // Find User
@@ -57,7 +69,7 @@ router.post('/login', async (req, res) => {
         // Generate JWT
         const token = jwt.sign(
             { id: user.id, username: user.username },
-            process.env.JWT_SECRET || "fallback_secret",
+            jwtSecret,
             { expiresIn: '24h' }
         );
 
@@ -81,6 +93,40 @@ router.get('/me', require('../middleware/auth'), async (req, res) => {
         }
         res.json({ user: result.rows[0] });
     } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// Update current user profile
+// PATCH /auth/me
+router.patch('/me', require('../middleware/auth'), async (req, res) => {
+    try {
+        const { username } = req.body;
+        const trimmedUsername = typeof username === 'string' ? username.trim() : '';
+
+        if (!trimmedUsername) {
+            return res.status(400).json({ error: "Name is required" });
+        }
+
+        if (trimmedUsername.length < 2 || trimmedUsername.length > 100) {
+            return res.status(400).json({ error: "Name must be between 2 and 100 characters" });
+        }
+
+        const result = await db.query(
+            "UPDATE users SET username = $1 WHERE id = $2 RETURNING id, username, email",
+            [trimmedUsername, req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({ user: result.rows[0] });
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ error: "Username already exists" });
+        }
         console.error(err);
         res.status(500).json({ error: "Server error" });
     }

@@ -9,7 +9,7 @@ AI_ENGINE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if AI_ENGINE_DIR not in sys.path:
     sys.path.insert(0, AI_ENGINE_DIR)
 
-from agents.base import BaseAgent, get_cached_llm
+from agents.base import BaseAgent
 from agents.orchestrator.orchestrator import OrchestratorAgent
 from agents.registry import AGENTS
 
@@ -79,14 +79,16 @@ class TestBaseAgent:
         # Priority agent should be preserved
         assert "domain_intelligence" in result["findings"]
     
-    @patch('agents.base.get_cached_llm')
-    def test_run_success(self, mock_get_llm):
+    @patch('agents.base.get_llm_provider')
+    def test_run_success(self, mock_get_provider):
         """Test successful agent run"""
         # Mock LLM response
         mock_response = Mock()
         mock_response.content = '{"result": "success", "data": "test output"}'
         self.mock_llm.invoke.return_value = mock_response
-        mock_get_llm.return_value = self.mock_llm
+        mock_provider = Mock()
+        mock_provider.get_langchain_llm.return_value = self.mock_llm
+        mock_get_provider.return_value = mock_provider
         
         state = {"task": "test task", "_job_id": "123"}
         result = self.test_agent.run(state)
@@ -97,14 +99,17 @@ class TestBaseAgent:
         assert result["agent"] == "TestAgent"
         assert result["response"] == {"result": "success", "data": "test output"}
     
-    @patch('agents.base.get_cached_llm')
-    def test_run_llm_failure(self, mock_get_llm):
+    @patch('agents.base.get_llm_provider')
+    def test_run_llm_failure(self, mock_get_provider):
         """Test agent run with LLM failure"""
         # Mock LLM exception
         self.mock_llm.invoke.side_effect = Exception("LLM connection failed")
-        mock_get_llm.return_value = self.mock_llm
+        mock_provider = Mock()
+        mock_provider.get_langchain_llm.return_value = self.mock_llm
+        mock_get_provider.return_value = mock_provider
         
-        state = {"task": "test task", "_job_id": "123"}
+        # Use a unique task string to avoid deterministic cache hit from test_run_success
+        state = {"task": "test task that should fail", "_job_id": "999"}
         result = self.test_agent.run(state)
         
         assert "error" in result
@@ -217,34 +222,49 @@ class TestAgentRegistry:
                 # Restore original LLM
                 agent.llm = original_llm
 
-class TestLLMCaching:
-    """Tests for LLM connection caching"""
+class TestLLMProviderCaching:
+    """Tests for LLM provider factory caching (replaces old TestLLMCaching)"""
     
-    @patch('agents.base.ChatOllama')
-    def test_llm_cache_reuse(self, mock_ollama):
-        """Test that LLM connections are cached and reused"""
-        mock_instance = Mock()
-        mock_ollama.return_value = mock_instance
+    def setup_method(self):
+        """Clear factory cache before each test."""
+        from llm.factory import clear_provider_cache
+        clear_provider_cache()
+
+    @patch('llm.factory._get_config')
+    def test_provider_cache_reuse(self, mock_config):
+        """Test that provider instances are cached and reused"""
+        from llm.factory import get_llm_provider
         
-        # First call should create new instance
-        llm1 = get_cached_llm("phi3:mini", "ollama")
-        assert mock_ollama.call_count == 1
+        mock_cfg = MagicMock()
+        mock_cfg.LLM_STATUS = "OFFLINE"
+        mock_cfg.MODEL_REASONING = "phi3:mini"
+        mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"
+        mock_cfg.GROQ_API_KEYS = []
+        mock_config.return_value = mock_cfg
         
-        # Second call should reuse cached instance
-        llm2 = get_cached_llm("phi3:mini", "ollama")
-        assert mock_ollama.call_count == 1  # No additional calls
-        assert llm1 is llm2  # Same instance
+        # First call should create new provider
+        provider1 = get_llm_provider("phi3:mini")
+        
+        # Second call should return cached instance
+        provider2 = get_llm_provider("phi3:mini")
+        assert provider1 is provider2  # Same object from cache
     
-    @patch('agents.base.ChatOllama')
-    def test_llm_cache_different_models(self, mock_ollama):
+    @patch('llm.factory._get_config')
+    def test_provider_cache_different_models(self, mock_config):
         """Test that different models get separate cache entries"""
-        mock_instance = Mock()
-        mock_ollama.return_value = mock_instance
+        from llm.factory import get_llm_provider
         
-        llm1 = get_cached_llm("phi3:mini", "ollama")
-        llm2 = get_cached_llm("gemma2:2b", "ollama")
+        mock_cfg = MagicMock()
+        mock_cfg.LLM_STATUS = "OFFLINE"
+        mock_cfg.MODEL_REASONING = "phi3:mini"
+        mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"
+        mock_cfg.GROQ_API_KEYS = []
+        mock_config.return_value = mock_cfg
         
-        assert mock_ollama.call_count == 2  # Two different models
+        provider1 = get_llm_provider("phi3:mini")
+        provider2 = get_llm_provider("gemma2:2b")
+        
+        assert provider1 is not provider2  # Different model = different provider
 
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -73,6 +73,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ResearchRequest'
+            example:
+              task: "Summarize recent advances in reinforcement learning for robotics"
+              depth: "quick"
+              paper_url: null
       responses:
         '200':
           description: Research completed successfully
@@ -80,6 +84,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResearchResponse'
+              example:
+                status: "completed"
+                task: "Summarize recent advances in reinforcement learning for robotics"
+                result:
+                  summary: "Short summary of findings"
+                final_state: {}
         '500':
           description: Research pipeline failed
   
@@ -94,6 +104,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SearchRequest'
+            example:
+              query: "autonomous vehicles sensor fusion 2024"
+              providers: ["arxiv", "duckduckgo"]
+              max_results: 5
       responses:
         '200':
           description: Search results
@@ -101,6 +115,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchResponse'
+              example:
+                query: "autonomous vehicles sensor fusion 2024"
+                total_results: 42
+                providers_used: ["arxiv", "duckduckgo"]
+                results: []
         '400':
           description: Invalid providers specified
         '500':
@@ -176,6 +195,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ResearchRequest'
+            example:
+              task: "Provide a short explanation of transformer models for a novice"
+              depth: "quick"
       responses:
         '200':
           description: Streaming response
@@ -247,6 +269,10 @@ paths:
                   minLength: 6
                 name:
                   type: string
+            example:
+              email: demo@example.com
+              password: demo1234
+              name: Demo User
       responses:
         '201':
           description: User created successfully
@@ -271,6 +297,9 @@ paths:
                   format: email
                 password:
                   type: string
+            example:
+              email: demo@example.com
+              password: demo1234
       responses:
         '200':
           description: Login successful
@@ -283,6 +312,12 @@ paths:
                     type: string
                   user:
                     $ref: '#/components/schemas/User'
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+                user:
+                  id: 1
+                  email: demo@example.com
+                  name: Demo User
         '400':
           description: Invalid credentials
   

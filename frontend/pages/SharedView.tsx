@@ -40,6 +40,24 @@ interface SourceItem {
 interface ResultJson {
   images?: string[];
   diagrams?: string[];
+  final_state?: {
+    findings?: {
+      visualization?: {
+        response?: {
+          image_urls?: string[];
+          images_metadata?: Array<{ local?: string; original?: string }>;
+          timeline_mermaid?: string;
+          methodology_mermaid?: string;
+          data_chart_mermaid?: string;
+        };
+      };
+      multi_stage_report?: {
+        response?: string;
+        markdown_report?: string;
+        latex_source?: string;
+      };
+    };
+  };
 }
 
 interface Research {
@@ -114,15 +132,15 @@ export const SharedView: React.FC = () => {
         const transformedData: SharedResearch = {
           research: result.research,
           events: (result.events || []).map((event: any, index: number): ResearchEvent => ({
-            event_id: event.id || `event_${index}`,
+            event_id: event.event_id || event.id || `event_${index}`,
             stage: event.stage || 'unknown',
             severity: event.severity || 'info',
             category: event.category || 'system',
             message: event.message || '',
-            timestamp: event.timestamp || new Date().toISOString()
+            timestamp: event.created_at || event.timestamp || new Date().toISOString()
           })),
           sources: (result.sources || []).map((source: any): SourceItem => ({
-            source_type: source.type || 'web',
+            source_type: source.source_type || source.type || 'web',
             domain: source.domain || 'unknown',
             url: source.url,
             status: source.status || 'success',
@@ -208,13 +226,30 @@ export const SharedView: React.FC = () => {
 
   const resultJson = research.result_json || {};
 
+  const viz = resultJson.final_state?.findings?.visualization?.response;
   const images = Array.isArray(resultJson.images)
     ? resultJson.images
-    : [];
+    : Array.isArray(viz?.image_urls)
+      ? viz.image_urls
+      : Array.isArray(viz?.images_metadata)
+        ? viz.images_metadata
+            .map((img) => (img?.local ? `/${img.local}` : img?.original || ''))
+            .filter(Boolean)
+        : [];
 
   const diagrams = Array.isArray(resultJson.diagrams)
     ? resultJson.diagrams
-    : [];
+    : [
+        viz?.timeline_mermaid,
+        viz?.methodology_mermaid,
+        viz?.data_chart_mermaid
+      ].filter(Boolean) as string[];
+
+  const fallbackMarkdown =
+    resultJson.final_state?.findings?.multi_stage_report?.markdown_report ||
+    resultJson.final_state?.findings?.multi_stage_report?.response;
+  const fallbackLatex =
+    resultJson.final_state?.findings?.multi_stage_report?.latex_source;
 
   const visuals = [
     ...images.map(url => ({ type: 'image' as const, url })),
@@ -299,8 +334,8 @@ export const SharedView: React.FC = () => {
 
         <div className="flex-1 bg-white dark:bg-card">
           <DocumentPreview
-            markdown={research.report_markdown}
-            latexSource={research.latex_source}
+            markdown={research.report_markdown || fallbackMarkdown}
+            latexSource={research.latex_source || fallbackLatex}
             systemStatus={systemStatus}
             statusDetail={statusDetail}
           />

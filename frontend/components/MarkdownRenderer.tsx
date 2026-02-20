@@ -41,16 +41,17 @@ const MermaidDiagram: React.FC<MermaidProps> = ({ chart }) => {
   }, [chart]);
 
   if (error) return <pre className="text-xs text-red-500 p-2">{chart}</pre>;
-  return <div ref={ref} className="my-6 flex justify-center bg-zinc-50 dark:bg-dark-200 border border-zinc-200 dark:border-dark-300 p-4 rounded-lg" />;
+  return <div ref={ref} className="my-6 flex justify-center bg-zinc-50 dark:bg-card border border-zinc-200 dark:border-border p-4 rounded-lg" />;
 };
 
 interface MarkdownRendererProps {
   content: string;
+  className?: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content }) => {
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content, className }) => {
   return (
-    <div className="prose-research w-full max-w-none">
+    <div className={`prose-research w-full max-w-none ${className || ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -63,18 +64,18 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
             }
 
             return match ? (
-              <div className="relative group my-4 rounded-lg overflow-hidden border border-zinc-200 dark:border-dark-300">
-                <div className="bg-zinc-100 dark:bg-dark-200 px-3 py-1.5 border-b border-zinc-200 dark:border-dark-300 text-xs font-mono text-zinc-500 dark:text-zinc-400 flex justify-between">
+              <div className="relative group my-4 rounded-lg overflow-hidden border border-border">
+                <div className="bg-secondary px-3 py-1.5 border-b border-border text-xs font-mono text-muted-foreground flex justify-between">
                   <span>{match[1]}</span>
                 </div>
-                <pre className="!bg-white dark:!bg-dark-primary !m-0 !p-4 overflow-x-auto">
-                  <code className={`${className} !text-sm !font-mono text-zinc-800 dark:text-zinc-200`} {...props}>
+                <pre className="!bg-card !m-0 !p-4 overflow-x-auto">
+                  <code className={`${className} !text-sm !font-mono text-foreground`} {...props}>
                     {children}
                   </code>
                 </pre>
               </div>
             ) : (
-              <code className="bg-zinc-100 dark:bg-dark-200 text-zinc-800 dark:text-zinc-200 px-1 py-0.5 rounded text-sm font-mono border border-zinc-200 dark:border-dark-300" {...props}>
+              <code className="bg-secondary text-foreground px-1 py-0.5 rounded text-sm font-mono border border-border" {...props}>
                 {children}
               </code>
             );

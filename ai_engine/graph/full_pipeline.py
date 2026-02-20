@@ -110,8 +110,11 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         exec_time = result.get("execution_time", 0) if isinstance(result, dict) else elapsed
         history_update = [f"{agent.name}: Completed ({exec_time:.1f}s)"]
         
-        # Return ONLY the updates (Reducers handle the rest)
-        return {"findings": findings_update, "history": history_update}
+        # Return updates merged with original result (to preserve control flags like topic_locked)
+        if isinstance(result, dict):
+             return {**result, "findings": findings_update, "history": history_update}
+        else:
+             return {"findings": findings_update, "history": history_update}
         
     except Exception as e:
         logger.error(f"[Job #{job_id}] Agent {agent_key} failed: {e}")
@@ -119,9 +122,18 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         # EMIT FAILURE EVENT
         elapsed_ms = 0 # Approximate
         emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
-        emit_error(str(e), research_id=research_id)
         
-        history_update = [f"{agent.name}: FAILED - {str(e)}"]
+        # Sanitize error for AI context to prevent "hallucinated" debugging
+        error_msg = str(e)
+        if "ECONNREFUSED" in error_msg:
+             safe_error = "Connection failed to internal service. Retrying..."
+        else:
+             safe_error = f"Internal Error: {type(e).__name__}"
+
+        # We log the real error for devs, but give safe error to history
+        emit_error(error_msg, research_id=research_id)
+        
+        history_update = [f"{agent.name}: FAILED - {safe_error}"]
         return {"history": history_update}
 
 

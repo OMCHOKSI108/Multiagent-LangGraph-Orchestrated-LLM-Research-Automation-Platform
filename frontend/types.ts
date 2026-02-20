@@ -107,3 +107,22 @@ export interface DataSourceEnriched {
   thumbnail?: string;
   published_date?: string;
 }
+
+export interface LLMStatus {
+  mode: 'OFFLINE' | 'ONLINE';
+  provider: {
+    provider: string;
+    model: string;
+    available: boolean;
+    total_keys?: number;
+    active_key_index?: number;
+    installed_models?: string[];
+  };
+  config: {
+    model_reasoning: string;
+    model_writing: string;
+    model_coding: string;
+    model_critical: string;
+    max_tokens: number;
+  };
+}

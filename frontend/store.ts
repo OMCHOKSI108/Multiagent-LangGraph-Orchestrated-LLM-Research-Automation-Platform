@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { JobStatus, ResearchJob, LogEntry, ChatMessage, User, ApiKeys, UsageStats, Memory, SearchResponse } from './types';
+import { JobStatus, ResearchJob, LogEntry, ChatMessage, User, ApiKeys, UsageStats, Memory, SearchResponse, LLMStatus } from './types';
 import { api } from './services/api';
+import { toast } from 'sonner';
 
 interface ExecutionEvent {
   event_id: string;
@@ -17,6 +18,13 @@ interface DataSource {
   domain: string;
   status: 'success' | 'partial' | 'failed' | 'pending';
   items_found: number;
+  url?: string;
+  title?: string;
+  description?: string;
+  favicon?: string;
+  thumbnail?: string;
+  published_date?: string;
+  citation_text?: string;
 }
 
 interface ResearchStore {
@@ -30,6 +38,7 @@ interface ResearchStore {
   clearAuthError: () => void;
   rehydrateAuth: () => Promise<void>;
   updatePassword: (current: string, newPass: string) => Promise<void>;
+  updateProfile: (name: string) => Promise<void>;
 
   // Settings
   apiKeys: ApiKeys;
@@ -53,6 +62,7 @@ interface ResearchStore {
   // Live Execution State
   executionEvents: ExecutionEvent[];
   dataSources: DataSource[];
+  topicSuggestions: any[]; // New
   currentStage: string;
   startedAt: string | null;
   completedAt: string | null;
@@ -60,6 +70,7 @@ interface ResearchStore {
   chatSessionId: string | null;
   setCurrentStage: (stage: string) => void;
   setStartedAt: (iso: string) => void;
+  setTopicSuggestions: (suggestions: any[]) => void;
 
   // Actions
   fetchResearches: () => Promise<void>;
@@ -95,10 +106,40 @@ interface ResearchStore {
   exportMarkdown: (id: string) => Promise<void>;
   exportPDF: (id: string) => Promise<void>;
   exportLatex: (id: string) => Promise<void>;
+
+  // LLM Status
+  llmStatus: LLMStatus | null;
+  llmStatusLoading: boolean;
+  fetchLLMStatus: () => Promise<void>;
+
+  // Providers
+  providers: any;
+  fetchProviders: () => Promise<void>;
 }
 
 export const useResearchStore = create<ResearchStore>((set, get) => {
   let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let liveSubscriptionSeq = 0;
+  let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const CHAT_SESSION_MAP_KEY = 'dre_chat_sessions';
+  const getChatSessionMap = (): Record<string, string> => {
+    try {
+      const raw = localStorage.getItem(CHAT_SESSION_MAP_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  };
+  const saveChatSession = (researchId: string, sessionId: string) => {
+    const map = getChatSessionMap();
+    map[researchId] = sessionId;
+    localStorage.setItem(CHAT_SESSION_MAP_KEY, JSON.stringify(map));
+  };
+  const getChatSession = (researchId: string): string | null => {
+    const map = getChatSessionMap();
+    return map[researchId] || null;
+  };
 
   const storedKeys = localStorage.getItem('dre_api_keys');
   const initialKeys = storedKeys ? JSON.parse(storedKeys) : {};
@@ -121,6 +162,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     // Live execution state
     executionEvents: [],
     dataSources: [],
+    topicSuggestions: [], // New state for topic proposals
     currentStage: 'queued',
     startedAt: null,
     completedAt: null,
@@ -132,6 +174,9 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     setStartedAt: (iso: string) => {
       set({ startedAt: iso });
     },
+    setTopicSuggestions: (suggestions: any[]) => {
+      set({ topicSuggestions: suggestions });
+    },
 
     // Auth Actions
     login: async (email, password) => {
@@ -140,9 +185,11 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         const { token, user } = await api.login(email, password);
         localStorage.setItem('dre_token', token);
         set({ user, isAuthenticated: true });
+        toast.success('Successfully logged in! Welcome back.');
       } catch (err: any) {
         console.error("Login Error:", err);
         set({ authError: err.message || 'Login failed' });
+        toast.error(err.message || 'Login failed');
       }
     },
 
@@ -152,16 +199,38 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         const { token, user } = await api.signup(email, password, username);
         localStorage.setItem('dre_token', token);
         set({ user, isAuthenticated: true });
+        toast.success('Account created successfully! Welcome to the platform.');
       } catch (err: any) {
         set({ authError: err.message || 'Signup failed' });
+        toast.error(err.message || 'Signup failed');
       }
     },
 
     logout: () => {
+      // Unsubscribe from live events first
+      get().unsubscribeLiveEvents();
+      // Clear all localStorage
       localStorage.removeItem('dre_token');
       localStorage.removeItem('dre_api_key');
       localStorage.removeItem('dre_api_keys');
-      set({ user: null, isAuthenticated: false, researches: [], activeJob: null, chatHistory: [], chatSessionId: null });
+      localStorage.removeItem(CHAT_SESSION_MAP_KEY);
+      // Reset ALL state to prevent data leaks
+      set({
+        user: null,
+        isAuthenticated: false,
+        researches: [],
+        activeJob: null,
+        chatHistory: [],
+        chatSessionId: null,
+        executionEvents: [],
+        dataSources: [],
+        topicSuggestions: [],
+        currentStage: 'queued',
+        startedAt: null,
+        completedAt: null,
+        eventSource: null,
+        memories: [],
+      });
     },
 
     clearAuthError: () => set({ authError: null }),
@@ -183,6 +252,12 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
       await api.updatePassword(current, newPass);
     },
 
+    updateProfile: async (name) => {
+      const user = await api.updateProfile(name);
+      set({ user });
+      toast.success('Profile updated successfully.');
+    },
+
     // Settings Actions
     openSettings: () => {
       set({ isSettingsOpen: true });
@@ -192,6 +267,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
     saveApiKeys: (keys) => {
       localStorage.setItem('dre_api_keys', JSON.stringify(keys));
+      // Note: dre_api_key is the backend auth key — do NOT overwrite it here
       set({ apiKeys: keys });
     },
 
@@ -225,26 +301,123 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
       set({ activeJob: null, chatHistory: [], chatSessionId: null });
       const job = await api.getResearch(id);
 
-      // Extraction Logic
+      // Extraction Logic – visualization, report, and sources are independent
       const visResponse = job.result_json?.final_state?.findings?.visualization?.response;
       if (visResponse) {
         if (visResponse.images_metadata && Array.isArray(visResponse.images_metadata)) {
           job.images = visResponse.images_metadata.map((img: any) =>
-            img.local ? `http://localhost:5000/${img.local}` : img.original
+            img.local ? `${api.BASE_URL}${img.local.startsWith('/') ? '' : '/'}${img.local}` : img.original
           );
         } else if (visResponse.image_urls && Array.isArray(visResponse.image_urls)) {
-          job.images = visResponse.image_urls;
+          job.images = visResponse.image_urls.map((url: string) =>
+            url.startsWith('/') ? `${api.BASE_URL}${url}` : url
+          );
         }
 
-        const diagrams = [];
+        const diagrams: string[] = [];
         if (visResponse.timeline_mermaid) diagrams.push(visResponse.timeline_mermaid);
         if (visResponse.methodology_mermaid) diagrams.push(visResponse.methodology_mermaid);
         if (visResponse.data_chart_mermaid) diagrams.push(visResponse.data_chart_mermaid);
         job.diagrams = diagrams;
+      }
 
-        if (!job.reportMarkdown && job.result_json?.final_state?.findings?.multi_stage_report?.response) {
-          job.reportMarkdown = job.result_json.final_state.findings.multi_stage_report.response;
+      // Report markdown extraction (independent of visualization)
+      if (!job.reportMarkdown && job.result_json?.final_state?.findings?.multi_stage_report?.response) {
+        job.reportMarkdown = job.result_json.final_state.findings.multi_stage_report.response;
+      }
+
+      // Extract Sources from result_json if available (independent of visualization)
+      const sources: DataSource[] = [];
+      const findings = job.result_json?.final_state?.findings;
+
+      if (findings) {
+        // Extract from Google News
+        if (findings.google_news?.response?.results) {
+          (findings.google_news.response.results as any[]).forEach(item => {
+            let domain = 'unknown';
+            try { domain = new URL(item.url).hostname.replace('www.', ''); } catch {}
+            sources.push({
+              source_type: 'news',
+              domain,
+              status: 'success',
+              items_found: 1,
+              url: item.url,
+              title: item.title,
+              description: item.snippet || item.description,
+            });
+          });
         }
+
+        // Extract from Arxiv/Scholar/Literature
+        if (findings.literature_review?.response?.papers) {
+          (findings.literature_review.response.papers as any[]).forEach(paper => {
+            let domain = 'arxiv.org';
+            try { if (paper.url) domain = new URL(paper.url).hostname.replace('www.', ''); } catch {}
+            sources.push({
+              source_type: 'arxiv',
+              domain,
+              status: 'success',
+              items_found: 1,
+              url: paper.url,
+              title: paper.title,
+              description: paper.abstract || paper.summary,
+            });
+          });
+        }
+
+        // Extract from web_scraper (general)
+        if (findings.web_scraper?.response?.sources) {
+          (findings.web_scraper.response.sources as any[]).forEach(src => {
+            let domain = 'unknown';
+            try { domain = new URL(src).hostname.replace('www.', ''); } catch {}
+            sources.push({
+              source_type: 'web',
+              domain,
+              status: 'success',
+              items_found: 1,
+              url: src,
+            });
+          });
+        }
+
+        // Extract from discovery agent
+        if (findings.discovery?.response?.results) {
+          (findings.discovery.response.results as any[]).forEach((item: any) => {
+            let domain = 'unknown';
+            try { domain = new URL(item.url || item.link).hostname.replace('www.', ''); } catch {}
+            sources.push({
+              source_type: item.source_type || 'web',
+              domain,
+              status: 'success',
+              items_found: 1,
+              url: item.url || item.link,
+              title: item.title,
+              description: item.snippet || item.description || item.abstract,
+            });
+          });
+        }
+
+        // Extract from scraper results
+        if (findings.scraper?.response?.results || findings.web_scraper?.response?.results) {
+          const scraperResults = findings.scraper?.response?.results || findings.web_scraper?.response?.results || [];
+          (scraperResults as any[]).forEach((item: any) => {
+            let domain = 'unknown';
+            try { domain = new URL(item.url || item.link).hostname.replace('www.', ''); } catch {}
+            sources.push({
+              source_type: 'web',
+              domain,
+              status: item.status || 'success',
+              items_found: 1,
+              url: item.url || item.link,
+              title: item.title,
+              description: item.content?.substring(0, 200) || item.description,
+            });
+          });
+        }
+      }
+
+      if (sources.length > 0) {
+        get().setDataSources(sources);
       }
 
       set({
@@ -253,17 +426,42 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         startedAt: job.createdAt
       });
 
+      const existingSessionId = getChatSession(id);
+      if (existingSessionId) {
+        try {
+          const history = await api.getChatHistory(existingSessionId);
+          const mappedHistory: ChatMessage[] = history.map((entry) => ({
+            id: Math.random().toString(36),
+            role: entry.role,
+            content: entry.message,
+            timestamp: entry.created_at,
+          }));
+          set({
+            chatSessionId: existingSessionId,
+            chatHistory: mappedHistory,
+          });
+        } catch (err) {
+          console.warn('Failed to hydrate chat history for session:', existingSessionId, err);
+        }
+      }
+
       if (job.status !== JobStatus.COMPLETED && job.status !== JobStatus.FAILED) {
         get().startPolling(id);
       }
     },
 
     deleteResearch: async (id) => {
-      await api.deleteResearch(id);
-      set((state) => ({
-        researches: state.researches.filter((r) => r.id !== id),
-        activeJob: state.activeJob?.id === id ? null : state.activeJob,
-      }));
+      try {
+        await api.deleteResearch(id);
+        set((state) => ({
+          researches: state.researches.filter((r) => r.id !== id),
+          activeJob: state.activeJob?.id === id ? null : state.activeJob,
+        }));
+        toast.success('Workspace deleted successfully.');
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to delete workspace.');
+        throw err;
+      }
     },
 
     addChatMessage: async (content, role, signal) => {
@@ -277,7 +475,17 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
       if (role === 'user') {
         const activeJob = get().activeJob;
-        if (!activeJob) return;
+        if (!activeJob) {
+          // Add a helpful message indicating no active research
+          const helpMsg: ChatMessage = {
+            id: Math.random().toString(36),
+            role: 'assistant',
+            content: 'Please start a research first by going to the dashboard and creating a new research topic. You can then chat about your research in the workspace.',
+            timestamp: new Date().toISOString(),
+          };
+          set((state) => ({ chatHistory: [...state.chatHistory, helpMsg] }));
+          return;
+        }
 
         // Create a placeholder assistant message for streaming
         const assistantMsgId = Math.random().toString(36);
@@ -301,6 +509,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
           const newSessionId = response.headers.get('X-Session-ID');
           if (newSessionId) {
             set({ chatSessionId: newSessionId });
+            saveChatSession(activeJob.id, newSessionId);
           }
 
           // Stream the SSE response
@@ -309,17 +518,52 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
           let fullText = '';
 
           if (reader) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+            try {
+              let buffer = '';
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split('\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
 
-              for (const line of lines) {
-                if (line.startsWith('data: ') && !line.includes('[DONE]') && !line.includes('[ERROR]')) {
-                  fullText += line.substring(6);
-                  // Update the assistant message in place
+                for (const rawLine of lines) {
+                  // Handle CRLF by removing \r if present
+                  const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+
+                  if (!line.startsWith('data:')) continue;
+
+                  // Spec-compliant parsing: remove "data:" and optional single leading space
+                  let payload = line.substring(5);
+                  if (payload.startsWith(' ')) {
+                    payload = payload.substring(1);
+                  }
+
+                  if (!payload || payload === '[DONE]') continue;
+                  if (payload.startsWith('[ERROR]')) throw new Error(payload);
+
+                  // Accept plain text payloads and JSON payloads.
+                  let delta = payload;
+                  if (payload.startsWith('{') || payload.startsWith('[')) {
+                    try {
+                      const parsed = JSON.parse(payload);
+                      delta = parsed?.delta || parsed?.token || parsed?.text || '';
+                      // Validate delta is string
+                      if (typeof delta !== 'string') {
+                        console.warn('Non-string delta received:', delta);
+                        delta = String(delta || '');
+                      }
+                    } catch (parseError) {
+                      console.warn('JSON parse failed for payload:', payload, parseError);
+                      // Use raw text only if it looks safe (no control characters)
+                      delta = payload.includes('{') ? '' : payload;
+                    }
+                  }
+
+                  // Skip empty or invalid deltas
+                  if (!delta || typeof delta !== 'string') continue;
+                  fullText += delta;
                   set((state) => ({
                     chatHistory: state.chatHistory.map((m) =>
                       m.id === assistantMsgId ? { ...m, content: fullText } : m
@@ -327,13 +571,32 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
                   }));
                 }
               }
+
+              // Flush trailing partial line if it is a complete SSE data payload.
+              const trailing = buffer.trim();
+              if (trailing.startsWith('data:')) {
+                const payload = trailing.substring(5).trim();
+                if (payload && payload !== '[DONE]' && !payload.startsWith('[ERROR]')) {
+                  fullText += payload;
+                  set((state) => ({
+                    chatHistory: state.chatHistory.map((m) =>
+                      m.id === assistantMsgId ? { ...m, content: fullText } : m
+                    ),
+                  }));
+                }
+              }
+            } finally {
+              reader.releaseLock();
             }
           }
 
           // If streaming produced no text, fall back to non-streaming
           if (!fullText.trim()) {
             const fallbackResponse = await api.sendChatMessage(activeJob.id, content, sessionId);
-            set({ chatSessionId: fallbackResponse.sessionId });
+            if (fallbackResponse.sessionId) {
+              set({ chatSessionId: fallbackResponse.sessionId });
+              saveChatSession(activeJob.id, fallbackResponse.sessionId);
+            }
             set((state) => ({
               chatHistory: state.chatHistory.map((m) =>
                 m.id === assistantMsgId ? { ...m, content: fallbackResponse.reply } : m
@@ -354,7 +617,13 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     },
 
     startPolling: (id: string) => {
-      if (get().isPolling) return;
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+      if (get().isPolling) {
+        set({ isPolling: false });
+      }
 
       set({ isPolling: true });
 
@@ -373,21 +642,24 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
           if (visResponse) {
             if (visResponse.images_metadata && Array.isArray(visResponse.images_metadata)) {
               updatedJob.images = visResponse.images_metadata.map((img: any) =>
-                img.local ? `http://localhost:5000/${img.local}` : img.original
+                img.local ? `${api.BASE_URL}${img.local.startsWith('/') ? '' : '/'}${img.local}` : img.original
               );
             } else if (visResponse.image_urls && Array.isArray(visResponse.image_urls)) {
-              updatedJob.images = visResponse.image_urls;
+              updatedJob.images = visResponse.image_urls.map((url: string) =>
+                url.startsWith('/') ? `${api.BASE_URL}${url}` : url
+              );
             }
 
-            const diagrams = [];
+            const diagrams: string[] = [];
             if (visResponse.timeline_mermaid) diagrams.push(visResponse.timeline_mermaid);
             if (visResponse.methodology_mermaid) diagrams.push(visResponse.methodology_mermaid);
             if (visResponse.data_chart_mermaid) diagrams.push(visResponse.data_chart_mermaid);
             updatedJob.diagrams = diagrams;
+          }
 
-            if (!updatedJob.reportMarkdown && updatedJob.result_json?.final_state?.findings?.multi_stage_report?.response) {
-              updatedJob.reportMarkdown = updatedJob.result_json.final_state.findings.multi_stage_report.response;
-            }
+          // Report markdown (independent of visualization)
+          if (!updatedJob.reportMarkdown && updatedJob.result_json?.final_state?.findings?.multi_stage_report?.response) {
+            updatedJob.reportMarkdown = updatedJob.result_json.final_state.findings.multi_stage_report.response;
           }
 
           set({ activeJob: updatedJob });
@@ -423,23 +695,51 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
     // Live Event Actions
     subscribeToLiveEvents: async (id: string) => {
-      // Clean up any existing subscription
-      get().unsubscribeLiveEvents();
+      const subscriptionSeq = ++liveSubscriptionSeq;
 
-      // Reset event state but keep the job context
-      set({
-        executionEvents: [],
-        dataSources: [],
-        currentStage: 'connecting...',
-        eventSource: null,
-      });
+      // Clean up any existing EventSource WITHOUT bumping liveSubscriptionSeq.
+      // If we call unsubscribeLiveEvents() here, it increments the sequence and
+      // invalidates this very subscription before it can hydrate/attach.
+      const existingEs = get().eventSource;
+      if (existingEs) {
+        existingEs.close();
+        set({ eventSource: null });
+      }
+      if (liveReconnectTimer) {
+        clearTimeout(liveReconnectTimer);
+        liveReconnectTimer = null;
+      }
+
+      const preserveState = get().activeJob?.id === id && get().executionEvents.length > 0;
+      // Reset event state only for fresh workspace load, not reconnects.
+      if (!preserveState) {
+        set({
+          executionEvents: [],
+          dataSources: [],
+          currentStage: 'connecting...',
+          eventSource: null,
+        });
+      } else {
+        set({ eventSource: null });
+      }
 
       // 1. Fetch historical events to hydrate the state
       try {
         const history = await api.getResearchEvents(id);
+        if (subscriptionSeq !== liveSubscriptionSeq) return;
         if (Array.isArray(history)) {
           history.forEach(event => {
+            if (!event || typeof event !== 'object') return;
             get().addExecutionEvent(event);
+            // Re-hydrate topic suggestions from history.
+            // Prefer category, but also tolerate legacy/misclassified events that still contain suggestions.
+            if (
+              event.details?.suggestions &&
+              Array.isArray(event.details.suggestions) &&
+              (event.category === 'user_action_required' || event.details.suggestions.length > 0)
+            ) {
+              get().setTopicSuggestions(event.details.suggestions);
+            }
             // Re-hydrate sources from history if present in events
             if (event.type === 'sources' && event.sources) {
               get().setDataSources(event.sources);
@@ -448,6 +748,17 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         }
       } catch (e) {
         console.warn('Failed to fetch event history', e);
+      }
+
+      // 1b. Fetch historical data sources to hydrate ResourceTabs
+      try {
+        const sources = await api.getResearchSources(id);
+        if (subscriptionSeq !== liveSubscriptionSeq) return;
+        if (Array.isArray(sources) && sources.length > 0) {
+          get().setDataSources(sources);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch source history', e);
       }
 
       // 2. Set timers from active job if not set by events
@@ -460,9 +771,22 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
       const eventSource = api.subscribeToEvents(
         id,
         (data) => {
+          if (subscriptionSeq !== liveSubscriptionSeq) return;
           switch (data.type) {
+            case 'connected':
+              console.log(`[SSE] Connected to event stream for research #${data.research_id}`);
+              set({ currentStage: get().currentStage === 'connecting...' ? 'queued' : get().currentStage });
+              break;
             case 'event':
               get().addExecutionEvent(data);
+              // Check for topic suggestions (robust to category mismatches)
+              if (
+                data.details?.suggestions &&
+                Array.isArray(data.details.suggestions) &&
+                (data.category === 'user_action_required' || data.details.suggestions.length > 0)
+              ) {
+                get().setTopicSuggestions(data.details.suggestions);
+              }
               break;
             case 'status':
               set({
@@ -470,24 +794,67 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
                 startedAt: data.started_at || get().startedAt, // Keep existing if null
                 completedAt: data.completed_at,
               });
+              // Also update activeJob.status so the UI reacts to state transitions
+              if (data.status) {
+                const newStatus = data.status as JobStatus;
+                set((state) => ({
+                  activeJob: state.activeJob ? { ...state.activeJob, status: newStatus } : null,
+                }));
+              }
+              // Polling fallback: if we're in topic_discovery and have no suggestions, fetch them
+              if (
+                data.current_stage &&
+                data.current_stage.includes('topic') &&
+                get().topicSuggestions.length === 0
+              ) {
+                api.getTopicSuggestions(id).then((result) => {
+                  if (result.topic_suggestions && result.topic_suggestions.length > 0) {
+                    get().setTopicSuggestions(result.topic_suggestions);
+                  }
+                }).catch(() => { /* ignore polling errors */ });
+              }
               break;
             case 'sources':
-              get().setDataSources(data.sources);
+              if (Array.isArray(data.sources) && data.sources.length > 0) {
+                get().setDataSources(data.sources);
+              }
               break;
             case 'done':
+              // Refresh the full job data to get report, latex, etc.
+              api.getResearch(id).then((updatedJob) => {
+                set({ activeJob: updatedJob });
+              }).catch(console.error);
               get().unsubscribeLiveEvents();
               break;
           }
         },
         (error) => {
+          if (subscriptionSeq !== liveSubscriptionSeq) return;
           console.error('SSE error:', error);
+          const activeStatus = get().activeJob?.status;
+          const shouldReconnect = activeStatus === JobStatus.PROCESSING || activeStatus === JobStatus.QUEUED;
+          if (!shouldReconnect) return;
+          if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
+          liveReconnectTimer = setTimeout(() => {
+            if (subscriptionSeq !== liveSubscriptionSeq) return;
+            get().subscribeToLiveEvents(id);
+          }, 1500);
         }
       );
 
+      if (subscriptionSeq !== liveSubscriptionSeq) {
+        eventSource.close();
+        return;
+      }
       set({ eventSource });
     },
 
     unsubscribeLiveEvents: () => {
+      liveSubscriptionSeq++;
+      if (liveReconnectTimer) {
+        clearTimeout(liveReconnectTimer);
+        liveReconnectTimer = null;
+      }
       const es = get().eventSource;
       if (es) {
         es.close();
@@ -496,14 +863,28 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     },
 
     addExecutionEvent: (event) => {
-      set((state) => ({
-        executionEvents: [...state.executionEvents, event],
-        currentStage: event.stage || state.currentStage,
-      }));
+      set((state) => {
+        // Deduplicate by event_id to prevent duplicates from hydration + SSE overlap
+        if (event.event_id && state.executionEvents.some(e => e.event_id === event.event_id)) {
+          return { currentStage: event.stage || state.currentStage };
+        }
+        return {
+          executionEvents: [...state.executionEvents, event],
+          currentStage: event.stage || state.currentStage,
+        };
+      });
     },
 
     setDataSources: (sources) => {
-      set({ dataSources: sources });
+      set((state) => {
+        const merged = new Map<string, DataSource>();
+        const all = [...state.dataSources, ...sources];
+        for (const src of all) {
+          const key = `${src.source_type}|${src.domain}|${(src as any).url || ''}|${(src as any).title || ''}`;
+          merged.set(key, src);
+        }
+        return { dataSources: Array.from(merged.values()) };
+      });
     },
 
     // Memories
@@ -567,6 +948,42 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
     },
     exportLatex: async (id: string) => {
       await api.exportLatex(id);
+    },
+
+    // LLM Status
+    llmStatus: null,
+    llmStatusLoading: false,
+    fetchLLMStatus: async () => {
+      set({ llmStatusLoading: true });
+      try {
+        const status = await api.getLLMStatus();
+        set({ llmStatus: status });
+      } catch (err: any) {
+        // AI engine may be intentionally offline in local/dev. Avoid noisy console spam.
+        set({
+          llmStatus: {
+            mode: 'OFFLINE',
+            provider: {
+              provider: 'local',
+              model: 'unavailable',
+              available: false,
+            },
+          } as LLMStatus,
+        });
+      } finally {
+        set({ llmStatusLoading: false });
+      }
+    },
+
+    // Providers
+    providers: null,
+    fetchProviders: async () => {
+      try {
+        const data = await api.getProviders();
+        set({ providers: data });
+      } catch (err) {
+        console.error('Failed to fetch providers:', err);
+      }
     },
   };
 });

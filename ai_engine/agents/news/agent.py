@@ -14,7 +14,7 @@ class NewsAgent(BaseAgent):
             You have access to a News Search tool.
             
             1. Analyze the user's research topic.
-            2. Generate 2-3 specific news search queries (e.g., "{topic} latest news", "{topic} market trends 2024").
+            2. Generate 2-3 specific news search queries. Each query should directly use the actual topic name, NOT a placeholder.
             3. Use the tool to find relevant articles.
             4. Synthesize the findings into a concise "Current Developments" summary.
             
@@ -37,16 +37,16 @@ class NewsAgent(BaseAgent):
         # 1. Generate Queries
         messages = [
             SystemMessage(content=self.system_prompt),
-            HumanMessage(content=f"Generate 2 news search queries for: {task}. Return only the queries separated by newline.")
+            HumanMessage(content=f"Generate 3 news search queries for: {task}. Return only the queries separated by newline.")
         ]
         
         try:
             response = self.llm.invoke(messages)
             queries = [q.strip() for q in response.content.split('\n') if q.strip()]
-            queries = queries[:2] # Limit to 2 queries
+            queries = queries[:3] # Limit to 3 queries
         except Exception as e:
             print(f"[{self.name}] Query generation failed: {e}")
-            queries = [f"{task} news", f"{task} latest developments"]
+            queries = [f"{task} news", f"{task} latest developments", f"{task} recent research"]
 
         # 2. Search News
         from utils.providers import NewsSearchProvider
@@ -55,7 +55,7 @@ class NewsAgent(BaseAgent):
         all_results = []
         for query in queries:
             print(f"[{self.name}] Query: {query}")
-            results = news_provider.search(query, max_results=3)
+            results = news_provider.search(query, max_results=5)
             all_results.extend(results)
             
         # Deduplicate

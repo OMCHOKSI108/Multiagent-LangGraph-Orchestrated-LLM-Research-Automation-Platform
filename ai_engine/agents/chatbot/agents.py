@@ -1,34 +1,90 @@
 from ..base import BaseAgent
-from utils.embeddings import ToneAnalyzer
 from langchain_core.messages import SystemMessage, HumanMessage
+from utils.embeddings import ToneAnalyzer
 
 class InteractivePaperChatbotAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
             name="InteractivePaperChatbot",
-            system_prompt="""You are an Author-Proxy. 
-            Answer user questions about the specific paper based on the extracted context.
-            Output text directly responsive to the user.
-            """,
+            system_prompt="""You are a Research Paper Assistant with RAG (Retrieval-Augmented Generation) capabilities.
+You have access to the COMPLETE research document, literature sources, and data gathered by the multi-agent research pipeline.
+
+YOUR CAPABILITIES:
+1. Answer questions about ANY section of the research paper
+2. Cite specific sources with [Source N] references when available
+3. Explain methodology, findings, gaps, and conclusions
+4. Compare findings across different sources in the literature
+5. Suggest further research directions based on identified gaps
+
+RESPONSE FORMAT RULES:
+- When referencing a specific section, use **bold section names** like **Literature Review** or **Gap Analysis**
+- When citing a paper, use the format: [Author, Year](url) or [Source N] with the reference number
+- When quoting from the report, use > blockquote formatting
+- Structure longer answers with clear headings using ## or ###
+- For numerical data or comparisons, use markdown tables
+- If the user asks about something NOT in the research, clearly state what IS covered
+
+REFERENCE HIGHLIGHTING:
+- Always include source citations when answering factual questions
+- Use inline references like [[1]](url), [[2]](url) linking to the actual paper URLs
+- At the end of detailed answers, include a "References" section listing cited sources""",
             **kwargs
         )
 
+    def _build_context(self, findings: dict) -> str:
+        """Build structured RAG context from findings."""
+        sections = []
+        
+        # Handle nested structure
+        if "final_state" in findings and "findings" in findings["final_state"]:
+            findings = findings["final_state"]["findings"]
+
+        # Full report
+        msr = findings.get("multi_stage_report", {})
+        report = msr.get("markdown_report") or msr.get("response") or ""
+        if not report:
+            sw = findings.get("scientific_writing", {})
+            report = sw.get("markdown_report") or sw.get("response") or ""
+        if report:
+            sections.append(f"=== FULL REPORT ===\n{report[:12000]}")
+
+        # Literature
+        lit = findings.get("literature_review", {})
+        lit_resp = lit.get("response") if isinstance(lit, dict) else None
+        if lit_resp and isinstance(lit_resp, dict) and "papers" in lit_resp:
+            papers = []
+            for i, p in enumerate(lit_resp["papers"][:15], 1):
+                papers.append(
+                    f"[{i}] {p.get('title', 'Untitled')} — {p.get('authors', 'Unknown')} "
+                    f"({p.get('published', 'N/A')})\n    URL: {p.get('url', 'N/A')}\n    "
+                    f"Summary: {(p.get('abstract') or p.get('summary', ''))[:200]}"
+                )
+            sections.append(f"=== LITERATURE ({len(lit_resp['papers'])} papers) ===\n" + "\n".join(papers))
+        elif lit_resp and isinstance(lit_resp, str):
+            sections.append(f"=== LITERATURE REVIEW ===\n{lit_resp[:3000]}")
+
+        # Gap / novelty
+        for key in ["gap_synthesis", "innovation_novelty", "scoring"]:
+            data = findings.get(key, {})
+            resp = data.get("response") if isinstance(data, dict) else None
+            if resp:
+                text = resp if isinstance(resp, str) else str(resp)[:2000]
+                sections.append(f"=== {key.replace('_',' ').upper()} ===\n{text[:2000]}")
+
+        if not sections:
+            sections.append(f"=== RAW FINDINGS ===\n{str(findings)[:8000]}")
+
+        return "\n\n".join(sections)
+
     def run(self, state: dict) -> dict:
-        print(f"[{self.name}] Answering User Query...")
+        print(f"[{self.name}] Answering User Query with RAG context...")
         
-        # State should contain 'chat_history' and 'current_query'
-        query = state.get("task", "") # In chatbot mode, task is the query
+        query = state.get("task", "")
         findings = state.get("findings", {})
+        context = self._build_context(findings)
         
-        context = ""
-        if "paper_understanding" in findings:
-             context = str(findings["paper_understanding"])
-        elif "paper_decomposition" in findings:
-             context = str(findings["paper_decomposition"])
-             
-        enhanced_prompt = f"{self.system_prompt}\n\nPAPER CONTEXT:\n{context[:15000]}"
+        enhanced_prompt = f"{self.system_prompt}\n\n{context}"
         
-        from langchain_core.messages import SystemMessage, HumanMessage
         messages = [
             SystemMessage(content=enhanced_prompt),
             HumanMessage(content=query)
@@ -37,7 +93,7 @@ class InteractivePaperChatbotAgent(BaseAgent):
         try:
             response = self.llm.invoke(messages)
             return {
-                "response": response.content, # Just text
+                "response": response.content,
                 "raw": response.content,
                 "agent": self.name
             }

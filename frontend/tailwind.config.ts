@@ -61,25 +61,26 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Earthy palette for direct use
-        forest: {
-          50: "#f0f7f0",
-          100: "#dbeadb",
-          500: "#254F22", // Primary green
-          900: "#0d1a0c",  // Dark mode bg
+        // Black & White palette for direct use
+        gray: {
+          50: "#f9fafb",
+          100: "#f3f4f6",
+          200: "#e5e7eb",
+          300: "#d1d5db",
+          400: "#9ca3af",
+          500: "#6b7280",
+          600: "#4b5563",
+          700: "#374151",
+          800: "#1f2937",
+          900: "#111827",
         },
-        rust: {
-          500: "#A03A13", // Destructive
-          600: "#8b3011",
+        black: {
+          DEFAULT: "#000000",
+          900: "#000000",
         },
-        orange: {
-          DEFAULT: "#F5824A", // Brand
-          500: "#F5824A",
-        },
-        cream: {
-          DEFAULT: "#EDE4C2", // Backgrounds
-          100: "#f5f1e6",
-          200: "#EDE4C2",
+        white: {
+          DEFAULT: "#ffffff",
+          50: "#ffffff",
         },
       },
       borderRadius: {
@@ -96,10 +97,21 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
+        "progress-indeterminate": {
+          "0%": { transform: "translateX(-100%)", width: "40%" },
+          "50%": { width: "60%" },
+          "100%": { transform: "translateX(250%)", width: "40%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "shimmer": "shimmer 2s ease-in-out infinite",
+        "progress-indeterminate": "progress-indeterminate 2s ease-in-out infinite",
       },
     },
   },

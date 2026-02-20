@@ -1,22 +1,23 @@
-import React, { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import { useResearchStore } from '../store';
 import { JobStatus } from '../types';
-import { Loader2, PanelLeftClose, PanelLeftOpen, Download, Share } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Share } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { EditableTitle } from '../components/EditableTitle';
 import { ExportDropdown } from '../components/ExportDropdown';
 import { toast } from 'sonner';
 import { api } from '../services/api';
+import { Group, Panel, PanelImperativeHandle, Separator } from 'react-resizable-panels';
 
 // Enterprise Components
 import { ChatInterface } from '../components/ChatInterface';
-import { PipelineTimeline } from '../components/PipelineTimeline';
-import { DataExplorer } from '../components/DataExplorer';
 import { DocumentPreview } from '../components/DocumentPreview';
-import { ResizeHandle } from '../components/ResizeHandle';
 import { LiveFeed } from '../components/LiveFeed';
+import { ResearchStatusBanner } from '../components/ResearchStatusBanner';
+import { ResourceTabs } from '../components/ResourceTabs';
+import { Skeleton, PanelSkeleton } from '../components/ui/skeleton';
 
 export const Workspace = () => {
     const { id } = useParams();
@@ -29,7 +30,9 @@ export const Workspace = () => {
         renameResearch,
         executionEvents,
         dataSources,
-        currentStage
+        currentStage,
+        startedAt,
+        completedAt
     } = useResearchStore(useShallow(state => ({
         activeJob: state.activeJob,
         setActiveJob: state.setActiveJob,
@@ -39,52 +42,23 @@ export const Workspace = () => {
         renameResearch: state.renameResearch,
         executionEvents: state.executionEvents,
         dataSources: state.dataSources,
-        currentStage: state.currentStage
+        currentStage: state.currentStage,
+        startedAt: state.startedAt,
+        completedAt: state.completedAt
     })));
 
-    const [sidebarOpen, setSidebarOpen] = React.useState(true);
-    const [liveFeedOpen, setLiveFeedOpen] = React.useState(true);
-    const [sidebarWidth, setSidebarWidth] = React.useState(() => {
-        const saved = localStorage.getItem('workspace-sidebar-width');
-        return saved ? parseInt(saved, 10) : 350;
-    });
-    const [liveFeedWidth, setLiveFeedWidth] = React.useState(() => {
-        const saved = localStorage.getItem('workspace-livefeed-width');
-        return saved ? parseInt(saved, 10) : 320;
-    });
-    const [splitRatio, setSplitRatio] = React.useState(() => {
-        const saved = localStorage.getItem('workspace-split-ratio');
-        return saved ? parseFloat(saved) : 0.5;
-    });
+    const [activeRightTab, setActiveRightTab] = React.useState<'paper' | 'resources' | 'live'>('paper');
 
-    // Persist sizes to localStorage
-    React.useEffect(() => {
-        localStorage.setItem('workspace-sidebar-width', sidebarWidth.toString());
-    }, [sidebarWidth]);
+    // Panel Refs for programmatic control
+    const sidebarRef = useRef<PanelImperativeHandle>(null);
+    const rightPanelRef = useRef<PanelImperativeHandle>(null);
 
-    React.useEffect(() => {
-        localStorage.setItem('workspace-livefeed-width', liveFeedWidth.toString());
-    }, [liveFeedWidth]);
-
-    React.useEffect(() => {
-        localStorage.setItem('workspace-split-ratio', splitRatio.toString());
-    }, [splitRatio]);
-
-    const handleSidebarResize = React.useCallback((delta: number) => {
-        setSidebarWidth(prev => Math.min(Math.max(prev + delta, 280), 600));
-    }, []);
-
-    const handleLiveFeedResize = React.useCallback((delta: number) => {
-        setLiveFeedWidth(prev => Math.min(Math.max(prev - delta, 280), 500));
-    }, []);
-
-    const handleSplitResize = React.useCallback((delta: number) => {
-        setSplitRatio(prev => Math.min(Math.max(prev + (delta / window.innerHeight), 0.2), 0.8));
-    }, []);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
     const handleShare = React.useCallback(async () => {
         if (!activeJob) return;
-        
+
         try {
             const { shareUrl } = await api.shareResearch(activeJob.id);
             await navigator.clipboard.writeText(shareUrl);
@@ -97,213 +71,252 @@ export const Workspace = () => {
         }
     }, [activeJob]);
 
-    useEffect(() => {
-        if (id) {
-            setActiveJob(id);
-            subscribeToLiveEvents(id);
+    const handleExport = React.useCallback(async (format: 'markdown' | 'pdf' | 'latex' | 'zip' | 'plots') => {
+        if (!activeJob) return;
+        try {
+            if (format === 'markdown') await api.exportMarkdown(activeJob.id);
+            if (format === 'pdf') await api.exportPDF(activeJob.id);
+            if (format === 'latex') await api.exportLatex(activeJob.id);
+            if (format === 'zip') await api.exportZip(activeJob.id);
+            if (format === 'plots') await api.exportPlots(activeJob.id);
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('Export failed. Please try again.');
         }
+    }, [activeJob]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const initializeWorkspace = async () => {
+            if (!id) return;
+            await setActiveJob(id);
+            if (!cancelled) {
+                subscribeToLiveEvents(id);
+            }
+        };
+
+        initializeWorkspace();
+
         return () => {
+            cancelled = true;
             stopPolling();
             unsubscribeLiveEvents();
         };
     }, [id, setActiveJob, stopPolling, subscribeToLiveEvents, unsubscribeLiveEvents]);
 
+    // Default to 'live' if processing, 'paper' if finished.
+    useEffect(() => {
+        if (!activeJob) return;
+        if (activeJob.status === JobStatus.COMPLETED) setActiveRightTab('paper');
+        else if (activeJob.status === JobStatus.PROCESSING || activeJob.status === JobStatus.QUEUED) {
+            setActiveRightTab('live');
+        }
+
+        // Auto-expand right panel if it was collapsed and a job starts/completes important phase
+        if ((activeJob.status === JobStatus.PROCESSING || activeJob.status === JobStatus.QUEUED) && isRightPanelCollapsed) {
+            rightPanelRef.current?.expand();
+        }
+    }, [activeJob?.status]);
+
     if (!activeJob) {
         return (
-            <div className="h-full flex items-center justify-center bg-zinc-50">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-                    <p className="text-zinc-500 text-sm">Loading workspace...</p>
+            <div className="h-full flex bg-background w-full">
+                {/* Skeleton Loading State matching the 3-pane layout */}
+                <div className="w-[300px] border-r border-border p-4 space-y-4 shrink-0 hidden md:block">
+                    <PanelSkeleton lines={6} />
+                </div>
+                <div className="flex-1 p-6 space-y-4 border-r border-border">
+                    <div className="flex items-center gap-3 mb-6">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-8 w-24 rounded-full" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                </div>
+                <div className="w-[400px] p-4 shrink-0 hidden lg:block">
+                    <PanelSkeleton lines={5} />
                 </div>
             </div>
         );
     }
 
-    const isProcessing = activeJob.status === JobStatus.PROCESSING || activeJob.status === JobStatus.QUEUED;
-    const hasSources = (dataSources || []).length > 0;
-    const hasReport = Boolean(activeJob.reportMarkdown || activeJob.latexSource);
-    const hasEvents = executionEvents.length > 0;
-
-    const systemStatus = (() => {
-        if (!hasEvents && !hasSources && !hasReport) return 'Waiting for topic';
-        if (isProcessing && (currentStage === 'searching' || currentStage === 'scraping')) return 'Data gathering in progress';
-        if (isProcessing) return 'Agents running';
-        if (!hasReport) return 'Writing phase not started';
-        return 'Agents running';
-    })();
-
-    const statusDetail = (() => {
-        switch (systemStatus) {
-            case 'Waiting for topic':
-                return 'Submit a topic in the chat using /research <topic> to start.';
-            case 'Data gathering in progress':
-                return 'Sources are being collected and validated.';
-            case 'Agents running':
-                return 'Analysis agents are executing and updating the workspace.';
-            case 'Writing phase not started':
-                return 'Sources are ready; report generation has not begun yet.';
-            default:
-                return 'Processing…';
+    const toggleSidebar = () => {
+        const panel = sidebarRef.current;
+        if (panel) {
+            if (isSidebarCollapsed) panel.expand();
+            else panel.collapse();
         }
-    })();
+    };
+
+    const toggleRightPanel = () => {
+        const panel = rightPanelRef.current;
+        if (panel) {
+            if (isRightPanelCollapsed) panel.expand();
+            else panel.collapse();
+        }
+    };
+
+    const isProcessing = activeJob.status === JobStatus.PROCESSING;
+    const systemStatus = isProcessing ? "Agents running" : "Research Completed";
+    const statusDetail = isProcessing ? "Processing..." : "Report generated successfully.";
 
     return (
-        <div className="flex h-full w-full overflow-hidden bg-background text-foreground font-sans">
+        <div className="fixed inset-0 h-screen w-screen bg-background text-foreground font-sans overflow-hidden flex flex-col">
+            <Group orientation="horizontal" className="h-full w-full">
 
-            {/* LEFT SIDEBAR: Chat & Commands */}
-            <div
-                className="shrink-0 border-r border-border transition-all duration-300 ease-in-out flex"
-                style={{ 
-                    width: sidebarOpen ? `${sidebarWidth}px` : '0px',
-                    overflow: sidebarOpen ? 'visible' : 'hidden'
-                }}
-            >
-                <div className="flex-1">
-                    <ChatInterface />
-                </div>
-                {sidebarOpen && (
-                    <ResizeHandle 
-                        direction="horizontal" 
-                        onResize={handleSidebarResize}
-                        className="border-l border-border/50"
-                    />
-                )}
-            </div>
+                {/* 1. LEFT SIDEBAR: Navigation & History (10% default) */}
+                <Panel
+                    panelRef={sidebarRef}
+                    defaultSize={15}
+                    minSize={10}
+                    maxSize={25}
+                    collapsible
+                    collapsedSize={0}
+                    onResize={(panelSize: any) => setIsSidebarCollapsed(panelSize <= 5)}
+                />
 
-            {/* MAIN WORKSPACE */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white">
+                <Separator className="w-1 bg-border/40 hover:bg-primary/50 transition-colors flex items-center justify-center group focus:outline-none">
+                    <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors" />
+                </Separator>
 
-                {/* 1. Header & Timeline */}
-                <div className="shrink-0 flex flex-col border-b border-border">
-                    {/* Top Bar */}
-                    <div className="h-14 flex items-center justify-between px-4 bg-white">
-                        <div className="flex items-center gap-3">
-                            <Link to="/" className="flex items-center justify-center h-8 w-8 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-                            </Link>
-                            <div className="h-6 w-px bg-zinc-200" />
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-zinc-500"
-                                onClick={() => setSidebarOpen(!sidebarOpen)}
-                            >
-                                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-                            </Button>
+                {/* MAIN CONTENT AREA (Chat + Right Panel) */}
+                <Panel minSize={30}>
+                    <Group orientation="horizontal">
 
-                            <div className="h-6 w-px bg-zinc-200 mx-1" />
+                        {/* 2. CENTER PANEL: Chat Interface */}
+                        <Panel defaultSize={50} minSize={20} className="flex flex-col bg-background relative z-0">
+                            {/* Center Header */}
+                            <div className="h-14 shrink-0 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                                <div className="flex items-center gap-3 w-full min-w-0">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground mr-1"
+                                        onClick={toggleSidebar}
+                                        title={isSidebarCollapsed ? "Open Sidebar" : "Close Sidebar"}
+                                    >
+                                        {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                                    </Button>
+                                    <EditableTitle
+                                        title={activeJob.topic}
+                                        onSave={(newTitle) => renameResearch(activeJob.id, newTitle)}
+                                        className="text-sm font-medium text-foreground truncate flex-1 min-w-0"
+                                    />
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap hidden sm:inline-block ${isProcessing
+                                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                                        : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                        }`}>
+                                        {activeJob.status}
+                                    </span>
+                                </div>
 
-                            <EditableTitle
-                                title={activeJob.topic}
-                                onSave={(newTitle) => renameResearch(activeJob.id, newTitle)}
-                                className="text-sm font-semibold text-zinc-800"
-                            />
-
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider ${isProcessing ? 'bg-blue-50 text-blue-700' : 'bg-zinc-100 text-zinc-600'
-                                }`}>
-                                {activeJob.status}
-                            </span>
-
-                            <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wider bg-zinc-50 text-zinc-700 border border-zinc-200">
-                                System: {systemStatus}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-zinc-500"
-                                onClick={() => setLiveFeedOpen(!liveFeedOpen)}
-                                title="Toggle Live Feed"
-                            >
-                                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                            </Button>
-                            <ExportDropdown researchId={activeJob.id} onExport={() => { }} />
-                            <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8 gap-2 text-xs"
-                                onClick={handleShare}
-                            >
-                                <Share className="w-3.5 h-3.5" />
-                                Share
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Timeline */}
-                    <PipelineTimeline
-                        events={executionEvents}
-                        isActive={isProcessing}
-                        currentStage={currentStage}
-                        jobStatus={activeJob.status}
-                    />
-                </div>
-
-                {/* 2. Content Area (Split View with Live Feed) */}
-                <div className="flex-1 flex min-h-0">
-
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col min-h-0">
-
-                        {/* Middle: Data Explorer (Resizable) */}
-                        <div 
-                            className="border-b border-border bg-slate-50/50 dark:bg-card/30"
-                            style={{ height: `${splitRatio * 100}%` }}
-                        >
-                            <DataExplorer
-                                sources={dataSources as any} // Type cast to avoid strict check issues for now
-                                systemStatus={systemStatus}
-                                statusDetail={statusDetail}
-                                visuals={[
-                                    ...(activeJob.images || []).map(url => ({ type: 'image' as const, url })),
-                                    ...(activeJob.diagrams || []).map(content => ({ type: 'diagram' as const, content }))
-                                ]}
-                            />
-                        </div>
-
-                        {/* Horizontal Resize Handle */}
-                        <ResizeHandle 
-                            direction="vertical" 
-                            onResize={handleSplitResize}
-                            className="border-t border-border/50 bg-background"
-                        />
-
-                        {/* Bottom: Document Preview */}
-                        <div 
-                            className="bg-white dark:bg-card"
-                            style={{ height: `${(1 - splitRatio) * 100}%` }}
-                        >
-                            <DocumentPreview
-                                markdown={activeJob.reportMarkdown}
-                                latexSource={activeJob.latexSource}
-                                systemStatus={systemStatus}
-                                statusDetail={statusDetail}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Right Panel: Live Feed */}
-                    {liveFeedOpen && (
-                        <>
-                            <ResizeHandle 
-                                direction="horizontal" 
-                                onResize={handleLiveFeedResize}
-                                className="border-r border-border/50"
-                            />
-                            <div
-                                className="shrink-0"
-                                style={{ width: `${liveFeedWidth}px` }}
-                            >
-                                <LiveFeed />
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    <div className="h-4 w-px bg-border mx-2" />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground"
+                                        onClick={toggleRightPanel}
+                                        title={isRightPanelCollapsed ? "Open Research Panel" : "Close Research Panel"}
+                                    >
+                                        {isRightPanelCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+                                    </Button>
+                                    <ExportDropdown researchId={activeJob.id} onExport={handleExport} />
+                                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleShare} title="Share">
+                                        <Share className="w-4 h-4 text-muted-foreground" />
+                                    </Button>
+                                </div>
                             </div>
-                        </>
-                    )}
 
-                </div>
+                            {/* Chat Container */}
+                            <div className="flex-1 relative overflow-hidden flex flex-col min-h-0">
+                                <div className="flex-1 w-full h-full flex flex-col min-h-0">
+                                    <ChatInterface />
+                                </div>
+                            </div>
+                        </Panel>
 
-            </div>
-        </div>
+                        <Separator className="w-1 bg-border/40 hover:bg-primary/50 transition-colors flex items-center justify-center group focus:outline-none">
+                            <div className="h-8 w-1 rounded-full bg-border group-hover:bg-primary transition-colors" />
+                        </Separator>
+
+                        {/* 3. RIGHT PANEL: Research Output */}
+                        <Panel
+                            panelRef={rightPanelRef}
+                            defaultSize={40}
+                            minSize={20}
+                            collapsible
+                            collapsedSize={0}
+                            onResize={(panelSize: any) => setIsRightPanelCollapsed(panelSize <= 5)}
+                            className={isRightPanelCollapsed ? "" : "border-l border-border bg-card"}
+                        >
+                            <div className="flex flex-col h-full overflow-hidden">
+                                {/* Research Status Banner */}
+                                <ResearchStatusBanner
+                                    status={activeJob.status as JobStatus}
+                                    currentStage={currentStage}
+                                    topic={activeJob.topic}
+                                    startedAt={startedAt}
+                                    completedAt={completedAt}
+                                />
+
+                                {/* Main Tabs: Paper / Resources / Live */}
+                                <div className="shrink-0 border-b border-border bg-card/80 backdrop-blur-sm">
+                                    <div className="flex items-center p-1 gap-0.5">
+                                        {[
+                                            { key: 'paper', label: 'Paper' },
+                                            { key: 'resources', label: 'Resources' },
+                                            { key: 'live', label: 'Live Feed', pulse: isProcessing },
+                                        ].map((tab) => (
+                                            <button
+                                                key={tab.key}
+                                                onClick={() => setActiveRightTab(tab.key as any)}
+                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium rounded-md transition-all ${activeRightTab === tab.key
+                                                    ? 'bg-background text-foreground shadow-sm border border-border/50'
+                                                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                                                    }`}
+                                            >
+                                                {tab.label}
+                                                {tab.pulse && <span className="ml-1 h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Tab Content */}
+                                <div className="flex-1 overflow-hidden relative bg-card/30">
+                                    {activeRightTab === 'paper' && (
+                                        <DocumentPreview
+                                            markdown={activeJob.reportMarkdown}
+                                            latexSource={activeJob.latexSource}
+                                            systemStatus={systemStatus}
+                                            statusDetail={statusDetail}
+                                            sources={dataSources || []}
+                                            researchId={activeJob.id}
+                                            images={activeJob.images || []}
+                                            diagrams={activeJob.diagrams || []}
+                                        />
+                                    )}
+
+                                    {activeRightTab === 'resources' && (
+                                        <ResourceTabs
+                                            images={activeJob.images || []}
+                                            diagrams={activeJob.diagrams || []}
+                                        />
+                                    )}
+
+                                    {activeRightTab === 'live' && (
+                                        <LiveFeed className="border-none h-full" />
+                                    )}
+                                </div>
+                            </div>
+                        </Panel>
+                    </Group>
+                </Panel>
+            </Group>
+        </div >
     );
 };

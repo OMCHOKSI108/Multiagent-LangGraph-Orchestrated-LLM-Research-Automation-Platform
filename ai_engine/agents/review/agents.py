@@ -24,17 +24,17 @@ class SystematicLiteratureReviewAgent(BaseAgent):
         task = state.get("task", "")
         
         # 1. Search Arxiv (Scientific/Technical - CS/Math Focus)
-        arxiv_papers = self.arxiv_provider.search_papers(task, max_results=8)
+        arxiv_papers = self.arxiv_provider.search_papers(task, max_results=15)
         
         # 2. Search OpenAlex (General Science/Humanities/Global)
-        openalex_results = self.openalex_provider.search(task, max_results=8)
+        openalex_results = self.openalex_provider.search(task, max_results=15)
         
         # 3. Search PubMed (Biomedical/Life Sciences) - Useful if topic is bio-related
-        pubmed_results = self.pubmed_provider.search(task, max_results=5)
+        pubmed_results = self.pubmed_provider.search(task, max_results=10)
         
         # 4. Search Web/Google (Surveys/Grey Literature)
-        ddg_results = self.ddg_provider.search(f"systematic review survey {task}", max_results=5)
-        google_results = self.google_provider.search(f"state of the art survey {task}", max_results=4)
+        ddg_results = self.ddg_provider.search(f"systematic review survey {task}", max_results=10)
+        google_results = self.google_provider.search(f"state of the art survey {task}", max_results=8)
         
         # Aggregate ALL Sources
         context_str = "Selected Research Papers (Multi-Source):\n"
@@ -43,19 +43,19 @@ class SystematicLiteratureReviewAgent(BaseAgent):
         if arxiv_papers:
             context_str += "\n--- Source: Arxiv (CS/Math) ---\n"
             for p in arxiv_papers:
-                context_str += f"- {p['title']} ({p['published']})\n"
+                context_str += f"- {p.get('title', 'Untitled')} ({p.get('published', 'N/A')})\n"
 
         # OpenAlex
         if openalex_results:
             context_str += "\n--- Source: OpenAlex (Global Science) ---\n"
             for r in openalex_results:
-                context_str += f"- {r['title']} ({r['published']}): {r['summary']}\n"
+                context_str += f"- {r.get('title', 'Untitled')} ({r.get('published', r.get('published_date', 'N/A'))}): {r.get('summary', r.get('description', ''))}\n"
                 
         # PubMed
         if pubmed_results:
             context_str += "\n--- Source: PubMed (Bio/Med) ---\n"
             for r in pubmed_results:
-                context_str += f"- {r['title']} ({r['published']}): {r['summary']}\n"
+                context_str += f"- {r.get('title', 'Untitled')} ({r.get('published', r.get('published_date', 'N/A'))}): {r.get('summary', r.get('description', ''))}\n"
 
         # Web
         context_str += "\n--- Source: Web/Surveys ---\n"

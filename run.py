@@ -1,185 +1,149 @@
-#!/usr/bin/env python3
-"""
-Unified Project Runner
-
-Opens each service in a separate terminal window so you can see logs individually.
-
-Usage:
-    python run.py          # Start all services in separate windows
-    python run.py --stop   # Stop all services
-"""
-
-import os
-import sys
 import subprocess
+import sys
+import os
 import platform
-from pathlib import Path
+import time
+import argparse
+import signal
+import re
 
-# --------------------------------------------------
-# Paths
-# --------------------------------------------------
+# Service Configuration
+SERVICES = {
+    "backend": {
+        "name": "Backend (Node)",
+        "cmd": ["npm", "start"],
+        "cwd": "backend",
+        "port": 5000,
+        "color": "blue"
+    },
+    "ai_engine": {
+        "name": "AI Engine (Python)",
+        "cmd": ["uvicorn", "main:app", "--reload", "--port", "8000"],
+        "cwd": "ai_engine",
+        "venv": "venv",
+        "port": 8000,
+        "color": "green"
+    },
+    "frontend": {
+        "name": "Frontend (Vite)",
+        "cmd": ["npm", "run", "dev"],
+        "cwd": "frontend",
+        "port": 3000,
+        "color": "cyan"
+    },
+    "worker": {
+        "name": "Worker (Node)",
+        "cmd": ["npm", "run", "worker"],
+        "cwd": "backend",
+        "port": None, # Background process, no port
+        "color": "magenta"
+    }
+}
 
-PROJECT_ROOT = Path(__file__).parent.resolve()
-BACKEND_DIR = PROJECT_ROOT / "backend"
-FRONTEND_DIR = PROJECT_ROOT / "frontend"
-AI_ENGINE_DIR = PROJECT_ROOT / "ai_engine"
+def is_windows():
+    return platform.system().lower() == "windows"
 
-IS_WINDOWS = platform.system() == "Windows"
+def kill_process_by_title(title):
+    """Kills a process by its window title (Windows only)."""
+    if is_windows():
+        try:
+            print(f"Killing window '{title}'...")
+            subprocess.run(f'taskkill /F /FI "WINDOWTITLE eq {title}*"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"Error killing window {title}: {e}")
 
-# Detect Python environment
-def find_python():
-    """Find the Python executable in the AI engine."""
-    possible_names = ["agent", "venv", ".venv", "env"]
-    for name in possible_names:
-        venv_path = AI_ENGINE_DIR / name
-        if IS_WINDOWS:
-            python_path = venv_path / "Scripts" / "python.exe"
+def kill_process_on_port(port):
+    """Kills any process listening on the specified port."""
+    try:
+        if is_windows():
+            # Find PID
+            cmd = f'netstat -ano'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            lines = result.stdout.strip().split('\n')
+            
+            pids = set()
+            for line in lines:
+                parts = line.split()
+                # Windows netstat -ano output: Proto Local Address Foreign Address State PID
+                if len(parts) >= 5 and "LISTENING" in line:
+                    local_addr = parts[1]
+                    pid = parts[-1]
+                    
+                    # Strict port check
+                    if re.search(f":{port}$", local_addr):
+                        pids.add(pid)
+            
+            for pid in pids:
+                if pid != "0":
+                    print(f"[{port}] Killing PID {pid}...")
+                    subprocess.run(f'taskkill /F /PID {pid}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            python_path = venv_path / "bin" / "python"
-        
-        if python_path.exists():
-            return str(python_path)
-    
-    # Fallback to system Python
-    return sys.executable
+            # Unix-like (lsof)
+            cmd = f"lsof -ti:{port} | xargs kill -9"
+            subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+    except Exception as e:
+        print(f"Error killing port {port}: {e}")
 
-PYTHON_EXE = find_python()
+def start_services():
+    print("🚀 Starting Services...")
+    
+    # Base directory
+    base_dir = os.path.dirname(os.path.abspath(__file__))
 
-# --------------------------------------------------
-# Service Launchers
-# --------------------------------------------------
-
-def open_terminal_windows():
-    """Open each service in a separate terminal window."""
-    
-    print("\n" + "=" * 60)
-    print(" 🚀 AI Research Platform - Launching Services")
-    print("=" * 60 + "\n")
-    
-    if IS_WINDOWS:
-        # Backend API
-        print("→ Opening Backend API terminal...")
-        subprocess.Popen(
-            f'start "Backend API" cmd /k "cd /d {BACKEND_DIR} && npm run dev"',
-            shell=True
-        )
+    for key, service in SERVICES.items():
+        print(f"Starting {service['name']}...")
         
-        # Worker
-        print("→ Opening Worker terminal...")
-        subprocess.Popen(
-            f'start "Worker" cmd /k "cd /d {BACKEND_DIR} && npm run worker:dev"',
-            shell=True
-        )
+        cwd = os.path.join(base_dir, service['cwd'])
+        cmd = service['cmd']
         
-        # AI Engine
-        print("→ Opening AI Engine terminal...")
-        subprocess.Popen(
-            f'start "AI Engine" cmd /k "cd /d {AI_ENGINE_DIR} && "{PYTHON_EXE}" -m uvicorn main:app --reload --port 8000"',
-            shell=True
-        )
-        
-        # Frontend
-        print("→ Opening Frontend terminal...")
-        subprocess.Popen(
-            f'start "Frontend" cmd /k "cd /d {FRONTEND_DIR} && npm run dev"',
-            shell=True
-        )
-    
-    else:
-        # For Mac/Linux, use gnome-terminal or xterm
-        terminals = ["gnome-terminal", "xterm", "konsole"]
-        term = None
-        for t in terminals:
-            if subprocess.run(["which", t], capture_output=True).returncode == 0:
-                term = t
-                break
-        
-        if term == "gnome-terminal":
-            subprocess.Popen([term, "--", "bash", "-c", f"cd {BACKEND_DIR} && npm run dev; exec bash"])
-            subprocess.Popen([term, "--", "bash", "-c", f"cd {BACKEND_DIR} && npm run worker:dev; exec bash"])
-            subprocess.Popen([term, "--", "bash", "-c", f"cd {AI_ENGINE_DIR} && {PYTHON_EXE} -m uvicorn main:app --reload --port 8000; exec bash"])
-            subprocess.Popen([term, "--", "bash", "-c", f"cd {FRONTEND_DIR} && npm run dev; exec bash"])
+        if is_windows():
+            # Construct command for new console window
+            if "venv" in service:
+                # Python service with venv
+                activate_script = os.path.join(cwd, service['venv'], "Scripts", "activate")
+                # Quote paths to handle spaces
+                full_cmd = f'start "{service["name"]}" cmd /k "cd /d "{cwd}" && call "{activate_script}" && {" ".join(cmd)}"'
+            else:
+                # Node service
+                full_cmd = f'start "{service["name"]}" cmd /k "cd /d "{cwd}" && {" ".join(cmd)}"'
+            
+            subprocess.Popen(full_cmd, shell=True)
         else:
-            print("No supported terminal found. Please start services manually.")
-            return
+            print("Linux/Mac support not fully implemented in this script version (focusing on Windows).")
 
-    print("\n" + "=" * 60)
-    print(" ✅ All terminals opened!")
-    print("=" * 60)
-    print("\n Services:")
-    print("   • Frontend  → http://localhost:3000")
-    print("   • Backend   → http://localhost:5000")
-    print("   • AI Engine → http://localhost:8000")
-    print("   • API Docs  → http://localhost:8000/docs")
-    print("\n Close the terminal windows to stop each service.")
-    print("=" * 60 + "\n")
-
+    print("\n✅ All services launch commands issued!")
+    print("   - Frontend: http://localhost:3000")
+    print("   - Backend:  http://localhost:5000")
+    print("   - AI Engine: http://localhost:8000/docs")
+    print("   - Worker:   (Background Process)")
 
 def stop_services():
-    """Stop all running services (Windows only)."""
-    if not IS_WINDOWS:
-        print("Stop command only works on Windows. Close terminal windows manually.")
-        return
+    print("🛑 Stopping Services...")
     
-    print("\n🛑 Stopping all services...\n")
-    
-    # Kill node processes
-    subprocess.run("taskkill /F /IM node.exe", shell=True, capture_output=True)
-    
-    # Kill Python uvicorn
-    subprocess.run("taskkill /F /IM python.exe /FI \"WINDOWTITLE eq AI Engine*\"", shell=True, capture_output=True)
-    
-    print("✓ All services stopped\n")
-
-
-def check_dependencies():
-    """Quick check for required dependencies."""
-    print("📋 Checking setup...\n")
-    
-    # Check Node
-    result = subprocess.run("node --version", shell=True, capture_output=True, text=True)
-    if result.returncode == 0:
-        print(f"✓ Node.js: {result.stdout.strip()}")
-    else:
-        print("❌ Node.js not found!")
-        return False
-    
-    # Check npm packages
-    if (BACKEND_DIR / "node_modules").exists():
-        print("✓ Backend dependencies installed")
-    else:
-        print("→ Installing backend dependencies...")
-        subprocess.run("npm install", shell=True, cwd=BACKEND_DIR)
-    
-    if (FRONTEND_DIR / "node_modules").exists():
-        print("✓ Frontend dependencies installed")
-    else:
-        print("→ Installing frontend dependencies...")
-        subprocess.run("npm install", shell=True, cwd=FRONTEND_DIR)
-    
-    # Check Python env
-    if Path(PYTHON_EXE).exists():
-        print(f"✓ Python environment: {Path(PYTHON_EXE).parent.parent.name}")
-    else:
-        print(f"⚠ Python environment not found at expected path")
-        print(f"  Will use system Python: {sys.executable}")
-    
-    return True
-
+    for key, service in SERVICES.items():
+        if service['port']:
+            print(f"Stopping {service['name']} (Port {service['port']})...")
+            kill_process_on_port(service['port'])
+        else:
+            print(f"Stopping {service['name']} (Window Title)...")
+            kill_process_by_title(service['name'])
+        
+    print("\n✅ All services stopped.")
 
 def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Launch AI Research Platform")
-    parser.add_argument("--stop", action="store_true", help="Stop all running services")
+    parser = argparse.ArgumentParser(description="Manage project services.")
+    parser.add_argument("--on", action="store_true", help="Start all services")
+    parser.add_argument("--off", action="store_true", help="Stop all services")
+    
     args = parser.parse_args()
     
-    if args.stop:
+    if args.on:
+        start_services()
+    elif args.off:
         stop_services()
-        return
-    
-    if check_dependencies():
-        open_terminal_windows()
-
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
     main()

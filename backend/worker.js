@@ -3,9 +3,12 @@ const axios = require('axios');
 const logger = require('./utils/logger');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
+const AI_ENGINE_SECRET = process.env.AI_ENGINE_SECRET || "";
 const POLLING_INTERVAL = 5000; // 5 seconds
 const STALE_JOB_TIMEOUT_MINUTES = 30;
 const MAX_RETRIES = 3;
+const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.AI_REQUEST_TIMEOUT_MS || "1800000", 10); // 30 minutes (pipeline takes 8-20 min)
+let workerRunning = true;
 
 /**
  * Recovers jobs that were stuck in "processing" state
@@ -13,16 +16,17 @@ const MAX_RETRIES = 3;
  */
 async function recoverStaleJobs() {
     try {
-        const result = await db.query(`
-            UPDATE research_logs 
-            SET status = 'queued', 
-                updated_at = NOW(),
-                retry_count = COALESCE(retry_count, 0) + 1
-            WHERE status = 'processing' 
-            AND updated_at < NOW() - INTERVAL '${STALE_JOB_TIMEOUT_MINUTES} minutes'
-            AND COALESCE(retry_count, 0) < ${MAX_RETRIES}
-            RETURNING id
-        `);
+        const result = await db.query(
+            `UPDATE research_logs 
+             SET status = 'queued', 
+                 updated_at = NOW(),
+                 retry_count = COALESCE(retry_count, 0) + 1
+             WHERE status = 'processing' 
+             AND updated_at < NOW() - MAKE_INTERVAL(mins => $1)
+             AND COALESCE(retry_count, 0) < $2
+             RETURNING id`,
+            [STALE_JOB_TIMEOUT_MINUTES, MAX_RETRIES]
+        );
 
         if (result.rowCount > 0) {
             const ids = result.rows.map(r => r.id);
@@ -38,14 +42,15 @@ async function recoverStaleJobs() {
  */
 async function markExhaustedJobs() {
     try {
-        await db.query(`
-            UPDATE research_logs 
-            SET status = 'failed', 
-                result_json = '{"error": "Max retries exceeded"}',
-                updated_at = NOW()
-            WHERE status = 'queued' 
-            AND COALESCE(retry_count, 0) >= ${MAX_RETRIES}
-        `);
+        await db.query(
+            `UPDATE research_logs 
+             SET status = 'failed', 
+                 result_json = '{"error": "Max retries exceeded"}',
+                 updated_at = NOW()
+             WHERE status = 'queued' 
+             AND COALESCE(retry_count, 0) >= $1`,
+            [MAX_RETRIES]
+        );
     } catch (err) {
         logger.error(`[Worker] Failed to mark exhausted jobs: ${err.message}`);
     }
@@ -90,10 +95,11 @@ async function processQueue() {
                 depth: "deep",
                 job_id: job.id  // Pass job ID for correlation
             }, {
-                timeout: 600000,  // 10 min timeout
+                timeout: AI_REQUEST_TIMEOUT_MS,
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Job-ID': String(job.id)
+                    'X-Job-ID': String(job.id),
+                    ...(AI_ENGINE_SECRET ? { 'X-API-Key': AI_ENGINE_SECRET } : {})
                 }
             });
 
@@ -152,34 +158,129 @@ async function processQueue() {
     }
 }
 
-// Start Polling Loop
+/**
+ * Waits for AI Engine to be ready before starting worker
+ */
+async function waitForAiEngine() {
+    logger.info(`[Worker] Waiting for AI Engine at ${AI_ENGINE_URL}...`);
+    let retries = 0;
+    const maxRetries = 40; // Wait up to 30 * 2s = 60s
+
+    while (retries < maxRetries) {
+        try {
+            await axios.get(`${AI_ENGINE_URL}/health`);
+            logger.info("[Worker] Connected to AI Engine successfully!");
+            return true;
+        } catch (err) {
+            retries++;
+            if (retries % 5 === 0) {
+                logger.warn(`[Worker] Still waiting for AI Engine... (${retries}/${maxRetries})`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+    logger.error("[Worker] Failed to connect to AI Engine after multiple attempts. Exiting.");
+    process.exit(1);
+}
+
+// ------------------------------------------------------------------
+// Start Worker — LISTEN/NOTIFY with polling fallback
+// ------------------------------------------------------------------
 async function startWorker() {
     logger.info("[Worker] Background Research Worker Started");
     logger.info(`[Worker] AI Engine URL: ${AI_ENGINE_URL}`);
     logger.info(`[Worker] Stale job timeout: ${STALE_JOB_TIMEOUT_MINUTES} minutes`);
     logger.info(`[Worker] Max retries: ${MAX_RETRIES}`);
+    logger.info(`[Worker] AI request timeout: ${AI_REQUEST_TIMEOUT_MS} ms`);
+
+    // Wait for AI Engine to be ready
+    await waitForAiEngine();
 
     // Recover any stale jobs on startup
     await recoverStaleJobs();
     await markExhaustedJobs();
 
-    // Main loop with iteration counter for periodic tasks
-    let iteration = 0;
-    const STALE_CHECK_INTERVAL = 60; // Check every 60 iterations (5 mins at 5s polling)
+    // ------------------------------------------------------------------
+    // Set up PG LISTEN/NOTIFY for instant wake-up on new jobs
+    // ------------------------------------------------------------------
+    let notifyClient = null;
+    try {
+        notifyClient = await db.getClient();
 
-    while (true) {
-        await processQueue();
-        await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL));
+        // Create the trigger function + trigger if they don't exist yet
+        await notifyClient.query(`
+            CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
+            BEGIN
+                PERFORM pg_notify('new_job', NEW.id::text);
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+        `);
 
-        iteration++;
+        await notifyClient.query(`
+            DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_new_job'
+                ) THEN
+                    CREATE TRIGGER trg_new_job
+                    AFTER INSERT OR UPDATE OF status ON research_logs
+                    FOR EACH ROW
+                    WHEN (NEW.status = 'queued')
+                    EXECUTE FUNCTION notify_new_job();
+                END IF;
+            END $$;
+        `);
 
-        // Periodically check for stale jobs
-        if (iteration % STALE_CHECK_INTERVAL === 0) {
-            await recoverStaleJobs();
-            iteration = 0; // Reset to prevent overflow
+        await notifyClient.query('LISTEN new_job');
+        logger.info("[Worker] Subscribed to PG LISTEN/NOTIFY channel 'new_job'");
+
+        notifyClient.on('notification', async (msg) => {
+            if (msg.channel === 'new_job') {
+                logger.info(`[Worker] Notification received for job ${msg.payload} — processing immediately`);
+                await processQueue();
+            }
+        });
+    } catch (err) {
+        logger.warn(`[Worker] LISTEN/NOTIFY setup failed, falling back to polling only: ${err.message}`);
+        if (notifyClient) {
+            notifyClient.release();
+            notifyClient = null;
         }
     }
+
+    // ------------------------------------------------------------------
+    // Fallback polling loop (30s) — catches any missed notifications
+    // ------------------------------------------------------------------
+    const FALLBACK_POLL_INTERVAL = 30_000;
+    const STALE_CHECK_INTERVAL_MS = 5 * 60_000;
+    let lastStaleCheck = Date.now();
+
+    while (workerRunning) {
+        await processQueue();
+        await new Promise((resolve) => setTimeout(resolve, FALLBACK_POLL_INTERVAL));
+
+        // Periodic stale job recovery
+        if (Date.now() - lastStaleCheck > STALE_CHECK_INTERVAL_MS) {
+            await recoverStaleJobs();
+            await markExhaustedJobs();
+            lastStaleCheck = Date.now();
+        }
+    }
+
+    // Cleanup
+    if (notifyClient) {
+        try { await notifyClient.query('UNLISTEN new_job'); } catch (_) { }
+        notifyClient.release();
+    }
 }
+
+function shutdownWorker(signal) {
+    logger.warn(`[Worker] Received ${signal}. Shutting down gracefully...`);
+    workerRunning = false;
+}
+
+process.on('SIGINT', () => shutdownWorker('SIGINT'));
+process.on('SIGTERM', () => shutdownWorker('SIGTERM'));
 
 // If run directly
 if (require.main === module) {
@@ -187,3 +288,4 @@ if (require.main === module) {
 }
 
 module.exports = startWorker;
+

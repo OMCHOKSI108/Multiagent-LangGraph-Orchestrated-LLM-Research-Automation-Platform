@@ -56,7 +56,7 @@ class VisualizationAgent(BaseAgent):
                     print(f"[{self.name}] Searching Google Images for: '{search_query}'")
                     
                     # Search
-                    raw_urls = img_search.search(search_query, max_results=4)
+                    raw_urls = img_search.search(search_query, max_results=8)
                     
                     # Download locally
                     job_id = state.get("_job_id", "unknown")

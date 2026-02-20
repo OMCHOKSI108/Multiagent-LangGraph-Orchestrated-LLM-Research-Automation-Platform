@@ -43,6 +43,8 @@ except ImportError:
     BeautifulSoup = None
 
 from .event_emitter import emit_source, emit_search
+from .http_retry import http_get
+from .metrics import inc as metrics_inc
 
 
 # =========================
@@ -184,6 +186,32 @@ class ArxivProvider(SearchProvider):
 
         return results
 
+    def search_papers(self, query: str, max_results: int = 5):
+        """
+        Backward-compatible wrapper expected by older agents.
+        Returns keys commonly used across agents: summary/body/link/url.
+        """
+        results = self.search(query, max_results=max_results)
+        if not isinstance(results, list):
+            return []
+
+        normalized = []
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            normalized.append({
+                "title": item.get("title", ""),
+                "summary": item.get("description", ""),
+                "body": item.get("description", ""),
+                "description": item.get("description", ""),
+                "published": item.get("published", ""),
+                "authors": item.get("authors", []),
+                "url": item.get("url", ""),
+                "link": item.get("url", ""),
+                "source": item.get("source", "arxiv"),
+            })
+        return normalized
+
 
 # =========================
 # Wikipedia
@@ -247,18 +275,35 @@ class OpenAlexProvider(SearchProvider):
         )
 
         try:
-            r = requests.get(url, timeout=10)
-            r.raise_for_status()
-            data = r.json()
+            resp = http_get(url, timeout=10, retries=3)
+            data = resp.json()
 
             results = []
             for item in data.get("results", []):
                 landing = item.get("primary_location", {}).get("landing_page_url")
+                pub_year = item.get("publication_year", "")
+                abstract_inv = item.get("abstract_inverted_index", {})
+                # Reconstruct abstract from inverted index (OpenAlex format)
+                abstract_text = ""
+                if abstract_inv and isinstance(abstract_inv, dict):
+                    try:
+                        word_positions = []
+                        for word, positions in abstract_inv.items():
+                            for pos in positions:
+                                word_positions.append((pos, word))
+                        word_positions.sort()
+                        abstract_text = " ".join(w for _, w in word_positions)[:300]
+                    except Exception:
+                        pass
+                desc = abstract_text or f"Year {pub_year} | Citations {item.get('cited_by_count')}"
                 result = {
                     "title": item.get("title", ""),
                     "url": landing,
-                    "description": f"Year {item.get('publication_year')} | Citations {item.get('cited_by_count')}",
+                    "description": desc,
+                    "summary": desc,
                     "source": "openalex",
+                    "published": str(pub_year),
+                    "published_date": str(pub_year),
                 }
                 results.append(result)
 
@@ -271,8 +316,10 @@ class OpenAlexProvider(SearchProvider):
                     published_date=str(item.get("publication_year")),
                     items_found=1,
                 )
+            metrics_inc('provider_openalex_success')
             return results
         except Exception as e:
+            metrics_inc('provider_openalex_failure')
             return [{"error": str(e)}]
 
 
@@ -289,19 +336,21 @@ class PubMedProvider(SearchProvider):
         base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
         try:
-            s = requests.get(
-                f"{base}/esearch.fcgi?db=pubmed&term={quote_plus(query)}"
-                f"&retmode=json&retmax={max_results}&sort=date",
+            s = http_get(
+                f"{base}/esearch.fcgi?db=pubmed&term={quote_plus(query)}&retmode=json&retmax={max_results}&sort=date",
                 timeout=10,
+                retries=3
             )
             ids = s.json().get("esearchresult", {}).get("idlist", [])
             if not ids:
+                metrics_inc('provider_pubmed_empty')
                 return []
 
             ids_str = ",".join(ids)
-            d = requests.get(
+            d = http_get(
                 f"{base}/esummary.fcgi?db=pubmed&id={ids_str}&retmode=json",
                 timeout=10,
+                retries=3
             ).json()
 
             results = []
@@ -310,11 +359,17 @@ class PubMedProvider(SearchProvider):
                 if not item:
                     continue
 
+                pubdate = item.get("pubdate", "")
+                source_journal = item.get("source", "")
+                desc = f"{source_journal} | {pubdate}" if source_journal else pubdate
                 result = {
                     "title": item.get("title", ""),
                     "url": f"https://pubmed.ncbi.nlm.nih.gov/{uid}/",
-                    "description": f"{item.get('source')} | {item.get('pubdate')}",
+                    "description": desc,
+                    "summary": desc,
                     "source": "pubmed",
+                    "published": pubdate,
+                    "published_date": pubdate,
                 }
                 results.append(result)
 
@@ -327,8 +382,10 @@ class PubMedProvider(SearchProvider):
                     published_date=item.get("pubdate"),
                     items_found=1,
                 )
+            metrics_inc('provider_pubmed_success')
             return results
         except Exception as e:
+            metrics_inc('provider_pubmed_failure')
             return [{"error": str(e)}]
 
 
@@ -342,7 +399,7 @@ class PDFReaderProvider:
             return "pypdf not installed"
 
         try:
-            r = requests.get(url, timeout=10)
+            r = http_get(url, timeout=15, retries=2)
             r.raise_for_status()
             reader = PdfReader(io.BytesIO(r.content))
 
@@ -350,8 +407,10 @@ class PDFReaderProvider:
             for page in reader.pages[:20]:
                 text += (page.extract_text() or "") + "\n"
 
+            metrics_inc('pdf_read_success')
             return text
         except Exception as e:
+            metrics_inc('pdf_read_failure')
             return str(e)
 
 
@@ -365,7 +424,7 @@ class HtmlScraperProvider:
             return "beautifulsoup4 not installed"
 
         try:
-            r = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            r = http_get(url, timeout=10, retries=2, headers={"User-Agent": "Mozilla/5.0"})
             r.raise_for_status()
 
             soup = BeautifulSoup(r.content, "html.parser")
@@ -373,8 +432,10 @@ class HtmlScraperProvider:
                 tag.extract()
 
             text = "\n".join(line.strip() for line in soup.get_text().splitlines() if line.strip())
+            metrics_inc('html_scrape_success')
             return text[:15000]
         except Exception as e:
+            metrics_inc('html_scrape_failure')
             return str(e)
 
 
@@ -420,13 +481,91 @@ class NewsSearchProvider(SearchProvider):
         return results
 
 
+class ImageSearchProvider(SearchProvider):
+    def __init__(self):
+        super().__init__("image_search")
+        self.ddgs = DDGS() if DDGS else None
+
+    def search(self, query: str, max_results: int = 5):
+        if not self.ddgs:
+            return []
+
+        emit_search(query, "image_search")
+        urls = []
+        try:
+            for r in self.ddgs.images(query, max_results=max_results):
+                image_url = r.get("image") or r.get("url") or r.get("thumbnail")
+                if image_url:
+                    urls.append(image_url)
+            return urls
+        except Exception:
+            return []
+
+
+class WebSearchProvider(DuckDuckGoProvider):
+    """
+    Backward-compatible alias used by legacy agent modules.
+    Normalizes result keys used in older code paths (`link`, `body`).
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.name = "web"
+
+    def search(self, query: str, max_results: int = 5):
+        results = super().search(query, max_results=max_results)
+        if not isinstance(results, list):
+            return []
+
+        normalized = []
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            normalized.append({
+                **item,
+                "link": item.get("url", ""),
+                "body": item.get("description", ""),
+            })
+        return normalized
+
+
+class GoogleSearchProvider(GoogleProvider):
+    """
+    Backward-compatible alias used by legacy agent modules.
+    Normalizes result keys used in older code paths (`link`, `body`).
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.name = "google_search"
+
+    def search(self, query: str, max_results: int = 5):
+        results = super().search(query, max_results=max_results)
+        if not isinstance(results, list):
+            return []
+
+        normalized = []
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            normalized.append({
+                **item,
+                "link": item.get("url", ""),
+                "body": item.get("description", ""),
+            })
+        return normalized
+
+
 # =========================
 # Registry
 # =========================
 
 PROVIDER_REGISTRY = {
     "duckduckgo": DuckDuckGoProvider(),
+    "web": WebSearchProvider(),
     "google": GoogleProvider(),
+    "google_search": GoogleSearchProvider(),
+    "images": ImageSearchProvider(),
     "arxiv": ArxivProvider(),
     "wikipedia": WikipediaProvider(),
     "openalex": OpenAlexProvider(),

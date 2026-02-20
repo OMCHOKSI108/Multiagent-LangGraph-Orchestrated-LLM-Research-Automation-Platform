@@ -51,7 +51,7 @@ export const SettingsModal = () => {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/20 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+            className="dark fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/35 backdrop-blur-sm p-4 animate-in fade-in duration-200"
             onClick={handleBackdropClick}
         >
             <div
@@ -428,7 +428,7 @@ const ApiDocsSettings = () => {
                 </p>
                 <div className="flex gap-3">
                     <a
-                        href="http://localhost:8000/docs"
+                        href={`${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')}/docs`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
@@ -437,7 +437,7 @@ const ApiDocsSettings = () => {
                         Open Swagger UI (AI Engine)
                     </a>
                     <a
-                        href="http://localhost:5000/"
+                        href={(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm"
@@ -484,9 +484,8 @@ const ApiDocsSettings = () => {
                         { method: 'GET', path: '/export/:id/zip', desc: 'Export all as ZIP' },
                     ].map((ep, i) => (
                         <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-dark-200 transition-colors">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
-                                ep.method === 'GET' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                            }`}>{ep.method}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${ep.method === 'GET' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                }`}>{ep.method}</span>
                             <code className="text-xs font-mono text-zinc-700 dark:text-zinc-300">{ep.path}</code>
                             <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">{ep.desc}</span>
                         </div>

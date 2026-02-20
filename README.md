@@ -78,8 +78,9 @@ POST /chat/message
 # Real-time Events
 GET /events/stream
 ```
-
-
+![/docs/image.png]
+<div align="center">
+<img width="800" height="400" alt="API Showcase" src="docs/image.png" />
 ## Architecture Diagrams
 
 ### Agent Types Overview

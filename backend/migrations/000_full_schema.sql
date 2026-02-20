@@ -73,9 +73,4 @@ ON api_keys(key_value);
 CREATE INDEX IF NOT EXISTS idx_chat_history_session 
 ON chat_history(session_id);
 
--- ===================================
--- Sample Test User (Optional)
--- Password: "password123" (bcrypt hash)
--- ===================================
--- INSERT INTO users (username, email, password_hash) 
--- VALUES ('testuser', 'test@example.com', '$2b$10$rQZ3g0M5M5cN5r5r5r5r5u5r5r5r5r5r5r5r5r5r5r5r5r5r5r');
+-- Run migrations in order: 000, 001, 002, 003, 004, 005

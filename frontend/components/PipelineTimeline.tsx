@@ -69,10 +69,10 @@ export const PipelineTimeline: React.FC<PipelineTimelineProps> = ({ events, isAc
                         <div key={agent} className="flex items-center">
                             <div className={cn(
                                 "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all",
-                                status === 'completed' && "bg-emerald-50 border-emerald-200 text-emerald-700",
-                                status === 'running' && "bg-blue-50 border-blue-200 text-blue-700 ring-2 ring-blue-100",
-                                status === 'blocked' && "bg-red-50 border-red-200 text-red-700",
-                                status === 'idle' && "bg-white border-zinc-200 text-zinc-400 opacity-60"
+                                status === 'completed' && "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+                                status === 'running' && "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/10",
+                                status === 'blocked' && "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400",
+                                status === 'idle' && "bg-secondary border-border text-muted-foreground opacity-60"
                             )}>
                                 {status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5" />}
                                 {status === 'running' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -87,7 +87,7 @@ export const PipelineTimeline: React.FC<PipelineTimelineProps> = ({ events, isAc
                             {!isLast && (
                                 <div className={cn(
                                     "w-6 h-px mx-1",
-                                    status === 'completed' ? "bg-emerald-200" : "bg-zinc-100"
+                                    status === 'completed' ? "bg-emerald-500/30" : "bg-border"
                                 )} />
                             )}
                         </div>

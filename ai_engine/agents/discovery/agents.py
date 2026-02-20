@@ -21,9 +21,9 @@ class DomainIntelligenceAgent(BaseAgent):
         task = state.get("task", "")
         
         # 1. Perform searches
-        ddg_results = self.ddg_provider.search(f"research domain taxonomy {task}", max_results=2)
-        google_results = self.google_provider.search(f"research domain taxonomy {task}", max_results=2)
-        wiki_results = self.wiki_provider.search(task, max_results=2)
+        ddg_results = self.ddg_provider.search(f"research domain taxonomy {task}", max_results=5)
+        google_results = self.google_provider.search(f"research domain taxonomy {task}", max_results=5)
+        wiki_results = self.wiki_provider.search(task, max_results=4)
         
         all_results = ddg_results + google_results + wiki_results
         
@@ -73,9 +73,9 @@ class HistoricalReviewAgent(BaseAgent):
         task = state.get("task", "")
         
         # 1. Search Arxiv for "history of <task>" or "survey <task>"
-        papers = self.arxiv_provider.search_papers(f"history of {task}", max_results=3)
+        papers = self.arxiv_provider.search_papers(f"history of {task}", max_results=6)
         if not papers:
-            papers = self.arxiv_provider.search_papers(f"survey {task}", max_results=3)
+            papers = self.arxiv_provider.search_papers(f"survey {task}", max_results=6)
             
         context_str = "\n".join([f"- {p['published']} | {p['title']}: {p['summary'][:300]}..." for p in papers])
         

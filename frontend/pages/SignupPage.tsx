@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useResearchStore } from '../store';
 import { Terminal, AlertCircle } from 'lucide-react';
@@ -11,6 +11,9 @@ export const Signup = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const emailRef = useRef<HTMLInputElement | null>(null);
+    const usernameRef = useRef<HTMLInputElement | null>(null);
+    const passwordRef = useRef<HTMLInputElement | null>(null);
     const { signup, authError, clearAuthError, isAuthenticated } = useResearchStore();
     const navigate = useNavigate();
 
@@ -20,6 +23,20 @@ export const Signup = () => {
             navigate('/dashboard');
         }
     }, [clearAuthError, isAuthenticated, navigate]);
+
+    useEffect(() => {
+        if (!authError) return;
+        const message = authError.toLowerCase();
+        if (message.includes('name')) {
+            usernameRef.current?.focus();
+            return;
+        }
+        if (message.includes('password')) {
+            passwordRef.current?.focus();
+            return;
+        }
+        emailRef.current?.focus();
+    }, [authError]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,7 +72,7 @@ export const Signup = () => {
                     </CardHeader>
                     <CardContent>
                         {authError && (
-                            <div className="mb-4 p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-2">
+                            <div className="mb-4 p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-2" role="alert" aria-live="polite">
                                 <AlertCircle className="h-4 w-4" />
                                 <span>{authError}</span>
                             </div>
@@ -68,6 +85,7 @@ export const Signup = () => {
                                 <Input
                                     id="username"
                                     placeholder="John Doe"
+                                    ref={usernameRef}
                                     value={username}
                                     onChange={e => setUsername(e.target.value)}
                                     required
@@ -82,6 +100,7 @@ export const Signup = () => {
                                     id="email"
                                     type="email"
                                     placeholder="name@example.com"
+                                    ref={emailRef}
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
                                     required
@@ -95,6 +114,7 @@ export const Signup = () => {
                                 <Input
                                     id="password"
                                     type="password"
+                                    ref={passwordRef}
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     required

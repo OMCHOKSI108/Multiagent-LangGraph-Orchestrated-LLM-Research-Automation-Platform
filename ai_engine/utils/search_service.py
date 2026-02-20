@@ -65,8 +65,16 @@ def _search_duckduckgo(query: str, max_results: int) -> List[Dict[str, Any]]:
         from .providers import PROVIDER_REGISTRY
         provider = PROVIDER_REGISTRY["duckduckgo"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "duckduckgo") for r in raw_results if "error" not in r]
+        from .metrics import inc as metrics_inc
+        results = [_normalize_result(r, "duckduckgo") for r in raw_results if "error" not in r]
+        if results:
+            metrics_inc('provider_duckduckgo_success')
+        else:
+            metrics_inc('provider_duckduckgo_empty')
+        return results
     except Exception as e:
+        from .metrics import inc as metrics_inc
+        metrics_inc('provider_duckduckgo_failure')
         logger.error(f"[SearchService] DuckDuckGo error: {e}")
         return []
 
@@ -77,8 +85,16 @@ def _search_google(query: str, max_results: int) -> List[Dict[str, Any]]:
         from .providers import PROVIDER_REGISTRY
         provider = PROVIDER_REGISTRY["google"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "google") for r in raw_results if "error" not in r]
+        from .metrics import inc as metrics_inc
+        results = [_normalize_result(r, "google") for r in raw_results if "error" not in r]
+        if results:
+            metrics_inc('provider_google_success')
+        else:
+            metrics_inc('provider_google_empty')
+        return results
     except Exception as e:
+        from .metrics import inc as metrics_inc
+        metrics_inc('provider_google_failure')
         logger.error(f"[SearchService] Google error: {e}")
         return []
 
@@ -89,8 +105,16 @@ def _search_arxiv(query: str, max_results: int) -> List[Dict[str, Any]]:
         from .providers import PROVIDER_REGISTRY
         provider = PROVIDER_REGISTRY["arxiv"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "arxiv") for r in raw_results if "error" not in r]
+        from .metrics import inc as metrics_inc
+        results = [_normalize_result(r, "arxiv") for r in raw_results if "error" not in r]
+        if results:
+            metrics_inc('provider_arxiv_success')
+        else:
+            metrics_inc('provider_arxiv_empty')
+        return results
     except Exception as e:
+        from .metrics import inc as metrics_inc
+        metrics_inc('provider_arxiv_failure')
         logger.error(f"[SearchService] Arxiv error: {e}")
         return []
 
@@ -101,8 +125,16 @@ def _search_wikipedia(query: str, max_results: int) -> List[Dict[str, Any]]:
         from .providers import PROVIDER_REGISTRY
         provider = PROVIDER_REGISTRY["wikipedia"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "wikipedia") for r in raw_results if "error" not in r]
+        from .metrics import inc as metrics_inc
+        results = [_normalize_result(r, "wikipedia") for r in raw_results if "error" not in r]
+        if results:
+            metrics_inc('provider_wikipedia_success')
+        else:
+            metrics_inc('provider_wikipedia_empty')
+        return results
     except Exception as e:
+        from .metrics import inc as metrics_inc
+        metrics_inc('provider_wikipedia_failure')
         logger.error(f"[SearchService] Wikipedia error: {e}")
         return []
 
@@ -113,8 +145,16 @@ def _search_openalex(query: str, max_results: int) -> List[Dict[str, Any]]:
         from .providers import PROVIDER_REGISTRY
         provider = PROVIDER_REGISTRY["openalex"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "openalex") for r in raw_results if "error" not in r]
+        from .metrics import inc as metrics_inc
+        results = [_normalize_result(r, "openalex") for r in raw_results if "error" not in r]
+        if results:
+            metrics_inc('provider_openalex_success')
+        else:
+            metrics_inc('provider_openalex_empty')
+        return results
     except Exception as e:
+        from .metrics import inc as metrics_inc
+        metrics_inc('provider_openalex_failure')
         logger.error(f"[SearchService] OpenAlex error: {e}")
         return []
 
@@ -125,8 +165,16 @@ def _search_pubmed(query: str, max_results: int) -> List[Dict[str, Any]]:
         from .providers import PROVIDER_REGISTRY
         provider = PROVIDER_REGISTRY["pubmed"]
         raw_results = provider.search(query, max_results=max_results)
-        return [_normalize_result(r, "pubmed") for r in raw_results if "error" not in r]
+        from .metrics import inc as metrics_inc
+        results = [_normalize_result(r, "pubmed") for r in raw_results if "error" not in r]
+        if results:
+            metrics_inc('provider_pubmed_success')
+        else:
+            metrics_inc('provider_pubmed_empty')
+        return results
     except Exception as e:
+        from .metrics import inc as metrics_inc
+        metrics_inc('provider_pubmed_failure')
         logger.error(f"[SearchService] PubMed error: {e}")
         return []
 

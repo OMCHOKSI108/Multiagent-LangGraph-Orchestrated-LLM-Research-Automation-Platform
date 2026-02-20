@@ -1,17 +1,17 @@
 import React from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
+import { Button } from './ui/button';
 
 export const ThemeSwitcher: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <button
+    <Button
       onClick={toggleTheme}
-      className="relative p-2 rounded-lg transition-all duration-200
-        bg-light-200 hover:bg-light-300 text-zinc-700
-        dark:bg-dark-200 dark:hover:bg-dark-300 dark:text-zinc-300
-        focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+      variant="ghost"
+      size="icon"
+      className="relative h-9 w-9"
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
@@ -31,6 +31,6 @@ export const ThemeSwitcher: React.FC = () => {
           }`}
         />
       </div>
-    </button>
+    </Button>
   );
 };

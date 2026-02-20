@@ -11,11 +11,14 @@ AI_ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 if AI_ENGINE_DIR not in sys.path:
     sys.path.insert(0, AI_ENGINE_DIR)
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from config import SEARCH_PROVIDERS
+from utils.metrics import get_metrics
 
 # ============================
 # Structured Logging Setup
@@ -37,7 +40,23 @@ logger = logging.getLogger("ai_engine")
 # Thread Pool for Blocking Calls
 # ============================
 # This prevents blocking LLM calls from freezing the async event loop
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=int(os.getenv("AI_ENGINE_MAX_WORKERS", "4")))
+
+# ============================
+# Internal API Key Security
+# ============================
+AI_ENGINE_SECRET = os.getenv("AI_ENGINE_SECRET", "")
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def verify_internal_key(api_key: str = Security(_api_key_header)):
+    """
+    Validates the internal API key for mutation endpoints.
+    If AI_ENGINE_SECRET is not configured, all requests are allowed (dev mode).
+    """
+    if not AI_ENGINE_SECRET:
+        return  # No secret configured — dev mode, allow all
+    if api_key != AI_ENGINE_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
 # Import search router
 from routes.search import router as search_router
@@ -45,16 +64,16 @@ from routes.search import router as search_router
 app = FastAPI(
     title="Deep Research Engine API",
     description="""
-    🔬 **Multi-Agent Research Platform** 
+    **Multi-Agent Research Platform** 
 
     This API provides access to specialized AI agents for comprehensive research analysis.
     Each agent can be tested individually with custom inputs through the `/agents/{agent_slug}/test` endpoints.
 
     ## Features
-    - 🕵️ **Individual Agent Testing**: Test each research agent separately
-    - 🔍 **Provider Configuration**: Configure and test search providers
-    - 📊 **Real-time Processing**: Stream research progress and results
-    - 🎯 **Specialized Agents**: Discovery, Scraping, Synthesis, Critique, Visualization, Verification
+    - **Individual Agent Testing**: Test each research agent separately
+    - **Provider Configuration**: Configure and test search providers
+    - **Real-time Processing**: Stream research progress and results
+    - **Specialized Agents**: Discovery, Scraping, Synthesis, Critique, Visualization, Verification
 
     ## Quick Start
     1. Check available agents: `GET /agents`
@@ -100,6 +119,18 @@ app = FastAPI(
 )
 
 # ============================
+# CORS Middleware
+# ============================
+_allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _allowed_origins.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================
 # Register Routers
 # ============================
 app.include_router(search_router)
@@ -141,6 +172,29 @@ async def health_check():
     Use this endpoint to verify the service is running and operational.
     """
     return {"status": "ok", "service": "ai_engine", "version": "2.1.0"}
+
+
+@app.get('/metrics', tags=['Health'])
+async def metrics_endpoint():
+    """Return in-memory metrics (development only)."""
+    try:
+        return get_metrics()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/llm/status", tags=["Health"])
+async def llm_status():
+    """
+    🔧 **LLM Provider Status**
+
+    Returns the current LLM mode (OFFLINE/ONLINE), active provider details,
+    available API keys count, and model configuration.
+
+    Use this endpoint to display the current mode in the frontend UI.
+    """
+    from llm.factory import get_llm_status
+    return get_llm_status()
 
 @app.get("/providers", tags=["Providers"])
 async def get_provider_config():
@@ -631,7 +685,7 @@ async def root():
         "openapi_spec": "/openapi.json"
     }
 
-@app.post("/research")
+@app.post("/research", dependencies=[Depends(verify_internal_key)])
 async def run_research(request: ResearchRequest):
     """
     Main research endpoint - runs the full pipeline.
@@ -658,6 +712,9 @@ async def run_research(request: ResearchRequest):
         "next_step": None,
         "findings": {},
         "history": [],
+        "topic_locked": False,
+        "selected_topic": None,
+        "topic_suggestions": [],
         "_job_id": job_id  # For tracing through pipeline
     }
     
@@ -738,15 +795,142 @@ async def unified_search(request: SearchRequest):
         logger.error(f"[Search] Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ============================
-# Streaming Chat Endpoint
+# Research State Management
 # ============================
+
+class StateUpdateRequest(BaseModel):
+    research_id: int
+    state_update: Dict[str, Any]
+
+@app.post("/research/update-state", tags=["Research"])
+async def update_research_state(request: StateUpdateRequest):
+    """
+    Update the state of a running research job externally.
+    Used for human-in-the-loop interactions (e.g., topic selection).
+    """
+    try:
+        from state_store import RESEARCH_STATES
+        
+        rid = request.research_id
+        update = request.state_update
+        
+        logger.info(f"[State Update] Job #{rid}: {update}")
+        
+        # Update global state
+        if rid not in RESEARCH_STATES:
+            RESEARCH_STATES[rid] = {}
+            
+        RESEARCH_STATES[rid].update(update)
+        
+        return {"status": "success", "updated": True}
+        
+    except Exception as e:
+        logger.error(f"[State Update] Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/research/{job_id}/suggestions", tags=["Research"])
+async def get_topic_suggestions(job_id: int):
+    """
+    Get current topic suggestions for a research job.
+    Used as a polling fallback when SSE delivery fails.
+    """
+    try:
+        from state_store import RESEARCH_STATES
+        
+        state = RESEARCH_STATES.get(job_id, {})
+        return {
+            "topic_locked": state.get("topic_locked", False),
+            "selected_topic": state.get("selected_topic"),
+            "topic_suggestions": state.get("topic_suggestions", []),
+        }
+    except Exception as e:
+        logger.error(f"[Suggestions] Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================
+# Streaming Chat Endpoint (RAG-Enhanced)
+# ============================
+
+def _build_rag_context(findings: dict) -> str:
+    """
+    Build a structured research context string from findings for RAG-style chat.
+    Extracts the full report, literature, sources, and key sections so the LLM
+    can answer questions with specific references.
+    """
+    sections = []
+
+    # 1. Full report text (most important for Q&A)
+    msr = findings.get("multi_stage_report", {})
+    report_text = msr.get("markdown_report") or msr.get("response") or ""
+    if not report_text:
+        sw = findings.get("scientific_writing", {})
+        report_text = sw.get("markdown_report") or sw.get("response") or ""
+    if report_text:
+        sections.append(f"=== FULL RESEARCH REPORT ===\n{report_text[:12000]}")
+
+    # 2. Literature review and papers found
+    lit = findings.get("literature_review", {})
+    lit_resp = lit.get("response") if isinstance(lit, dict) else None
+    if lit_resp:
+        if isinstance(lit_resp, dict) and "papers" in lit_resp:
+            papers_text = []
+            for i, p in enumerate(lit_resp["papers"][:15], 1):
+                papers_text.append(
+                    f"[{i}] {p.get('title', 'Untitled')} — {p.get('authors', 'Unknown')} "
+                    f"({p.get('published', 'N/A')})\n    URL: {p.get('url', 'N/A')}\n    "
+                    f"Summary: {(p.get('abstract') or p.get('summary', ''))[:200]}"
+                )
+            sections.append(f"=== LITERATURE ({len(lit_resp['papers'])} papers) ===\n" + "\n".join(papers_text))
+        elif isinstance(lit_resp, str):
+            sections.append(f"=== LITERATURE REVIEW ===\n{lit_resp[:3000]}")
+
+    # 3. News / web sources
+    for key in ["google_news", "news"]:
+        news = findings.get(key, {})
+        news_resp = news.get("response") if isinstance(news, dict) else None
+        if news_resp and isinstance(news_resp, dict) and "results" in news_resp:
+            news_items = []
+            for i, n in enumerate(news_resp["results"][:10], 1):
+                news_items.append(f"[N{i}] {n.get('title', '')} — {n.get('url', '')}")
+            if news_items:
+                sections.append(f"=== NEWS SOURCES ===\n" + "\n".join(news_items))
+            break
+
+    # 4. Gap synthesis / novelty
+    for key in ["gap_synthesis", "innovation_novelty", "scoring"]:
+        data = findings.get(key, {})
+        resp = data.get("response") if isinstance(data, dict) else None
+        if resp:
+            text = resp if isinstance(resp, str) else str(resp)[:2000]
+            heading = key.replace("_", " ").title()
+            sections.append(f"=== {heading.upper()} ===\n{text[:2000]}")
+
+    # 5. Web scraper sources
+    ws = findings.get("web_scraper", {})
+    ws_resp = ws.get("response") if isinstance(ws, dict) else None
+    if ws_resp and isinstance(ws_resp, dict):
+        src_list = ws_resp.get("sources", [])
+        if src_list:
+            sections.append(f"=== WEB SOURCES ({len(src_list)}) ===\n" + "\n".join(str(s) for s in src_list[:20]))
+
+    if not sections:
+        # Fallback: dump first 8000 chars of raw findings
+        raw = str(findings)[:8000]
+        sections.append(f"=== RAW FINDINGS ===\n{raw}")
+
+    return "\n\n".join(sections)
+
 
 @app.post("/agent/interactive_chatbot/stream", tags=["Agents"])
 async def stream_chatbot(request: ResearchRequest):
     """
-    Streaming version of the interactive chatbot.
-    Returns SSE stream of text chunks.
+    RAG-enhanced streaming chatbot.
+    Builds structured context from research findings so the LLM can answer
+    with specific references and section pointers.
     """
     from agents.registry import AGENTS
 
@@ -762,48 +946,72 @@ async def stream_chatbot(request: ResearchRequest):
     }
 
     async def generate():
-        """Generate streaming response from agent."""
+        """Generate RAG-enhanced streaming response from agent."""
         try:
-            from config import LLM_MODE, OLLAMA_BASE_URL, MODEL_WRITING
+            from config import MODEL_WRITING
+            from llm.factory import get_llm_provider
 
-            if LLM_MODE == "offline":
-                from langchain_ollama import ChatOllama
-                llm = ChatOllama(
-                    model=MODEL_WRITING,
-                    base_url=OLLAMA_BASE_URL,
-                    temperature=0.7
-                )
+            # Use the provider factory — handles OFFLINE/ONLINE mode,
+            # key rotation, and fallback automatically.
+            provider = get_llm_provider(MODEL_WRITING)
+            llm = provider.get_langchain_llm()
+
+            # Build RAG context from findings
+            findings = state.get("findings", {})
+            # Handle nested final_state structure
+            if "final_state" in findings and "findings" in findings["final_state"]:
+                rag_context = _build_rag_context(findings["final_state"]["findings"])
             else:
-                from config import GEMINI_API_KEY
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash",
-                    google_api_key=GEMINI_API_KEY,
-                    temperature=0.7
-                )
+                rag_context = _build_rag_context(findings)
 
-            # Build messages
-            system_prompt = agent.system_prompt
-            context = state.get("findings", {})
-            context_str = ""
-            if context:
-                for key, value in context.items():
-                    if isinstance(value, str):
-                        context_str += f"\n{key}: {value[:500]}"
-                    elif isinstance(value, dict) and "response" in value:
-                        context_str += f"\n{key}: {value['response'][:500]}"
+            # Enhanced system prompt for RAG-style Q&A with reference support
+            system_prompt = """You are a Research Paper Assistant with RAG (Retrieval-Augmented Generation) capabilities.
+You have access to the COMPLETE research document, literature sources, and data gathered by the multi-agent research pipeline.
+
+YOUR CAPABILITIES:
+1. Answer questions about ANY section of the research paper
+2. Cite specific sources with [Source N] references when available
+3. Explain methodology, findings, gaps, and conclusions
+4. Compare findings across different sources in the literature
+5. Suggest further research directions based on identified gaps
+
+RESPONSE FORMAT RULES:
+- When referencing a specific section, use **bold section names** like **Literature Review** or **Gap Analysis**
+- When citing a paper, use the format: [Author, Year](url) or [Source N] with the reference number
+- When quoting from the report, use > blockquote formatting
+- Structure longer answers with clear headings using ## or ###
+- For numerical data or comparisons, use markdown tables
+- If the user asks about something NOT in the research, clearly state that and offer to discuss what IS covered
+
+REFERENCE HIGHLIGHTING:
+- Always include source citations when answering factual questions
+- Use inline references like [[1]](url), [[2]](url) linking to the actual paper URLs
+- At the end of detailed answers, include a "References" section listing cited sources"""
+
+            # Check global state for topic status
+            from state_store import RESEARCH_STATES
+            job_id_int = int(state["_job_id"]) if str(state["_job_id"]).isdigit() else None
+            
+            topic_context = ""
+            if job_id_int and job_id_int in RESEARCH_STATES:
+                job_state = RESEARCH_STATES[job_id_int]
+                if not job_state.get("topic_locked"):
+                    suggestions = job_state.get("topic_suggestions", [])
+                    topic_context = f"\n\n[SYSTEM UPDATE]: The user is currently in the TOPIC DISCOVERY phase. Research has NOT started yet.\nThe user has been offered the following topic suggestions:\n{suggestions}\n\nYOUR TASK: Help the user select one of these topics or refine their original query. Do NOT ask for a paper PDF yet. Focus on freezing the research title."
 
             from langchain_core.messages import SystemMessage, HumanMessage
             messages = [
-                SystemMessage(content=system_prompt + "\n\nResearch Context:" + context_str),
+                SystemMessage(content=system_prompt + "\n\n" + rag_context + topic_context),
                 HumanMessage(content=state["task"])
             ]
 
             # Stream chunks
+            import json
             for chunk in llm.stream(messages):
                 content = chunk.content if hasattr(chunk, 'content') else str(chunk)
                 if content:
-                    yield f"data: {content}\n\n"
+                    payload = json.dumps({"text": content})
+                    yield f"data: {payload}\n\n"
 
             yield "data: [DONE]\n\n"
 

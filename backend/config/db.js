@@ -3,6 +3,12 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const requiredEnvVars = ['DB_USER', 'DB_HOST', 'DB_NAME', 'DB_PASSWORD', 'DB_PORT'];
+const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+if (missingEnvVars.length > 0) {
+    throw new Error(`[DB] Missing required environment variables: ${missingEnvVars.join(', ')}`);
+}
+
 const pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -13,7 +19,7 @@ const pool = new Pool({
 
 pool.on('error', (err) => {
     console.error('[DB] Unexpected error on idle client', err);
-    process.exit(-1);
+    // Keep process alive; requests will continue to retry via pool.
 });
 
 module.exports = {

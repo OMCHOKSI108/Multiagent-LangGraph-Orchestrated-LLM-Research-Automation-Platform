@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './components/ThemeProvider';
 import { Toaster } from 'sonner';
@@ -9,39 +9,82 @@ import { Login } from './pages/LoginPage';
 import { Signup } from './pages/SignupPage';
 import { LandingPage } from './pages/LandingPage';
 import { SharedView } from './pages/SharedView';
+import { ProfilePage } from './pages/ProfilePage';
 import { SettingsModal } from './components/SettingsModal';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { useResearchStore } from './store';
 
+/* ------------------ Private Route Wrapper ------------------ */
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useResearchStore();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+  const isAuthenticated = useResearchStore((state) => state.isAuthenticated);
+
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
+/* ------------------ Main App Component ------------------ */
 export default function App() {
-  const rehydrateAuth = useResearchStore((s) => s.rehydrateAuth);
+  const rehydrateAuth = useResearchStore((state) => state.rehydrateAuth);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    rehydrateAuth();
+    rehydrateAuth().finally(() => setAuthReady(true));
   }, [rehydrateAuth]);
+
+  if (!authReady) {
+    return (
+      <ThemeProvider>
+        <div className="min-h-screen bg-background text-foreground" />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
-      <SettingsModal />
-      {/* Global Toast Notifications */}
-      <Toaster richColors position="top-right" theme="system" />
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/shared/:token" element={<SharedView />} />
+      <AppErrorBoundary>
+        <SettingsModal />
 
-          {/* Protected Routes wrapped in Sidebar Layout */}
-          <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/research/:id" element={<Workspace />} />
-          </Route>
-        </Routes>
-      </HashRouter>
+        {/* Global Toast Notifications */}
+        <Toaster
+          richColors
+          position="top-right"
+          theme="system"
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--background))',
+              color: 'hsl(var(--foreground))',
+              border: '1px solid hsl(var(--border))',
+            },
+            classNames: {
+              toast: 'border-border',
+              success: 'bg-primary text-primary-foreground border-primary',
+              error: 'bg-destructive text-destructive-foreground border-destructive',
+            },
+          }}
+        />
+
+        <HashRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/shared/:token" element={<SharedView />} />
+
+            {/* Protected Routes */}
+            <Route
+              element={
+                <PrivateRoute>
+                  <Layout />
+                </PrivateRoute>
+              }
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/research/:id" element={<Workspace />} />
+            </Route>
+          </Routes>
+        </HashRouter>
+      </AppErrorBoundary>
     </ThemeProvider>
   );
 }

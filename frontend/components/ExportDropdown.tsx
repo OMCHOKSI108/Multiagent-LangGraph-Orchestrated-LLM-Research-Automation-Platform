@@ -10,9 +10,6 @@ interface ExportDropdownProps {
 
 export const ExportDropdown = ({ researchId, onExport }: ExportDropdownProps) => {
     const handleDownload = (format: 'markdown' | 'pdf' | 'latex' | 'zip' | 'plots') => {
-        const token = localStorage.getItem('dre_token');
-        const url = `/export/${researchId}/${format}${token ? `?token=${token}` : ''}`;
-        window.open(url, '_blank');
         onExport(format);
     };
 

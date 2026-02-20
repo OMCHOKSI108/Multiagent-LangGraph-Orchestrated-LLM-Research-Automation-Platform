@@ -1,15 +1,21 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import { useResearchStore } from '../store';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
-import { Bot, User, Send, StopCircle, Sparkles, Loader2, Terminal, ArrowRight } from 'lucide-react';
+import { Send, StopCircle, Bot, Loader2, ArrowRight, Cpu, BookOpen, Sparkles, MessageSquareQuote } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { MessageBoxLoading } from './MessageBoxLoading';
+import { api } from '../services/api';
+import { toast } from 'sonner';
+import { AppErrorBoundary } from './AppErrorBoundary';
+import { JobStatus } from '../types';
 
-export const ChatInterface = () => {
+const ChatInterfaceInner = () => {
+    const navigate = useNavigate();
     const {
         chatHistory,
         addChatMessage,
@@ -17,7 +23,8 @@ export const ChatInterface = () => {
         stopPolling,
         setCurrentStage,
         setStartedAt,
-        startedAt
+        startedAt,
+        createResearch
     } = useResearchStore(useShallow(state => ({
         chatHistory: state.chatHistory,
         addChatMessage: state.addChatMessage,
@@ -25,74 +32,158 @@ export const ChatInterface = () => {
         stopPolling: state.stopPolling,
         setCurrentStage: state.setCurrentStage,
         setStartedAt: state.setStartedAt,
-        startedAt: state.startedAt
+        startedAt: state.startedAt,
+        createResearch: state.createResearch
     })));
-    
+
     const isProcessing = activeJob?.status === 'processing' || activeJob?.status === 'queued';
+    const isCompleted = activeJob?.status === JobStatus.COMPLETED;
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
+    const [connectionStatus, setConnectionStatus] = useState<'checking' | 'online' | 'offline'>('checking');
     const chatEndRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Access SSE resubscribe from store
+    const { subscribeToLiveEvents, startPolling, currentStage, executionEvents } = useResearchStore(useShallow(state => ({
+        subscribeToLiveEvents: state.subscribeToLiveEvents,
+        startPolling: state.startPolling,
+        currentStage: state.currentStage,
+        executionEvents: state.executionEvents,
+    })));
+
+    const appendLocalMessage = React.useCallback((content: string, role: 'user' | 'assistant') => {
+        const msg = {
+            id: Math.random().toString(36),
+            role,
+            content,
+            timestamp: new Date().toISOString(),
+        };
+        useResearchStore.setState((state: any) => ({
+            chatHistory: [...state.chatHistory, msg],
+        }));
+    }, []);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatHistory, activeJob?.logs]);
 
-    const handleSend = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || isStreaming) return;
-        
-        // Smart local responses for common patterns
-        const message = input.trim().toLowerCase();
-        
-        // Greetings
-        if (['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'].includes(message)) {
-            addChatMessage(input, 'user');
-            addChatMessage("Hello! I'm your research assistant. Try `/research [topic]` to start a new research, or ask me anything about your current workspace.", 'assistant');
-            setInput('');
-            return;
-        }
-        
-        // Gratitude
-        if (['thanks', 'thank you', 'great', 'perfect', 'awesome', 'cool'].includes(message)) {
-            addChatMessage(input, 'user');
-            addChatMessage("Glad I could help! Let me know if you need anything else.", 'assistant');
-            setInput('');
-            return;
-        }
-        
-        // Help
-        if (['help', '?', '/help'].includes(message)) {
-            addChatMessage(input, 'user');
-            addChatMessage(`**Available Commands:**
-
-\`/research [topic]\` - Start comprehensive research\n\`/edit [section]\` - Edit document sections\n\`/search [query]\` - Quick web search\n\`/sources\` - View all data sources\n\`/export\` - Download your research
-
-Or just ask me any question about your research!`, 'assistant');
-            setInput('');
-            return;
-        }
-        
-        // Research commands
-        if (message.startsWith('/research')) {
-            setCurrentStage('topic_discovery');
-            if (!startedAt) {
-                setStartedAt(new Date().toISOString());
+    useEffect(() => {
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
             }
+        };
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        const check = async () => {
+            try {
+                await api.healthCheck();
+                if (mounted) setConnectionStatus('online');
+            } catch {
+                if (mounted) setConnectionStatus('offline');
+            }
+        };
+        check();
+        const interval = setInterval(check, 15000);
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+        };
+    }, []);
+
+    const sendMessage = (rawInput: string) => {
+        const trimmedInput = rawInput.trim();
+        if (!trimmedInput || isStreaming) return;
+
+        const researchMatch = trimmedInput.match(/^\/research\s+(?:(deep|quick)\s+)?(.+)$/i);
+
+        // Research command
+        if (researchMatch) {
+            const depth = (researchMatch[1] || 'deep').toLowerCase() as 'deep' | 'quick';
+            const topic = researchMatch[2].trim();
+
+            if (!topic) {
+                appendLocalMessage(trimmedInput, 'user');
+                appendLocalMessage('Please specify a research topic. Usage: `/research [deep|quick] <topic>`', 'assistant');
+                setInput('');
+                return;
+            }
+
+            appendLocalMessage(trimmedInput, 'user');
+
+            // If already inside a workspace, lock/select topic in-place instead of creating a new job.
+            if (activeJob?.id) {
+                appendLocalMessage(`Setting topic: "${topic}" (${depth} mode)...`, 'assistant');
+                api.selectTopic(activeJob.id, topic)
+                    .then(() => {
+                        useResearchStore.getState().setTopicSuggestions([]);
+                        appendLocalMessage(`Topic locked: **${topic}**. Research is starting in this workspace.`, 'assistant');
+
+                        // CRITICAL: Reset execution state and re-subscribe to SSE
+                        // selectTopic resets the job to 'queued' on the backend,
+                        // but the old SSE connection was already closed.
+                        useResearchStore.setState({
+                            executionEvents: [],
+                            dataSources: [],
+                            currentStage: 'queued',
+                        });
+                        // Update activeJob status optimistically
+                        useResearchStore.setState((s: any) => ({
+                            activeJob: s.activeJob ? { ...s.activeJob, status: 'processing', topic } : null,
+                        }));
+                        // Re-establish SSE connection for the re-queued job
+                        subscribeToLiveEvents(activeJob.id);
+                        // Start polling to keep activeJob.status in sync
+                        startPolling(activeJob.id);
+                    })
+                    .catch((error: any) => {
+                        appendLocalMessage(`Error setting topic: ${error?.message || 'Unknown error'}`, 'assistant');
+                    });
+                setInput('');
+                return;
+            }
+
+            // If no active workspace, create a new one and navigate.
+            appendLocalMessage(`Creating new research for: "${topic}" (${depth} mode)...`, 'assistant');
+            createResearch(topic, depth)
+                .then((id) => navigate(`/research/${id}`))
+                .catch((error: any) => {
+                    appendLocalMessage(`Error creating research: ${error?.message || 'Unknown error'}`, 'assistant');
+                });
+
+            setInput('');
+            return; // CRITICAL FIX: Stop command from being sent to LLM as chat
         }
-        
+
+        // Check if we are in Topic Selection mode
+        const { topicSuggestions } = useResearchStore.getState();
+        if (topicSuggestions && topicSuggestions.length > 0) {
+            // Treat input as topic selection/refinement
+            handleTopicSelect(trimmedInput);
+            setInput('');
+            return;
+        }
+
         // Create abort controller for streaming
         abortControllerRef.current = new AbortController();
         setIsStreaming(true);
-        
-        addChatMessage(input, 'user', abortControllerRef.current.signal)
+
+        addChatMessage(trimmedInput, 'user', abortControllerRef.current.signal)
             .finally(() => {
                 setIsStreaming(false);
                 abortControllerRef.current = null;
             });
         setInput('');
     };
-    
+
+    const handleSend = (e: React.FormEvent) => {
+        e.preventDefault();
+        sendMessage(input);
+    };
+
     const handleStop = () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -100,95 +191,306 @@ Or just ask me any question about your research!`, 'assistant');
         }
     };
 
+    // Topic Selection Handler
+    const handleTopicSelect = async (topic: string) => {
+        if (!activeJob) return;
+        try {
+            await api.selectTopic(activeJob.id, topic);
+
+            // Optimistic update
+            useResearchStore.getState().setTopicSuggestions([]); // Clear suggestions
+            appendLocalMessage(`Selected Research Topic: **${topic}**`, 'user');
+            appendLocalMessage(`Topic locked. Proceeding with research...`, 'assistant');
+        } catch (error) {
+            toast.error("Failed to select topic");
+        }
+    };
+
+    const { topicSuggestions } = useResearchStore(useShallow(state => ({
+        topicSuggestions: state.topicSuggestions
+    })));
+    const isAwaitingTopicSelection = (topicSuggestions?.length || 0) > 0;
+
     return (
-        <div className="flex flex-col h-full bg-slate-50/50 dark:bg-zinc-900/50 border-r border-border">
+        <div className="flex flex-col h-full bg-card border-r border-border relative">
             {/* Header */}
-            <div className="h-14 shrink-0 border-b border-border flex items-center px-4 bg-background">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Sparkles className="w-4 h-4 text-primary" />
+            <div className="h-16 shrink-0 border-b border-border flex items-center px-4 bg-card">
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                        <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center",
+                            isCompleted
+                                ? "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5"
+                                : "bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/20 dark:to-primary/10"
+                        )}>
+                            {isCompleted ? (
+                                <BookOpen className="w-5 h-5 text-emerald-500" />
+                            ) : (
+                                <Bot className="w-5 h-5 text-primary" />
+                            )}
+                        </div>
+                        <div>
+                            <div className="text-sm font-semibold text-foreground">
+                                {isCompleted ? 'Chat with Research' : 'Research Assistant'}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                                {isCompleted ? 'RAG-powered Q&A with references' : 'AI Engine'}
+                            </div>
+                        </div>
                     </div>
-                    Research Assistant
+
+                    <div>
+                        {isStreaming ? (
+                            <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 shadow-sm">
+                                <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                                <span className="text-xs font-medium">Thinking...</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                {topicSuggestions?.length > 0 && (
+                                    <span
+                                        className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-[10px] font-medium text-primary uppercase tracking-wider"
+                                        title="Debug: suggestions currently loaded in frontend store"
+                                    >
+                                        Suggestions: {topicSuggestions.length}
+                                    </span>
+                                )}
+                                <span className="ml-2 px-2 py-0.5 rounded-full bg-secondary/50 border border-white/10 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                    {connectionStatus === 'offline' ? 'Using Ollama' : connectionStatus}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Chat History */}
-            <div className="flex-1 overflow-y-auto p-4 scroll-smooth space-y-4">
-                {chatHistory.length === 0 && (
-                    <div className="text-center mt-12">
-                        <Card className="p-6 max-w-sm mx-auto bg-gradient-to-br from-primary/5 to-brand/5 border-primary/10">
-                            <div className="flex items-center justify-center mb-4">
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <Terminal className="w-6 h-6 text-primary" />
+            <div className="flex-1 overflow-y-auto p-4 scroll-smooth space-y-4 min-h-0">
+                {isProcessing && (
+                    <div className="sticky top-0 z-10 flex justify-center">
+                        <div className="px-3 py-1 rounded-full text-xs border border-blue-500/30 bg-blue-500/10 text-blue-400">
+                            Research pipeline is running. Live feed and sources update in real time.
+                        </div>
+                    </div>
+                )}
+
+                {!chatHistory.some(m => m.role === 'user') && (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                        {isCompleted ? (
+                            <div className="max-w-md w-full space-y-4 px-4">
+                                <div className="flex flex-col items-center text-center mb-6">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/15 to-blue-500/15 flex items-center justify-center mb-3">
+                                        <MessageSquareQuote className="w-7 h-7 text-emerald-500" />
+                                    </div>
+                                    <h3 className="text-base font-semibold text-foreground">Chat with Your Research</h3>
+                                    <p className="text-xs text-muted-foreground mt-1">Ask questions about your paper &mdash; I'll answer with references</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {[
+                                        { icon: <Sparkles className="w-3.5 h-3.5" />, text: "Summarize the key findings", color: "text-amber-500" },
+                                        { icon: <BookOpen className="w-3.5 h-3.5" />, text: "What sources were used in the literature review?", color: "text-blue-500" },
+                                        { icon: <MessageSquareQuote className="w-3.5 h-3.5" />, text: "What are the main research gaps identified?", color: "text-purple-500" },
+                                        { icon: <Bot className="w-3.5 h-3.5" />, text: "What methodology was used?", color: "text-emerald-500" },
+                                    ].map((suggestion, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => sendMessage(suggestion.text)}
+                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card hover:bg-accent/50 hover:border-primary/30 transition-all text-left group"
+                                        >
+                                            <span className={cn("shrink-0", suggestion.color)}>{suggestion.icon}</span>
+                                            <span className="text-sm text-foreground group-hover:text-primary transition-colors">{suggestion.text}</span>
+                                            <ArrowRight className="w-3.5 h-3.5 ml-auto text-muted-foreground/30 group-hover:text-primary/50 transition-colors" />
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                            <h3 className="font-semibold text-foreground mb-2">Welcome to Research Assistant</h3>
-                            <p className="text-sm text-muted-foreground mb-4">Start your research journey or manage your workspace</p>
-                            
-                            <div className="space-y-2 text-xs">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full justify-start text-left h-auto p-3"
-                                    onClick={() => setInput('/research AI in healthcare')}
-                                >
-                                    <ArrowRight className="w-3 h-3 mr-2 text-brand" />
-                                    <div>
-                                        <div className="font-medium">Start Research</div>
-                                        <div className="text-muted-foreground">Type `/research [topic]`</div>
-                                    </div>
-                                </Button>
-                                
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full justify-start text-left h-auto p-3"
-                                    onClick={() => setInput('What is in my current research?')}
-                                >
-                                    <ArrowRight className="w-3 h-3 mr-2 text-brand" />
-                                    <div>
-                                        <div className="font-medium">Ask Questions</div>
-                                        <div className="text-muted-foreground">About your workspace</div>
-                                    </div>
-                                </Button>
+                        ) : (
+                            <div className="flex flex-col items-center opacity-50">
+                                <Bot className="w-12 h-12 mb-4" />
+                                <p>Enter a topic to start research</p>
                             </div>
-                        </Card>
+                        )}
                     </div>
                 )}
 
                 {chatHistory.map((msg) => {
                     const isAssistant = msg.role === 'assistant';
                     return (
-                        <div key={msg.id} className={cn("flex flex-col max-w-[95%]", isAssistant ? "items-start" : "items-end ml-auto")}>
-                            <div className={cn(
-                                "rounded-lg p-3 text-sm shadow-sm",
-                                isAssistant
-                                    ? "bg-white border border-border text-foreground dark:bg-card"
-                                    : "bg-primary text-primary-foreground"
-                            )}>
+                        <div key={msg.id} className="flex flex-col">
+                            <div
+                                className={cn(
+                                    "rounded-xl p-4 max-w-[85%] text-sm leading-relaxed shadow-sm transition-all",
+                                    msg.role === 'user'
+                                        ? "ml-auto max-w-[80%] bg-card border border-primary/30 text-foreground dark:bg-card dark:border-primary/50 dark:text-white"
+                                        : "mr-auto bg-card border border-border/60 text-foreground dark:bg-card dark:text-white"
+                                )}
+                            >
                                 {msg.content ? (
-                                    <MarkdownRenderer content={msg.content} />
+                                    <MarkdownRenderer
+                                        content={msg.content}
+                                        className={msg.role === 'user' ? 'prose-inherit' : ''}
+                                    />
                                 ) : (
                                     <MessageBoxLoading />
                                 )}
                             </div>
-                            <span className="text-[10px] text-muted-foreground mt-1 px-1">
+                            <span className={cn(
+                                "text-[10px] text-muted-foreground mt-1 px-1",
+                                msg.role === 'user' ? "ml-auto" : "mr-auto"
+                            )}>
                                 {isAssistant ? "AI Engine" : "You"}
                             </span>
                         </div>
                     );
                 })}
+
+                {/* Topic Selection UI */}
+                {topicSuggestions && topicSuggestions.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-4 ml-auto mr-auto max-w-[85%] w-full animate-in fade-in slide-in-from-bottom-4">
+                        <div className="bg-card border border-border/60 rounded-xl p-4 shadow-lg">
+                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                <Bot className="w-4 h-4 text-primary" />
+                                Select a Research Angle
+                            </h3>
+                            <div className="space-y-2">
+                                {topicSuggestions.map((suggestion: any, idx: number) => {
+                                    const title = typeof suggestion === 'string' ? suggestion : suggestion.title;
+                                    const desc = typeof suggestion === 'string' ? '' : suggestion.novelty_angle || suggestion.domain;
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleTopicSelect(title)}
+                                            className="w-full text-left p-3 rounded-lg border border-border/40 hover:bg-secondary/50 hover:border-primary/50 transition-all group relative overflow-hidden"
+                                        >
+                                            <div className="font-medium text-sm group-hover:text-primary transition-colors">{title}</div>
+                                            {desc && <div className="text-xs text-muted-foreground mt-1">{desc}</div>}
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <ArrowRight className="w-4 h-4 text-primary" />
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div ref={chatEndRef} />
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-background border-t border-border">
+            <div className="p-4 bg-card border-t border-border space-y-3">
+                {/* Processing Info Banner — chat is still enabled */}
+                {isProcessing && (
+                    <div className="relative overflow-hidden rounded-xl border border-blue-500/20 bg-gradient-to-r from-blue-600/5 via-indigo-600/5 to-purple-600/5">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent animate-shimmer" />
+                        <div className="relative px-4 py-3 flex items-center gap-3">
+                            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-500/15 shrink-0">
+                                <Cpu className="w-4.5 h-4.5 text-blue-500 animate-pulse" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">AI Engine Working</span>
+                                    <span className="flex items-center gap-0.5">
+                                        <span className="h-1 w-1 rounded-full bg-blue-500 animate-pulse" />
+                                        <span className="h-1 w-1 rounded-full bg-blue-500 animate-pulse [animation-delay:0.15s]" />
+                                        <span className="h-1 w-1 rounded-full bg-blue-500 animate-pulse [animation-delay:0.3s]" />
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                                    {currentStage === 'queued' ? 'Queued — waiting for agents...' :
+                                     currentStage === 'connecting...' ? 'Connecting to AI Engine...' :
+                                     `Stage: ${currentStage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`}
+                                    {executionEvents.length > 0 && (
+                                        <span className="ml-2 text-blue-400/70">• {executionEvents.length} events</span>
+                                    )}
+                                </p>
+                            </div>
+                            <div className="shrink-0">
+                                <Loader2 className="w-4 h-4 text-blue-500/60 animate-spin" />
+                            </div>
+                        </div>
+                        <div className="h-0.5 bg-border/30 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full animate-progress-indeterminate" />
+                        </div>
+                    </div>
+                )}
+
+                {/* Quick Commands */}
+                {!isStreaming && (
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                        {isCompleted ? (
+                            <>
+                                <button
+                                    onClick={() => sendMessage("Summarize the key findings")}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-xs font-semibold text-emerald-600 dark:text-emerald-400 transition-colors border border-emerald-500/20"
+                                >
+                                    <Sparkles className="w-3 h-3" />
+                                    Summarize
+                                </button>
+                                {[
+                                    { label: "Sources", cmd: "List all the sources and references used" },
+                                    { label: "Gaps", cmd: "What research gaps were identified?" },
+                                    { label: "Compare", cmd: "Compare the different viewpoints in the literature" },
+                                ].map((action, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => sendMessage(action.cmd)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary text-xs font-medium text-secondary-foreground transition-colors border border-transparent hover:border-border"
+                                    >
+                                        {action.label}
+                                    </button>
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        const cmd = "/research ";
+                                        setInput(cmd);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-xs font-semibold text-primary transition-colors border border-primary/20"
+                                >
+                                    <Bot className="w-3 h-3" />
+                                    Start Research
+                                </button>
+
+                                {[
+                                    { label: "Deep Dive", cmd: "/research deep " },
+                                    { label: "Quick Scan", cmd: "/research quick " },
+                                    { label: "Help", cmd: "/help" }
+                                ].map((action, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => setInput(action.cmd)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary text-xs font-medium text-secondary-foreground transition-colors border border-transparent hover:border-border"
+                                    >
+                                        <span className="opacity-70">/</span>
+                                        {action.label}
+                                    </button>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                )}
+
                 <form onSubmit={handleSend} className="relative">
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder={isStreaming ? "AI is responding..." : "Type a message or /command..."}
-                        className="pr-20 bg-white dark:bg-card"
+                        placeholder={
+                            isAwaitingTopicSelection ? "Select a suggested topic or type your own topic title..." :
+                            isStreaming ? "AI is thinking..." :
+                            isCompleted ? "Ask about your research — e.g. 'What were the key findings?'" :
+                            isProcessing ? "Chat while agents work — or type /research <topic>" :
+                            "Type a message or /research <topic>..."
+                        }
+                        className={cn(
+                            "pr-20 h-11 rounded-xl",
+                            isStreaming ? "bg-background/95 border-border ring-2 ring-amber-400/20 opacity-95 cursor-not-allowed" :
+                            "bg-background border-border"
+                        )}
                         disabled={isStreaming}
                     />
                     <div className="absolute right-1 top-1 flex gap-1">
@@ -207,11 +509,14 @@ Or just ask me any question about your research!`, 'assistant');
                         <Button
                             type="submit"
                             size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            variant={isStreaming ? "ghost" : "default"}
+                            className={cn(
+                                "h-8 w-8",
+                                isStreaming ? "bg-primary/10 text-primary" : "bg-primary text-primary-foreground hover:brightness-95"
+                            )}
                             disabled={!input.trim() || isStreaming}
                         >
-                            {isProcessing && !isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                            {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </Button>
                     </div>
                 </form>
@@ -219,3 +524,19 @@ Or just ask me any question about your research!`, 'assistant');
         </div>
     );
 };
+
+export const ChatInterface = () => (
+    <AppErrorBoundary
+        fallback={
+            <div className="flex flex-col h-full bg-card border-r border-border relative items-center justify-center">
+                <div className="text-center">
+                    <Bot className="w-12 h-12 mb-4 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Chat interface error. Please refresh the page.</p>
+                </div>
+            </div>
+        }
+        onError={(error) => console.error('Chat interface error:', error)}
+    >
+        <ChatInterfaceInner />
+    </AppErrorBoundary>
+);

@@ -1,106 +1,82 @@
-version: '3.8'
+# Multi-Agent Research Platform — Docker Compose
+# Usage: docker compose up --build
 
 services:
-  # AI Engine (Python/FastAPI)
-  ai-engine:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-research_platform}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ai_engine:
     build:
       context: ./ai_engine
       dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - AI_ENGINE_SECRET=${AI_ENGINE_SECRET:-}
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5000,http://frontend:5173
     ports:
       - "8000:8000"
-    environment:
-      - LLM_MODE=offline
-      - OLLAMA_BASE_URL=http://ollama:11434
     volumes:
+      - ./output:/app/output
       - ./data:/app/data
-      - ./logs:/app/logs
     depends_on:
-      - ollama
-    restart: unless-stopped
-    networks:
-      - research-network
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
-  # Backend API (Node.js/Express)
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      - AI_ENGINE_URL=http://ai_engine:8000
+      - AI_ENGINE_SECRET=${AI_ENGINE_SECRET:-}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-research_platform}
     ports:
       - "5000:5000"
-    environment:
-      - AI_ENGINE_URL=http://ai-engine:8000
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=research_platform
-      - DB_USER=research_user
-      - DB_PASSWORD=research_password
-      - JWT_SECRET=deep_research_engine_jwt_secret_2024
-      - PORT=5000
     depends_on:
-      - ai-engine
-      - postgres
-    restart: unless-stopped
-    networks:
-      - research-network
+      db:
+        condition: service_healthy
+      ai_engine:
+        condition: service_healthy
 
-  # Frontend (React + Nginx)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:5000
     depends_on:
       - backend
-    restart: unless-stopped
-    networks:
-      - research-network
-
-  # Database
-  postgres:
-    image: postgres:15-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=research_platform
-      - POSTGRES_USER=research_user
-      - POSTGRES_PASSWORD=research_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-    restart: unless-stopped
-    networks:
-      - research-network
-
-  # Ollama for local LLM
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - research-network
-    command: serve
-
-  # Redis for caching (optional)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    networks:
-      - research-network
-    command: redis-server --appendonly yes
 
 volumes:
-  postgres_data:
-  ollama_data:
-  redis_data:
-
-networks:
-  research-network:
-    driver: bridge
+  pgdata:

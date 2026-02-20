@@ -1,5 +1,6 @@
 from ..base import BaseAgent
 from utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, PDFReaderProvider, ArxivProvider, HtmlScraperProvider
+from utils.event_emitter import emit_source
 from langchain_core.messages import SystemMessage, HumanMessage
 
 class DataScraperAgent(BaseAgent):
@@ -75,11 +76,11 @@ class DataScraperAgent(BaseAgent):
             source_type = "multi_source_search"
             
             # 1. Wiki
-            wiki_res = self.wiki_provider.search(task, max_results=1)
+            wiki_res = self.wiki_provider.search(task, max_results=3)
             # 2. Arxiv
-            arxiv_res = self.arxiv_provider.search_papers(task, max_results=2)
+            arxiv_res = self.arxiv_provider.search_papers(task, max_results=5)
             # 3. Google
-            google_res = self.google_provider.search(task, max_results=2)
+            google_res = self.google_provider.search(task, max_results=5)
             
             extracted_text = "SOURCES COLLECTED:\n"
             
@@ -101,9 +102,48 @@ class DataScraperAgent(BaseAgent):
             extracted_text += add_content("Wikipedia", wiki_res, fetch_full=False)
             extracted_text += add_content("Arxiv", arxiv_res, fetch_full=False)
             extracted_text += add_content("Google Web", google_res, fetch_full=True)
+
+        # ── Dataset / Survey Discovery ──
+        # Search for datasets, GitHub repos, and Kaggle datasets related to the topic
+        try:
+            print(f"[{self.name}] Searching for datasets and surveys...")
+            dataset_queries = [
+                f"{task} dataset site:kaggle.com",
+                f"{task} dataset OR benchmark site:github.com",
+                f"{task} survey dataset OR corpus",
+            ]
+            for dq in dataset_queries:
+                ds_results = self.google_provider.search(dq, max_results=3)
+                for r in ds_results:
+                    url_lower = (r.get("url", "") or "").lower()
+                    title = r.get("title", "Unknown Dataset")
+                    desc = r.get("body", "") or r.get("description", "") or ""
+                    domain = r.get("domain", "")
+
+                    # Classify source type based on URL
+                    if "kaggle.com" in url_lower:
+                        st = "kaggle"
+                        domain = "kaggle.com"
+                    elif "github.com" in url_lower:
+                        st = "github"
+                        domain = "github.com"
+                    else:
+                        st = "dataset"
+
+                    emit_source(
+                        source_type=st,
+                        domain=domain,
+                        url=r.get("url"),
+                        title=title,
+                        description=desc[:200],
+                        items_found=1,
+                        status="success",
+                    )
+        except Exception as ds_err:
+            print(f"[{self.name}] Dataset search error (non-fatal): {ds_err}")
             
         # Call LLM to structure the extracted mess
-        enhanced_prompt = f"{self.system_prompt}\n\nRAW SCRAPED DATA:\n{extracted_text[:12000]}" # Limit context
+        enhanced_prompt = f"{self.system_prompt}\n\nRAW SCRAPED DATA:\n{extracted_text[:20000]}" # Limit context
         
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),

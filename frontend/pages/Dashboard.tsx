@@ -1,213 +1,356 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useResearchStore } from '../store';
-import { Sparkles, ArrowRight, Zap, Clock, Search, Settings, Loader2, Trash2, CheckCircle2, AlertCircle, Timer } from 'lucide-react';
-import { AnimatedBackground } from '../components/AnimatedBackground';
-import { JobStatus } from '../types';
+import { ArrowRight, Clock, Loader2, Trash2, Plus, FolderOpen } from 'lucide-react';
+import { JobStatus, ResearchJob } from '../types';
+import { Button } from '../components/ui/button';
+import { DeleteWorkspaceModal } from '../components/DeleteWorkspaceModal';
+import { CardSkeleton } from '../components/ui/skeleton';
+import { toast } from 'sonner';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { createResearch, user, logout, openSettings, researches, fetchResearches, deleteResearch, loadingList } = useResearchStore();
-  const [topic, setTopic] = useState('');
+  const location = useLocation();
+  const { createResearch, researches, fetchResearches, deleteResearch, loadingList } = useResearchStore();
+  const [workspaceName, setWorkspaceName] = useState('');
+  const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [depth] = useState<'quick' | 'deep'>('deep'); // Default to deep research
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; topic: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const createModalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     fetchResearches();
   }, [fetchResearches]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('create') === '1') {
+      setIsCreateModalOpen(true);
+      params.delete('create');
+      const next = params.toString();
+      navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!topic) return;
+    const name = workspaceName.trim();
+    if (!name) return;
     setIsSubmitting(true);
-    const id = await createResearch(topic, depth);
-    setIsSubmitting(false);
-    navigate(`/research/${id}`);
+    try {
+      const id = await createResearch(name, depth);
+      setWorkspaceName('');
+      setWorkspaceDescription('');
+      setIsCreateModalOpen(false);
+      navigate(`/research/${id}`);
+    } catch (err: any) {
+      console.error('[Dashboard] Failed to create research:', err);
+      toast.error(err?.message || 'Failed to create research. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (topic && !isSubmitting) {
-        await handleCreate(e);
+  useEffect(() => {
+    if (!isCreateModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !isSubmitting) {
+        setIsCreateModalOpen(false);
+        return;
       }
+
+      if (event.key !== 'Tab' || !createModalRef.current) return;
+
+      const selectors = [
+        'button:not([disabled])',
+        'input:not([disabled])',
+        'textarea:not([disabled])',
+        'a[href]',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(', ');
+      const focusable = Array.from(createModalRef.current.querySelectorAll<HTMLElement>(selectors))
+        .filter((el) => !el.hasAttribute('disabled') && el.tabIndex !== -1);
+
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isCreateModalOpen, isSubmitting]);
+
+  const formatUpdatedAt = (job: ResearchJob) => {
+    const date = job.updatedAt || job.createdAt;
+    return new Date(date).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const getWorkspaceDescription = (job: ResearchJob) => {
+    if (job.reportMarkdown) {
+      return 'Report available. Click to open workspace.';
+    }
+    if (job.status === JobStatus.PROCESSING) {
+      return 'Research in progress.';
+    }
+    if (job.status === JobStatus.FAILED) {
+      return 'Last run failed. Open to retry or inspect logs.';
+    }
+    return 'Open workspace to continue research and collaboration.';
+  };
+
+  const getStatusBadgeClass = (status: JobStatus) => {
+    if (status === JobStatus.COMPLETED) {
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+    }
+    if (status === JobStatus.PROCESSING) {
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    }
+    if (status === JobStatus.FAILED) {
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+    }
+    return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteResearch(deleteTarget.id);
+      setDeleteTarget(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-zinc-900 dark:to-slate-900">
-      {/* Animated Background */}
-      <AnimatedBackground />
-      
+    <div className="relative min-h-screen bg-background text-foreground">
       {/* Main Content */}
-      <main className="relative min-h-screen flex flex-col items-center p-8 md:pt-16 md:px-16">
-        {/* Header */}
-        <div className="z-10 max-w-5xl w-full items-center justify-between text-sm lg:flex mb-16">
-          <div className="flex gap-4 w-full flex-row items-center justify-between">
-            <div className="flex flex-col gap-4 justify-center">
-              <div className="pointer-events-none flex items-center gap-2 lg:pointer-events-auto text-lg">
-                <div className="w-10 h-10 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-5 h-5" />
+      <main className="relative min-h-screen flex flex-col items-center px-4 py-8 sm:px-6 md:px-10 lg:px-16">
+        {/* Workspace Selection Interface */}
+        <section className="h-full flex-grow flex flex-col items-center w-full max-w-6xl z-10">
+          <div className="w-full text-center mb-10 md:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 text-foreground">
+              Select Your Workspace
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              Open an existing workspace to continue research, or create a new workspace to start a fresh investigation.
+            </p>
+          </div>
+
+          {loadingList ? (
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            researches.length > 0 && (
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="group min-h-56 rounded-xl border-2 border-dashed border-border bg-card p-6 text-left transition-all hover:-translate-y-1 hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                >
+                  <div className="h-full flex flex-col justify-between">
+                    <div className="w-12 h-12 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-semibold text-foreground">Create New Workspace</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Start a new research thread with your own topic and objectives.
+                      </p>
+                      <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground/90">
+                        Create workspace
+                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                {researches.map((job) => (
+                  <article
+                    key={job.id}
+                    className="group relative min-h-56 rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-1 hover:bg-accent"
+                  >
+                    <div className="h-full flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${getStatusBadgeClass(job.status)}`}>
+                            {job.status}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            Updated {formatUpdatedAt(job)}
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-semibold text-foreground leading-snug line-clamp-2">
+                          {job.topic}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          {getWorkspaceDescription(job)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-2 text-sm font-medium text-foreground/90 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+                          onClick={() => navigate(`/research/${job.id}`)}
+                          aria-label={`Open ${job.topic} workspace`}
+                        >
+                          Open workspace
+                          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                        </button>
+                        <button
+                          className="relative z-10 h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-500 transition-colors pointer-events-auto hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => {
+                            setDeleteTarget({ id: job.id, topic: job.topic });
+                          }}
+                          aria-label={`Delete ${job.topic}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )
+          )}
+
+          {!loadingList && researches.length === 0 && (
+            <div className="w-full max-w-xl text-center mt-12 bg-card border border-border rounded-xl p-8">
+              <FolderOpen className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
+              <h2 className="text-xl font-medium text-foreground mb-2">No workspaces yet</h2>
+              <p className="text-muted-foreground mb-6">
+                Create your first workspace to begin organizing research.
+              </p>
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="h-10 px-4 gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create New Workspace
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {isCreateModalOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={() => {
+                if (!isSubmitting) setIsCreateModalOpen(false);
+              }}
+              aria-hidden="true"
+            />
+            <div
+              ref={createModalRef}
+              className="relative z-50 w-full max-w-lg rounded-xl border border-border bg-card p-6 md:p-7 shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-workspace-title"
+            >
+              <h2 id="create-workspace-title" className="text-2xl font-semibold text-foreground mb-2">Create New Workspace</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Give your workspace a clear name. You can start research right away after creation.
+              </p>
+
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="workspaceName" className="text-sm font-medium text-foreground/90">
+                    Workspace Name
+                  </label>
+                  <input
+                    id="workspaceName"
+                    type="text"
+                    value={workspaceName}
+                    onChange={(e) => setWorkspaceName(e.target.value)}
+                    placeholder="E.g., AI in Healthcare 2026"
+                    className="h-10 w-full bg-background border border-border rounded-lg px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    maxLength={120}
+                    autoFocus
+                    disabled={isSubmitting}
+                  />
                 </div>
-                <div className="space-y-0.5">
-                  <h1 className="text-3xl font-light leading-none whitespace-nowrap">DeepResearch</h1>
-                  <p className="text-sm ml-0.5 tracking-widest font-light font-sans leading-none text-zinc-500 dark:text-zinc-400">
-                    Multi-Agent Research Platform
+                <div className="space-y-2">
+                  <label htmlFor="workspaceDescription" className="text-sm font-medium text-foreground/90">
+                    Short Description (Optional)
+                  </label>
+                  <textarea
+                    id="workspaceDescription"
+                    value={workspaceDescription}
+                    onChange={(e) => setWorkspaceDescription(e.target.value)}
+                    placeholder="Optional notes to describe this workspace"
+                    className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none min-h-24"
+                    maxLength={240}
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Description is currently local to this form and helps team clarity during setup.
                   </p>
                 </div>
-              </div>
-            </div>
 
-            {/* User Controls */}
-            <div className="flex gap-4 items-center">
-              {user && (
-                <div className="flex items-center gap-4">
-                  <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Welcome, {user.name || user.email}
-                  </div>
-                  <button
-                    onClick={openSettings}
-                    className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="sm:flex-1 h-10"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    disabled={isSubmitting}
                   >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={logout}
-                    className="text-sm text-red-600 hover:text-red-700 transition-colors"
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="sm:flex-1 h-10 gap-2"
+                    disabled={!workspaceName.trim() || isSubmitting}
                   >
-                    Logout
-                  </button>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        Create Workspace
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Main Research Interface */}
-        <div className="h-full flex-grow flex flex-col items-center justify-center w-full -mt-32">
-          <div className="flex flex-col gap-8 w-full items-center justify-center">
-            {/* Central Icon/Logo */}
-            <div className="relative">
-              <div className="w-24 h-24 bg-white/20 dark:bg-black/20 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-8 border border-white/30 dark:border-white/10">
-                <Search className="w-12 h-12 text-zinc-600 dark:text-zinc-400" />
-              </div>
-            </div>
-
-            {/* Main Title */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl md:text-6xl font-light mb-4 text-zinc-900 dark:text-white">
-                What would you like to research?
-              </h1>
-              <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl">
-                Enter a topic and the Deep Research Engine will generate a comprehensive report.
-              </p>
-            </div>
-
-            {/* Research Form */}
-            <form
-              onSubmit={handleCreate}
-              className="flex flex-col gap-6 max-w-2xl w-full"
-            >
-              {/* Topic Input */}
-              <div className="relative">
-                <textarea
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="E.g., The impact of quantum computing on cryptography by 2030..."
-                  className="w-full bg-white/30 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-xl p-6 text-base text-zinc-900 dark:text-white shadow-lg focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 outline-none transition-all resize-none min-h-32 placeholder:text-zinc-500 dark:placeholder:text-zinc-400"
-                  disabled={isSubmitting}
-                />
-                {topic && !isSubmitting && (
-                  <div className="absolute bottom-4 right-4 text-xs text-zinc-500 bg-white/80 dark:bg-black/80 px-2 py-1 rounded">
-                    Press Enter to start
-                  </div>
-                )}
-              </div>
-
-
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={!topic || isSubmitting}
-                className="w-full bg-gradient-to-r from-primary to-brand-orange hover:from-primary/90 hover:to-brand-orange/90 text-white font-medium py-6 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 backdrop-blur-xl text-lg"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Starting Deep Research...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-5 h-5" />
-                    Start Deep Research
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Recent Research History */}
-        {researches.length > 0 && (
-          <div className="w-full max-w-2xl mt-12 z-10">
-            <h2 className="text-lg font-medium text-zinc-700 dark:text-zinc-300 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Recent Research
-            </h2>
-            <div className="space-y-2">
-              {loadingList && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
-                </div>
-              )}
-              {researches.slice(0, 8).map((job) => (
-                <div
-                  key={job.id}
-                  className="group flex items-center justify-between bg-white/40 dark:bg-black/30 backdrop-blur-xl border border-white/30 dark:border-white/10 rounded-xl p-4 cursor-pointer hover:bg-white/60 dark:hover:bg-black/40 transition-all"
-                  onClick={() => navigate(`/research/${job.id}`)}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      job.status === JobStatus.COMPLETED ? 'bg-emerald-500' :
-                      job.status === JobStatus.PROCESSING ? 'bg-amber-500 animate-pulse' :
-                      job.status === JobStatus.FAILED ? 'bg-red-500' :
-                      'bg-zinc-300'
-                    }`} />
-                    <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                      {job.topic}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-4">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      job.status === JobStatus.COMPLETED ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                      job.status === JobStatus.PROCESSING ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                      job.status === JobStatus.FAILED ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                    }`}>
-                      {job.status}
-                    </span>
-                    <button
-                      className="p-1.5 opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-500 transition-all rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm('Delete this research?')) deleteResearch(job.id);
-                      }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+              </form>
             </div>
           </div>
         )}
 
+        <DeleteWorkspaceModal
+          open={Boolean(deleteTarget)}
+          workspaceName={deleteTarget?.topic || ''}
+          isDeleting={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={handleConfirmDelete}
+        />
+
         {/* Footer */}
         <div className="mt-16 text-center">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Powered by 20+ specialized AI agents for comprehensive research
           </p>
         </div>

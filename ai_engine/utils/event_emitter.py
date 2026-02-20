@@ -18,6 +18,14 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:5000")
 # Store current job context
 _current_job_id: Optional[int] = None
 
+ALLOWED_SEVERITIES = {"info", "warn", "error", "success"}
+ALLOWED_CATEGORIES = {"stage", "source", "agent", "error", "user_action_required"}
+
+
+def _sanitize_text(value: Any, max_len: int = 500) -> str:
+    text = str(value or "").strip()
+    return text[:max_len]
+
 
 def set_job_context(job_id: int):
     """Set the current job ID for event emission."""
@@ -56,6 +64,11 @@ def emit_event(
         logger.debug(f"[EventEmitter] No job context, skipping event: {message}")
         return
     
+    stage = _sanitize_text(stage, 80) or "unknown"
+    message = _sanitize_text(message, 500) or "No message provided"
+    severity = severity if severity in ALLOWED_SEVERITIES else "info"
+    category = category if category in ALLOWED_CATEGORIES else "stage"
+
     event_id = f"evt_{datetime.now().strftime('%H%M%S')}_{uuid.uuid4().hex[:8]}"
     
     payload = {
@@ -72,14 +85,21 @@ def emit_event(
         response = requests.post(
             f"{BACKEND_URL}/events",
             json=payload,
-            timeout=2  # Short timeout to not block
+            timeout=5  # Allow enough time for DB insert
         )
         if response.status_code != 200:
-            logger.warning(f"[EventEmitter] Failed to emit event: {response.text}")
-    except requests.RequestException as e:
+            logger.warning(f"[EventEmitter] Failed to emit event (HTTP {response.status_code}): {response.text[:200]}")
+        else:
+            # Use INFO for user_action_required events so they always show in logs
+            if category == "user_action_required":
+                logger.info(f"[EventEmitter] Emitted user_action_required: {stage} - {message[:80]}")
+            else:
+                logger.debug(f"[EventEmitter] Emitted: {stage} - {message[:60]}")
+    except requests.ConnectionError as e:
+        logger.warning(f"[EventEmitter] Cannot reach backend at {BACKEND_URL}: {e}")
+    except Exception as e:
         # Don't fail the pipeline if event emission fails
-        logger.debug(f"[EventEmitter] Could not emit event: {e}")
-
+        logger.warning(f"[EventEmitter] Could not emit event: {type(e).__name__}: {e}")
 
 def emit_source(
     source_type: str,
@@ -143,13 +163,17 @@ def emit_source(
     }
 
     try:
-        requests.post(
+        resp = requests.post(
             f"{BACKEND_URL}/events/source",
             json=payload,
-            timeout=2
+            timeout=5
         )
-    except requests.RequestException:
-        pass  # Silent fail
+        if resp.status_code != 200:
+            logger.warning(f"[EventEmitter] Source emit failed (HTTP {resp.status_code}): {resp.text[:200]}")
+    except requests.ConnectionError as e:
+        logger.warning(f"[EventEmitter] Cannot reach backend for source emit: {e}")
+    except requests.RequestException as e:
+        logger.warning(f"[EventEmitter] Source emit error: {e}")
 
 
 def emit_agent_start(agent_name: str, research_id: Optional[int] = None):
