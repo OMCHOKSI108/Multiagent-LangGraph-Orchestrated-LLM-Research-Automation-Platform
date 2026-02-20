@@ -63,7 +63,11 @@ router.get('/status/:id', auth, async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
     const result = await db.query(
-      "SELECT id, task, title, status, result_json, user_id, created_at, updated_at FROM research_logs WHERE id = $1 AND user_id = $2",
+      `SELECT id, task, title, status, result_json, user_id,
+              report_markdown, latex_source, current_stage,
+              started_at, completed_at,
+              created_at, updated_at
+       FROM research_logs WHERE id = $1 AND user_id = $2`,
       [id, userId]
     );
 
