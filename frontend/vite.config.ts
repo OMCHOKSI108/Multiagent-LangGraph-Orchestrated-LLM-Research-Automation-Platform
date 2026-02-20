@@ -24,7 +24,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // Ensure VITE_DEMO_MODE is available even when .env.production is gitignored
+      ...(mode === 'production' && !env.VITE_DEMO_MODE ? { 'import.meta.env.VITE_DEMO_MODE': JSON.stringify('true') } : {}),
     },
     resolve: {
       alias: {

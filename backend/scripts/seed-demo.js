@@ -29,7 +29,7 @@ const pool = new Pool({
 
 const DEMO_EMAIL = 'devang@gmail.com';
 const DEMO_PASSWORD = 'OMchoksi@30';
-const DEMO_USERNAME = 'Devang Choksi';
+const DEMO_USERNAME = 'Devang Dhandhukiya';
 
 // ─── Mock Result JSONs ───────────────────────────────────────────────────────
 
