@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS workspace_uploads (
     user_id INTEGER REFERENCES users(id),
     filename VARCHAR(500) NOT NULL,
     file_type VARCHAR(50),
-    file_path TEXT NOT NULL,
+    file_path TEXT DEFAULT '',
     file_size_bytes BIGINT,
     embedding_status VARCHAR(20) DEFAULT 'pending', -- pending | processing | done | failed
     chunk_count INTEGER DEFAULT 0,

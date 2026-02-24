@@ -151,8 +151,8 @@ router.post('/:id/topic', auth, async (req, res) => {
       return res.status(400).json({ error: "Invalid research id" });
     }
 
-    // Update topic in DB
-    const updateResult = await db.query(
+    // Try research_logs first
+    let updateResult = await db.query(
       `UPDATE research_logs
        SET title = $1::text,
            task = $2::text,
@@ -166,6 +166,23 @@ router.post('/:id/topic', auth, async (req, res) => {
        WHERE id = $3::int AND user_id = $4::int`,
       [normalizedTopic, normalizedTopic, researchId, req.user.id]
     );
+
+    // Fallback to research_sessions
+    if (updateResult.rowCount === 0) {
+      try {
+        updateResult = await db.query(
+          `UPDATE research_sessions
+           SET refined_topic = $1, title = $1, topic = $2,
+               status = 'queued', current_stage = 'queued',
+               started_at = NULL, completed_at = NULL,
+               result_json = NULL, retry_count = 0,
+               updated_at = NOW()
+           WHERE id = $3 AND user_id = $4`,
+          [normalizedTopic, normalizedTopic, researchId, req.user.id]
+        );
+      } catch (e) { /* table may not exist */ }
+    }
+
     if (updateResult.rowCount === 0) {
       return res.status(404).json({ error: "Research not found" });
     }
@@ -222,10 +239,21 @@ router.patch('/:id/rename', auth, async (req, res) => {
       return res.status(400).json({ error: "Title is required" });
     }
 
-    const result = await db.query(
+    // Try research_logs first
+    let result = await db.query(
       "UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, title",
       [title.trim(), id, req.user.id]
     );
+
+    // Fallback to research_sessions
+    if (result.rows.length === 0) {
+      try {
+        result = await db.query(
+          "UPDATE research_sessions SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, title",
+          [title.trim(), id, req.user.id]
+        );
+      } catch (e) { /* table may not exist */ }
+    }
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Research not found" });
@@ -247,18 +275,35 @@ router.delete('/:id', auth, async (req, res) => {
     const { id } = req.params;
     const userId = req.user?.id;
 
-    // First check if research exists and belongs to user
+    // Try research_logs first
+    let found = false;
     const checkResult = await db.query(
-      "SELECT id, user_id FROM research_logs WHERE id = $1 AND user_id = $2",
+      "SELECT id FROM research_logs WHERE id = $1 AND user_id = $2",
       [id, userId]
     );
 
-    if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: "Research not found or not authorized" });
+    if (checkResult.rows.length > 0) {
+      await db.query("DELETE FROM research_logs WHERE id = $1 AND user_id = $2", [id, userId]);
+      found = true;
     }
 
-    // Delete research and related data
-    await db.query("DELETE FROM research_logs WHERE id = $1 AND user_id = $2", [id, userId]);
+    // Fallback to research_sessions
+    if (!found) {
+      try {
+        const sessCheck = await db.query(
+          "SELECT id FROM research_sessions WHERE id = $1 AND user_id = $2",
+          [id, userId]
+        );
+        if (sessCheck.rows.length > 0) {
+          await db.query("DELETE FROM research_sessions WHERE id = $1 AND user_id = $2", [id, userId]);
+          found = true;
+        }
+      } catch (e) { /* table may not exist */ }
+    }
+
+    if (!found) {
+      return res.status(404).json({ error: "Research not found or not authorized" });
+    }
 
     logger.info(`[Node] Deleted research #${id}`);
     res.json({ success: true, message: "Research deleted" });
@@ -275,22 +320,34 @@ router.post('/:id/share', auth, async (req, res) => {
     const researchId = req.params.id;
     const userId = req.user.id;
 
-    // Verify user owns this research
-    const research = await db.query(
+    // Try research_logs first
+    let research = await db.query(
       'SELECT * FROM research_logs WHERE id = $1 AND user_id = $2',
       [researchId, userId]
     );
+    let tableName = 'research_logs';
+
+    // Fallback to research_sessions
+    if (research.rows.length === 0) {
+      try {
+        research = await db.query(
+          'SELECT * FROM research_sessions WHERE id = $1 AND user_id = $2',
+          [researchId, userId]
+        );
+        tableName = 'research_sessions';
+      } catch (e) { /* table may not exist */ }
+    }
 
     if (research.rows.length === 0) {
       return res.status(404).json({ error: 'Research not found' });
     }
 
     // Generate share token
-    const shareToken = uuidv4().replace(/-/g, ''); // Remove hyphens for cleaner URLs
+    const shareToken = uuidv4().replace(/-/g, '');
 
     // Update research with share token
     await db.query(
-      'UPDATE research_logs SET share_token = $1 WHERE id = $2',
+      `UPDATE ${tableName} SET share_token = $1 WHERE id = $2`,
       [shareToken, researchId]
     );
 
@@ -302,7 +359,7 @@ router.post('/:id/share', auth, async (req, res) => {
       message: 'Research shared successfully'
     });
   } catch (error) {
-    winston.error('Error sharing research:', error);
+    logger.error('Error sharing research:', error);
     res.status(500).json({ error: 'Failed to share research' });
   }
 });
@@ -312,14 +369,27 @@ router.get('/shared/:token', async (req, res) => {
   try {
     const shareToken = req.params.token;
 
-    // Get research by share token
-    const research = await db.query(
+    // Try research_logs first
+    let research = await db.query(
       `SELECT r.*, u.username 
        FROM research_logs r 
        JOIN users u ON r.user_id = u.id 
        WHERE r.share_token = $1`,
       [shareToken]
     );
+
+    // Fallback to research_sessions
+    if (research.rows.length === 0) {
+      try {
+        research = await db.query(
+          `SELECT rs.*, rs.topic AS task, u.username
+           FROM research_sessions rs
+           JOIN users u ON rs.user_id = u.id
+           WHERE rs.share_token = $1`,
+          [shareToken]
+        );
+      } catch (e) { /* table may not exist */ }
+    }
 
     if (research.rows.length === 0) {
       return res.status(404).json({ error: 'Shared research not found' });
@@ -328,21 +398,27 @@ router.get('/shared/:token', async (req, res) => {
     const researchData = research.rows[0];
 
     // Get execution events
-    const events = await db.query(
-      'SELECT * FROM execution_events WHERE research_id = $1 ORDER BY created_at ASC',
-      [researchData.id]
-    );
+    let events = { rows: [] };
+    try {
+      events = await db.query(
+        'SELECT * FROM execution_events WHERE research_id = $1 ORDER BY created_at ASC',
+        [researchData.id]
+      );
+    } catch (e) { /* ignore if table doesn't exist */ }
 
     // Get data sources
-    const sources = await db.query(
-      'SELECT * FROM data_sources WHERE research_id = $1',
-      [researchData.id]
-    );
+    let sources = { rows: [] };
+    try {
+      sources = await db.query(
+        'SELECT * FROM data_sources WHERE research_id = $1',
+        [researchData.id]
+      );
+    } catch (e) { /* ignore */ }
 
     res.json({
       research: {
         id: researchData.id,
-        topic: researchData.topic,
+        topic: researchData.topic || researchData.task,
         status: researchData.status,
         depth: researchData.depth,
         result_json: researchData.result_json,
@@ -356,7 +432,7 @@ router.get('/shared/:token', async (req, res) => {
       sources: sources.rows
     });
   } catch (error) {
-    winston.error('Error fetching shared research:', error);
+    logger.error('Error fetching shared research:', error);
     res.status(500).json({ error: 'Failed to fetch shared research' });
   }
 });

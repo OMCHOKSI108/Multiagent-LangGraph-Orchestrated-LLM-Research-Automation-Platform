@@ -96,7 +96,7 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
                                     "w-full justify-start text-sm font-normal h-9 px-3 truncate relative rounded-lg transition-all",
                                     isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                 )}
-                                onClick={() => handleNavigate(`/ research / ${job.id} `)}
+                                onClick={() => handleNavigate(`/research/${job.id}`)}
                             >
                                 <span className="truncate">{job.topic || "New conversation"}</span>
                             </Button>
