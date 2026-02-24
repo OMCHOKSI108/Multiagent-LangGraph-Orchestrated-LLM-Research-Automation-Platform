@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { JobStatus, ResearchJob, LogEntry, ChatMessage, User, ApiKeys, UsageStats, Memory, SearchResponse, LLMStatus } from './types';
+import { JobStatus, ResearchJob, LogEntry, ChatMessage, User, ApiKeys, UsageStats, Memory, SearchResponse, LLMStatus, Workspace } from './types';
 import { api } from './services/api';
 import { toast } from 'sonner';
 
@@ -115,6 +115,15 @@ interface ResearchStore {
   // Providers
   providers: any;
   fetchProviders: () => Promise<void>;
+
+  // Workspace Management (Phase 2)
+  workspaces: Workspace[];
+  currentWorkspace: Workspace | null;
+  workspacesLoading: boolean;
+  fetchWorkspaces: () => Promise<void>;
+  createWorkspace: (name: string, description?: string) => Promise<string>;
+  setCurrentWorkspace: (workspace: Workspace | null) => void;
+  archiveWorkspace: (id: string) => Promise<void>;
 }
 
 export const useResearchStore = create<ResearchStore>((set, get) => {
@@ -335,7 +344,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         if (findings.google_news?.response?.results) {
           (findings.google_news.response.results as any[]).forEach(item => {
             let domain = 'unknown';
-            try { domain = new URL(item.url).hostname.replace('www.', ''); } catch {}
+            try { domain = new URL(item.url).hostname.replace('www.', ''); } catch { }
             sources.push({
               source_type: 'news',
               domain,
@@ -352,7 +361,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         if (findings.literature_review?.response?.papers) {
           (findings.literature_review.response.papers as any[]).forEach(paper => {
             let domain = 'arxiv.org';
-            try { if (paper.url) domain = new URL(paper.url).hostname.replace('www.', ''); } catch {}
+            try { if (paper.url) domain = new URL(paper.url).hostname.replace('www.', ''); } catch { }
             sources.push({
               source_type: 'arxiv',
               domain,
@@ -369,7 +378,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         if (findings.web_scraper?.response?.sources) {
           (findings.web_scraper.response.sources as any[]).forEach(src => {
             let domain = 'unknown';
-            try { domain = new URL(src).hostname.replace('www.', ''); } catch {}
+            try { domain = new URL(src).hostname.replace('www.', ''); } catch { }
             sources.push({
               source_type: 'web',
               domain,
@@ -384,7 +393,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         if (findings.discovery?.response?.results) {
           (findings.discovery.response.results as any[]).forEach((item: any) => {
             let domain = 'unknown';
-            try { domain = new URL(item.url || item.link).hostname.replace('www.', ''); } catch {}
+            try { domain = new URL(item.url || item.link).hostname.replace('www.', ''); } catch { }
             sources.push({
               source_type: item.source_type || 'web',
               domain,
@@ -402,7 +411,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
           const scraperResults = findings.scraper?.response?.results || findings.web_scraper?.response?.results || [];
           (scraperResults as any[]).forEach((item: any) => {
             let domain = 'unknown';
-            try { domain = new URL(item.url || item.link).hostname.replace('www.', ''); } catch {}
+            try { domain = new URL(item.url || item.link).hostname.replace('www.', ''); } catch { }
             sources.push({
               source_type: 'web',
               domain,
@@ -865,7 +874,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
               if (freshStatus === JobStatus.PROCESSING || freshStatus === JobStatus.QUEUED) {
                 get().subscribeToLiveEvents(id);
               }
-            }).catch(() => {});
+            }).catch(() => { });
             return;
           }
           if (liveReconnectTimer) clearTimeout(liveReconnectTimer);
@@ -1017,6 +1026,49 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
         set({ providers: data });
       } catch (err) {
         console.error('Failed to fetch providers:', err);
+      }
+    },
+
+    // Workspace Management (Phase 2)
+    workspaces: [],
+    currentWorkspace: null,
+    workspacesLoading: false,
+
+    fetchWorkspaces: async () => {
+      set({ workspacesLoading: true });
+      try {
+        const data = await api.getWorkspaces();
+        set({ workspaces: data });
+      } catch (err: any) {
+        console.error('Failed to fetch workspaces:', err);
+        toast.error(err?.message || 'Failed to load workspaces');
+      } finally {
+        set({ workspacesLoading: false });
+      }
+    },
+
+    createWorkspace: async (name: string, description?: string) => {
+      const workspace = await api.createWorkspace(name, description);
+      set((state) => ({ workspaces: [workspace, ...state.workspaces] }));
+      toast.success(`Workspace "${workspace.name}" created`);
+      return workspace.id;
+    },
+
+    setCurrentWorkspace: (workspace: Workspace | null) => {
+      set({ currentWorkspace: workspace });
+    },
+
+    archiveWorkspace: async (id: string) => {
+      try {
+        await api.deleteWorkspace(id);
+        set((state) => ({
+          workspaces: state.workspaces.filter((w) => w.id !== id),
+          currentWorkspace: state.currentWorkspace?.id === id ? null : state.currentWorkspace,
+        }));
+        toast.success('Workspace archived');
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to archive workspace');
+        throw err;
       }
     },
   };

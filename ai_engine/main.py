@@ -141,6 +141,8 @@ class ResearchRequest(BaseModel):
     depth: str = "deep"
     findings: Optional[Dict[str, Any]] = None
     job_id: Optional[int] = None  # For correlation/tracing
+    workspace_id: Optional[str] = None   # Phase 2: workspace isolation
+    session_id: Optional[int] = None     # Phase 2: session tracking
 
     model_config = {
         "json_schema_extra": {
@@ -694,10 +696,13 @@ async def run_research(request: ResearchRequest):
     from graph.full_pipeline import app as pipeline
     from utils.event_emitter import set_job_context, emit_stage_change, emit_event
     
-    job_id = request.job_id or "unknown"
+    job_id = request.job_id or request.session_id or "unknown"
     research_id = int(job_id) if str(job_id).isdigit() else None
+    workspace_id = request.workspace_id
     
     logger.info(f"[Job #{job_id}] Starting research: {request.task[:50]}...")
+    if workspace_id:
+        logger.info(f"[Job #{job_id}] Workspace: {workspace_id}")
     
     # Set job context for event emission
     if research_id:
@@ -715,7 +720,9 @@ async def run_research(request: ResearchRequest):
         "topic_locked": False,
         "selected_topic": None,
         "topic_suggestions": [],
-        "_job_id": job_id  # For tracing through pipeline
+        "_job_id": job_id,
+        "workspace_id": workspace_id,
+        "session_id": request.session_id or (int(job_id) if str(job_id).isdigit() else None),
     }
     
     try:
@@ -752,6 +759,41 @@ async def run_research(request: ResearchRequest):
             
         except Exception as e:
             logger.error(f"[Job #{job_id}] Failed to save output JSON: {str(e)}")
+
+        # === Phase 3: Auto-embed research findings into vector store ===
+        if workspace_id and result.get("findings"):
+            try:
+                from vectorstore.manager import add_text
+                findings = result.get("findings", {})
+                embedded_count = 0
+
+                for agent_key, agent_output in findings.items():
+                    if not agent_output:
+                        continue
+                    # Extract text content from agent output
+                    text = ""
+                    if isinstance(agent_output, str):
+                        text = agent_output
+                    elif isinstance(agent_output, dict):
+                        text = agent_output.get("response", "") or agent_output.get("content", "")
+                        if isinstance(text, dict):
+                            text = str(text)
+                    if text and len(text) > 50:
+                        count = add_text(
+                            workspace_id=workspace_id,
+                            text=text,
+                            source_url=f"research://{agent_key}",
+                            source_type="research",
+                            session_id=research_id,
+                            metadata={"agent": agent_key},
+                        )
+                        embedded_count += count
+
+                logger.info(f"[Job #{job_id}] Embedded {embedded_count} chunks into vector store")
+            except ImportError:
+                logger.info(f"[Job #{job_id}] chromadb not installed — skipping vector embedding")
+            except Exception as e:
+                logger.error(f"[Job #{job_id}] Vector embedding failed (non-fatal): {e}")
 
         if research_id:
             emit_stage_change("completed")
@@ -811,18 +853,15 @@ async def update_research_state(request: StateUpdateRequest):
     Used for human-in-the-loop interactions (e.g., topic selection).
     """
     try:
-        from state_store import RESEARCH_STATES
+        from state_store import update_state as store_update
         
         rid = request.research_id
         update = request.state_update
         
         logger.info(f"[State Update] Job #{rid}: {update}")
         
-        # Update global state
-        if rid not in RESEARCH_STATES:
-            RESEARCH_STATES[rid] = {}
-            
-        RESEARCH_STATES[rid].update(update)
+        # Use new state store API (Redis-backed with fallback)
+        store_update(rid, update)
         
         return {"status": "success", "updated": True}
         
@@ -838,9 +877,9 @@ async def get_topic_suggestions(job_id: int):
     Used as a polling fallback when SSE delivery fails.
     """
     try:
-        from state_store import RESEARCH_STATES
+        from state_store import get_state
         
-        state = RESEARCH_STATES.get(job_id, {})
+        state = get_state(job_id)
         return {
             "topic_locked": state.get("topic_locked", False),
             "selected_topic": state.get("selected_topic"),
@@ -848,6 +887,78 @@ async def get_topic_suggestions(job_id: int):
         }
     except Exception as e:
         logger.error(f"[Suggestions] Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================
+# Vector Store Endpoints (Phase 3)
+# ============================
+
+class VectorSearchRequest(BaseModel):
+    workspace_id: str
+    query: str
+    top_k: int = 10
+    session_id: Optional[int] = None
+
+class VectorIngestRequest(BaseModel):
+    workspace_id: str
+    text: str
+    source_url: str = ""
+    source_type: str = "scraped"
+    session_id: Optional[int] = None
+
+@app.post("/vectorstore/search", tags=["VectorStore"])
+async def vectorstore_search(request: VectorSearchRequest):
+    """
+    Search workspace vector collection for similar content.
+    Used by the RAG chat system and for testing retrieval.
+    """
+    try:
+        from vectorstore.manager import similarity_search
+        results = similarity_search(
+            workspace_id=request.workspace_id,
+            query=request.query,
+            top_k=request.top_k,
+            session_id=request.session_id,
+        )
+        return {"results": results, "count": len(results)}
+    except ImportError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        logger.error(f"[VectorStore] Search failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/vectorstore/{workspace_id}/stats", tags=["VectorStore"])
+async def vectorstore_stats(workspace_id: str):
+    """Get document count and stats for a workspace's vector collection."""
+    try:
+        from vectorstore.manager import get_collection_stats
+        return get_collection_stats(workspace_id)
+    except ImportError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/vectorstore/ingest", tags=["VectorStore"], dependencies=[Depends(verify_internal_key)])
+async def vectorstore_ingest(request: VectorIngestRequest):
+    """
+    Manually ingest text into a workspace's vector collection.
+    Chunks the text and adds it with embeddings.
+    """
+    try:
+        from vectorstore.manager import add_text
+        count = add_text(
+            workspace_id=request.workspace_id,
+            text=request.text,
+            source_url=request.source_url,
+            source_type=request.source_type,
+            session_id=request.session_id,
+        )
+        return {"chunks_added": count}
+    except ImportError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+    except Exception as e:
+        logger.error(f"[VectorStore] Ingest failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

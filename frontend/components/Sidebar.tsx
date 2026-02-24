@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useResearchStore } from '../store';
 import { JobStatus } from '../types';
-import { Plus, Loader2, Bot, Trash2, LayoutDashboard } from 'lucide-react';
+import { Plus, Loader2, Bot, Trash2, LayoutDashboard, FolderOpen } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import { DeleteWorkspaceModal } from './DeleteWorkspaceModal';
@@ -44,7 +44,7 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
         try {
             const deletingActive = activeId === deleteTarget.id;
             await deleteResearch(deleteTarget.id);
-            if (deletingActive) handleNavigate('/dashboard');
+            if (deletingActive) handleNavigate('/workspaces');
             setDeleteTarget(null);
         } finally {
             setIsDeleting(false);
@@ -58,20 +58,21 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
                 <Button
                     variant="ghost"
                     className="flex-1 justify-start gap-2 px-2 hover:bg-accent text-foreground h-10 rounded-lg transition-colors border border-border"
-                    onClick={() => handleNavigate('/dashboard?create=1')}
+                    onClick={() => handleNavigate('/workspaces')}
                 >
                     <div className="flex items-center gap-2 text-sm font-medium">
                         <Plus className="w-4 h-4 text-muted-foreground" />
-                        New chat
+                        New Research
                     </div>
                 </Button>
                 <Button
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10 ml-2 text-muted-foreground hover:text-foreground hover:bg-accent"
-                    onClick={() => handleNavigate('/dashboard')}
+                    onClick={() => handleNavigate('/workspaces')}
+                    title="Workspaces"
                 >
-                    <LayoutDashboard className="w-5 h-5" />
+                    <FolderOpen className="w-5 h-5" />
                 </Button>
             </div>
 
@@ -95,7 +96,7 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
                                     "w-full justify-start text-sm font-normal h-9 px-3 truncate relative rounded-lg transition-all",
                                     isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                                 )}
-                                onClick={() => handleNavigate(`/research/${job.id}`)}
+                                onClick={() => handleNavigate(`/ research / ${job.id} `)}
                             >
                                 <span className="truncate">{job.topic || "New conversation"}</span>
                             </Button>

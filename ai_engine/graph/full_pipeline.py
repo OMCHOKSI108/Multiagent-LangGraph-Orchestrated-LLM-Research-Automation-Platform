@@ -36,6 +36,10 @@ class ResearchState(TypedDict):
     paper_url: Optional[str]
     next_step: Optional[str]
     
+    # Workspace & Session Isolation (Phase 2)
+    workspace_id: Optional[str]   # UUID of the workspace
+    session_id: Optional[int]     # research_sessions.id
+    
     # PHASE 0: Topic Lock Gate (from prompt.json enhanced rules)
     topic_locked: bool  # Must be True before research proceeds
     selected_topic: Optional[str]  # User's chosen research title

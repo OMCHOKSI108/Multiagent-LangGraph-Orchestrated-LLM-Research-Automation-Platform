@@ -62,7 +62,9 @@ router.get('/status/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const result = await db.query(
+
+    // Try research_logs first (legacy)
+    let result = await db.query(
       `SELECT id, task, title, status, result_json, user_id,
               report_markdown, latex_source, current_stage,
               started_at, completed_at,
@@ -70,6 +72,20 @@ router.get('/status/:id', auth, async (req, res) => {
        FROM research_logs WHERE id = $1 AND user_id = $2`,
       [id, userId]
     );
+
+    // Fallback to research_sessions (workspace flow)
+    if (result.rows.length === 0) {
+      try {
+        result = await db.query(
+          `SELECT id, topic AS task, title, status, result_json, user_id,
+                  report_markdown, latex_source, current_stage,
+                  started_at, completed_at,
+                  created_at, updated_at
+           FROM research_sessions WHERE id = $1 AND user_id = $2`,
+          [id, userId]
+        );
+      } catch (e) { /* table may not exist */ }
+    }
 
     if (result.rows.length === 0) return res.status(404).json({ error: "Job not found" });
 

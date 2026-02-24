@@ -48,6 +48,8 @@ sentence-transformers
 transformers
 scikit-learn
 numpy
+chromadb>=0.4
+langchain-text-splitters
 
 # =========================
 # Diffusion & Vision

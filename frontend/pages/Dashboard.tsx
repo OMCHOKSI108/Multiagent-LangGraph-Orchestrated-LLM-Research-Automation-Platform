@@ -21,19 +21,14 @@ export const Dashboard = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const createModalRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    fetchResearches();
-  }, [fetchResearches]);
-
+  // Redirect to workspaces page (Phase 2: workspace-first flow)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('create') === '1') {
-      setIsCreateModalOpen(true);
-      params.delete('create');
-      const next = params.toString();
-      navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
+    // Only redirect if not explicitly creating (via ?create=1)
+    if (params.get('create') !== '1') {
+      navigate('/workspaces', { replace: true });
     }
-  }, [location.pathname, location.search, navigate]);
+  }, [navigate, location.search]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

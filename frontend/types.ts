@@ -129,3 +129,45 @@ export interface LLMStatus {
     max_tokens: number;
   };
 }
+
+// =====================
+// WORKSPACE TYPES
+// =====================
+
+export interface Workspace {
+  id: string;
+  user_id: number;
+  name: string;
+  description: string | null;
+  status: 'active' | 'archived';
+  session_count?: number;
+  last_activity?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResearchSession {
+  task: string;
+  id: number;
+  workspace_id: string;
+  topic: string;
+  refined_topic?: string;
+  title?: string;
+  status: string;
+  depth: string;
+  current_stage?: string;
+  started_at?: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorkspaceUpload {
+  id: number;
+  filename: string;
+  file_type: string;
+  file_size_bytes: number;
+  embedding_status: string;
+  chunk_count: number;
+  created_at: string;
+}

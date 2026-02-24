@@ -53,6 +53,7 @@ app.use('/auth/signup', authLimiter);
 const auth = require('./middleware/auth');
 app.use('/auth', require('./routes/auth.routes'));
 app.use('/user', require('./routes/user.routes'));
+app.use('/workspaces', require('./routes/workspace.routes'));
 app.use('/research', require('./routes/research.routes'));
 app.use('/chat', require('./routes/chat.routes'));
 app.use('/events', require('./routes/events.routes'));

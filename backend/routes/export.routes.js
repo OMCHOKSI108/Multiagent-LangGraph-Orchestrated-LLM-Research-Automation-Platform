@@ -8,6 +8,33 @@ const archiver = require('archiver');
 const puppeteer = require('puppeteer-core');
 
 /**
+ * Workspace-aware research lookup.
+ * Tries research_sessions first (Phase 2+), falls back to research_logs (legacy).
+ */
+async function findResearch(id, userId) {
+    // Try workspace-scoped sessions first
+    try {
+        const sessResult = await db.query(
+            `SELECT rs.id, rs.result_json, rs.task, rs.title, rs.workspace_id
+             FROM research_sessions rs
+             JOIN workspaces w ON rs.workspace_id = w.id
+             WHERE rs.id = $1 AND w.owner_id = $2`,
+            [id, userId]
+        );
+        if (sessResult.rows.length > 0) return sessResult.rows[0];
+    } catch (e) {
+        // research_sessions table may not exist yet
+    }
+
+    // Fall back to legacy research_logs
+    const result = await db.query(
+        'SELECT id, result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
+        [id, userId]
+    );
+    return result.rows[0] || null;
+}
+
+/**
  * Shared helper: extract markdown report from result_json.
  * Checks both top-level keys and the nested final_state.findings path
  * used by the LangGraph pipeline.
@@ -128,17 +155,13 @@ async function getPdfBrowser() {
 router.get('/:id/markdown', auth, async (req, res) => {
     try {
         const { id } = req.params;
+        const row = await findResearch(id, req.user.id);
 
-        const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-
-        if (result.rows.length === 0) {
+        if (!row) {
             return res.status(404).json({ error: 'Research not found' });
         }
 
-        const { result_json, task, title } = result.rows[0];
+        const { result_json, task, title } = row;
 
         if (!result_json) {
             return res.status(400).json({ error: 'Research not yet completed' });
@@ -172,17 +195,13 @@ router.get('/:id/markdown', auth, async (req, res) => {
 router.get('/:id/pdf', auth, async (req, res) => {
     try {
         const { id } = req.params;
+        const row = await findResearch(id, req.user.id);
 
-        const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-
-        if (result.rows.length === 0) {
+        if (!row) {
             return res.status(404).json({ error: 'Research not found' });
         }
 
-        const { result_json, task, title } = result.rows[0];
+        const { result_json, task, title } = row;
 
         if (!result_json) {
             return res.status(400).json({ error: 'Research not yet completed' });
@@ -336,17 +355,13 @@ ${renderedBody}
 router.get('/:id/latex', auth, async (req, res) => {
     try {
         const { id } = req.params;
+        const row = await findResearch(id, req.user.id);
 
-        const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-
-        if (result.rows.length === 0) {
+        if (!row) {
             return res.status(404).json({ error: 'Research not found' });
         }
 
-        const { result_json, task, title } = result.rows[0];
+        const { result_json, task, title } = row;
 
         if (!result_json) {
             return res.status(400).json({ error: 'Research not yet completed' });
@@ -393,17 +408,13 @@ ${content}
 router.get('/:id/zip', auth, async (req, res) => {
     try {
         const { id } = req.params;
+        const row = await findResearch(id, req.user.id);
 
-        const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-
-        if (result.rows.length === 0) {
+        if (!row) {
             return res.status(404).json({ error: 'Research not found' });
         }
 
-        const { result_json, task, title } = result.rows[0];
+        const { result_json, task, title } = row;
         if (!result_json) {
             return res.status(400).json({ error: 'Research not yet completed' });
         }
@@ -470,17 +481,13 @@ router.get('/:id/zip', auth, async (req, res) => {
 router.get('/:id/plots', auth, async (req, res) => {
     try {
         const { id } = req.params;
+        const row = await findResearch(id, req.user.id);
 
-        const result = await db.query(
-            'SELECT result_json, task, title FROM research_logs WHERE id = $1 AND user_id = $2',
-            [id, req.user.id]
-        );
-
-        if (result.rows.length === 0) {
+        if (!row) {
             return res.status(404).json({ error: 'Research not found' });
         }
 
-        const { result_json, task, title } = result.rows[0];
+        const { result_json, task, title } = row;
         if (!result_json) {
             return res.status(400).json({ error: 'Research not yet completed' });
         }

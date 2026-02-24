@@ -7,23 +7,55 @@ const AI_ENGINE_SECRET = process.env.AI_ENGINE_SECRET || "";
 const POLLING_INTERVAL = 5000; // 5 seconds
 const STALE_JOB_TIMEOUT_MINUTES = 30;
 const MAX_RETRIES = 3;
-const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.AI_REQUEST_TIMEOUT_MS || "1800000", 10); // 30 minutes (pipeline takes 8-20 min)
+const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.AI_REQUEST_TIMEOUT_MS || "1800000", 10);
 let workerRunning = true;
+
+// ============================================
+// Use research_sessions table (new workspace-aware flow)
+// Falls back to research_logs if research_sessions doesn't exist yet
+// ============================================
+const SESSIONS_TABLE = 'research_sessions';
+const LEGACY_TABLE = 'research_logs';
+
+let useNewTable = false; // Will be detected on startup
+
+async function detectTable() {
+    try {
+        await db.query(`SELECT 1 FROM ${SESSIONS_TABLE} LIMIT 0`);
+        useNewTable = true;
+        logger.info(`[Worker] Using new '${SESSIONS_TABLE}' table`);
+    } catch {
+        useNewTable = false;
+        logger.info(`[Worker] Falling back to legacy '${LEGACY_TABLE}' table`);
+    }
+}
+
+function getTable() {
+    return useNewTable ? SESSIONS_TABLE : LEGACY_TABLE;
+}
 
 /**
  * Recovers jobs that were stuck in "processing" state
- * (crashed mid-execution, worker died, etc.)
+ * CRITICAL: Only recovers jobs with trigger_source = 'user' (if column exists)
  */
 async function recoverStaleJobs() {
     try {
+        const table = getTable();
+
+        // Only recover user-triggered jobs that are genuinely stale
+        const triggerFilter = useNewTable
+            ? `AND trigger_source = 'user'`
+            : '';
+
         const result = await db.query(
-            `UPDATE research_logs 
-             SET status = 'queued', 
+            `UPDATE ${table}
+             SET status = 'queued',
                  updated_at = NOW(),
                  retry_count = COALESCE(retry_count, 0) + 1
-             WHERE status = 'processing' 
+             WHERE status = 'processing'
              AND updated_at < NOW() - MAKE_INTERVAL(mins => $1)
              AND COALESCE(retry_count, 0) < $2
+             ${triggerFilter}
              RETURNING id`,
             [STALE_JOB_TIMEOUT_MINUTES, MAX_RETRIES]
         );
@@ -42,12 +74,14 @@ async function recoverStaleJobs() {
  */
 async function markExhaustedJobs() {
     try {
+        const table = getTable();
+
         await db.query(
-            `UPDATE research_logs 
-             SET status = 'failed', 
+            `UPDATE ${table}
+             SET status = 'failed',
                  result_json = '{"error": "Max retries exceeded"}',
                  updated_at = NOW()
-             WHERE status = 'queued' 
+             WHERE status = 'queued'
              AND COALESCE(retry_count, 0) >= $1`,
             [MAX_RETRIES]
         );
@@ -61,13 +95,25 @@ async function processQueue() {
     try {
         await client.query('BEGIN');
 
-        // 1. Fetch next queued job (SKIP LOCKED prevents race conditions)
+        const table = getTable();
+
+        // CRITICAL: Only pick up user-triggered jobs
+        const triggerFilter = useNewTable
+            ? `AND trigger_source = 'user'`
+            : '';
+
+        // Fetch columns based on table
+        const selectCols = useNewTable
+            ? `id, topic AS task, user_id, workspace_id, depth, COALESCE(retry_count, 0) as retry_count`
+            : `id, task, user_id, COALESCE(retry_count, 0) as retry_count`;
+
         const result = await client.query(
-            `SELECT id, task, user_id, COALESCE(retry_count, 0) as retry_count 
-             FROM research_logs 
-             WHERE status = 'queued' 
-             ORDER BY created_at ASC 
-             LIMIT 1 
+            `SELECT ${selectCols}
+             FROM ${table}
+             WHERE status = 'queued'
+             ${triggerFilter}
+             ORDER BY created_at ASC
+             LIMIT 1
              FOR UPDATE SKIP LOCKED`
         );
 
@@ -77,24 +123,32 @@ async function processQueue() {
         }
 
         const job = result.rows[0];
-        logger.info(`[Worker] Picked up Job #${job.id}: "${job.task.substring(0, 50)}..." (retry: ${job.retry_count})`);
+        const jobTask = job.task || job.topic;
+        logger.info(`[Worker] Picked up Job #${job.id}: "${jobTask.substring(0, 50)}..." (retry: ${job.retry_count})`);
 
-        // 2. Mark as processing
+        // Mark as processing
         await client.query(
-            "UPDATE research_logs SET status = 'processing', updated_at = NOW() WHERE id = $1",
+            `UPDATE ${table} SET status = 'processing', started_at = NOW(), updated_at = NOW() WHERE id = $1`,
             [job.id]
         );
         await client.query('COMMIT');
 
-        // 3. Call AI Engine
+        // Call AI Engine
         try {
             logger.info(`[Worker] Sending Job #${job.id} to Python Engine...`);
 
-            const aiResponse = await axios.post(`${AI_ENGINE_URL}/research`, {
-                task: job.task,
-                depth: "deep",
-                job_id: job.id  // Pass job ID for correlation
-            }, {
+            const payload = {
+                task: jobTask,
+                depth: job.depth || "deep",
+                job_id: job.id
+            };
+
+            // Include workspace_id for new table
+            if (useNewTable && job.workspace_id) {
+                payload.workspace_id = job.workspace_id;
+            }
+
+            const aiResponse = await axios.post(`${AI_ENGINE_URL}/research`, payload, {
                 timeout: AI_REQUEST_TIMEOUT_MS,
                 headers: {
                     'Content-Type': 'application/json',
@@ -105,12 +159,13 @@ async function processQueue() {
 
             const finalResult = aiResponse.data;
 
-            // 4. Mark as completed
+            // Mark as completed
             await db.query(
-                `UPDATE research_logs 
-                 SET status = 'completed', 
-                     result_json = $1, 
-                     updated_at = NOW() 
+                `UPDATE ${table}
+                 SET status = 'completed',
+                     result_json = $1,
+                     completed_at = NOW(),
+                     updated_at = NOW()
                  WHERE id = $2`,
                 [finalResult, job.id]
             );
@@ -121,24 +176,23 @@ async function processQueue() {
             const errorMsg = aiErr.response?.data?.detail || aiErr.message;
             logger.error(`[Worker] Job #${job.id} Failed: ${errorMsg}`);
 
-            // Check if we should retry or fail permanently
             if (job.retry_count >= MAX_RETRIES - 1) {
                 await db.query(
-                    `UPDATE research_logs 
-                     SET status = 'failed', 
-                         result_json = $1, 
-                         updated_at = NOW() 
+                    `UPDATE ${table}
+                     SET status = 'failed',
+                         result_json = $1,
+                         updated_at = NOW()
                      WHERE id = $2`,
                     [{ error: errorMsg, retries: job.retry_count + 1 }, job.id]
                 );
                 logger.error(`[Worker] Job #${job.id} permanently failed after ${job.retry_count + 1} attempts`);
             } else {
-                // Requeue for retry
                 await db.query(
-                    `UPDATE research_logs 
-                     SET status = 'queued', 
+                    `UPDATE ${table}
+                     SET status = 'queued',
                          retry_count = $1,
-                         updated_at = NOW() 
+                         trigger_source = 'retry',
+                         updated_at = NOW()
                      WHERE id = $2`,
                     [job.retry_count + 1, job.id]
                 );
@@ -164,7 +218,7 @@ async function processQueue() {
 async function waitForAiEngine() {
     logger.info(`[Worker] Waiting for AI Engine at ${AI_ENGINE_URL}...`);
     let retries = 0;
-    const maxRetries = 40; // Wait up to 30 * 2s = 60s
+    const maxRetries = 40;
 
     while (retries < maxRetries) {
         try {
@@ -196,7 +250,10 @@ async function startWorker() {
     // Wait for AI Engine to be ready
     await waitForAiEngine();
 
-    // Recover any stale jobs on startup
+    // Detect which table to use
+    await detectTable();
+
+    // Recover any stale jobs on startup (only user-triggered ones)
     await recoverStaleJobs();
     await markExhaustedJobs();
 
@@ -204,38 +261,42 @@ async function startWorker() {
     // Set up PG LISTEN/NOTIFY for instant wake-up on new jobs
     // ------------------------------------------------------------------
     let notifyClient = null;
+    const notifyChannel = useNewTable ? 'new_research_job' : 'new_job';
+
     try {
         notifyClient = await db.getClient();
 
-        // Create the trigger function + trigger if they don't exist yet
-        await notifyClient.query(`
-            CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
-            BEGIN
-                PERFORM pg_notify('new_job', NEW.id::text);
-                RETURN NEW;
-            END;
-            $$ LANGUAGE plpgsql;
-        `);
+        // Only create trigger for legacy table if using it
+        if (!useNewTable) {
+            await notifyClient.query(`
+                CREATE OR REPLACE FUNCTION notify_new_job() RETURNS trigger AS $$
+                BEGIN
+                    PERFORM pg_notify('new_job', NEW.id::text);
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            `);
 
-        await notifyClient.query(`
-            DO $$ BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_new_job'
-                ) THEN
-                    CREATE TRIGGER trg_new_job
-                    AFTER INSERT OR UPDATE OF status ON research_logs
-                    FOR EACH ROW
-                    WHEN (NEW.status = 'queued')
-                    EXECUTE FUNCTION notify_new_job();
-                END IF;
-            END $$;
-        `);
+            await notifyClient.query(`
+                DO $$ BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_new_job'
+                    ) THEN
+                        CREATE TRIGGER trg_new_job
+                        AFTER INSERT OR UPDATE OF status ON research_logs
+                        FOR EACH ROW
+                        WHEN (NEW.status = 'queued')
+                        EXECUTE FUNCTION notify_new_job();
+                    END IF;
+                END $$;
+            `);
+        }
 
-        await notifyClient.query('LISTEN new_job');
-        logger.info("[Worker] Subscribed to PG LISTEN/NOTIFY channel 'new_job'");
+        await notifyClient.query(`LISTEN ${notifyChannel}`);
+        logger.info(`[Worker] Subscribed to PG LISTEN/NOTIFY channel '${notifyChannel}'`);
 
         notifyClient.on('notification', async (msg) => {
-            if (msg.channel === 'new_job') {
+            if (msg.channel === notifyChannel) {
                 logger.info(`[Worker] Notification received for job ${msg.payload} — processing immediately`);
                 await processQueue();
             }
@@ -269,7 +330,7 @@ async function startWorker() {
 
     // Cleanup
     if (notifyClient) {
-        try { await notifyClient.query('UNLISTEN new_job'); } catch (_) { }
+        try { await notifyClient.query(`UNLISTEN ${notifyChannel}`); } catch (_) { }
         notifyClient.release();
     }
 }
@@ -288,4 +349,3 @@ if (require.main === module) {
 }
 
 module.exports = startWorker;
-

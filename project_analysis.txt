@@ -1,0 +1,181 @@
+MULTI-AGENT LLM RESEARCH AUTOMATION PLATFORM - PROJECT ANALYSIS
+================================================================
+
+1️⃣ CODEBASE SIZE INFORMATION
+============================
+
+A. New Code (Total Files: 398 actual project files)
+
+Total New LOC (NLOC): ~15,000-20,000 lines
+
+Broken down by module:
+- Core logic (AI Engine - 27 Agents): ~8,000 LOC
+  * 84 Python files in ai_engine/
+  * Agent orchestration, LLM providers, graph workflows
+  * LangGraph state machines, multi-agent coordination
+
+- Data pipeline: ~2,500 LOC  
+  * Database schemas, migrations, CRUD operations
+  * Multi-source RAG (ArXiv, Google Scholar, PubMed, Wikipedia)
+  * PDF processing, web scraping, citation management
+
+- Risk management: ~1,000 LOC
+  * Hallucination detection agent
+  * Source validation and credibility scoring
+  * Adversarial critique and bias detection
+
+- Broker/API integration: ~2,000 LOC
+  * Backend REST API (Node.js/Express)
+  * AI Engine FastAPI endpoints
+  * Real-time SSE streaming, job queue management
+
+- UI (Frontend): ~4,500 LOC
+  * React/TypeScript components (~1,157 JS/TS files)
+  * Real-time dashboard, workspace interface
+  * Chat interface, visualization components
+
+- Utilities: ~1,500 LOC
+  * Configuration management, logging
+  * Token tracking, caching, retry logic
+  * Docker deployment, CI/CD scripts
+
+B. Reused / Adapted Code
+
+Adapted LOC (RLOC): ~3,000 LOC
+- LangChain/LangGraph framework integration: 40% adaptation
+- React component libraries (Shadcn/UI): 20% adaptation  
+- Database ORM patterns: 30% adaptation
+
+% Design modification (DM): 60%
+% Code modification (CM): 40% 
+% Integration effort (IM): 70%
+
+Equivalent New LOC: 3,000 × (0.4×60 + 0.3×40 + 0.3×70)/100 = 1,740 LOC
+
+TOTAL EQUIVALENT LOC: ~18,000 LOC
+
+2️⃣ PROJECT TYPE CLASSIFICATION
+==============================
+
+Classification: EMBEDDED SYSTEM
+
+Reasoning:
+- High reliability required: YES (Academic research accuracy critical)
+- Real-money execution: NO (Research platform, not financial)
+- Latency critical: MODERATE (Real-time agent coordination)
+- Regulatory constraints: YES (Academic integrity, citation accuracy)
+- Complex multi-agent coordination with 27 specialized agents
+- Integration with multiple external APIs and LLM providers
+
+3️⃣ EFFORT MULTIPLIERS (COCOMO II – 17 DRIVERS)
+===============================================
+
+Product Factors:
+- RELY (Required reliability): HIGH (Research accuracy critical)
+- DATA (Database size): HIGH (Multi-source academic databases)
+- CPLX (Product complexity): VERY HIGH (27-agent orchestration)
+- RUSE (Required reusability): HIGH (Modular agent architecture)
+- DOCU (Documentation match): NOMINAL (Good docs, room for improvement)
+
+Platform Factors:
+- TIME (Execution time constraint): HIGH (Real-time processing)
+- STOR (Memory constraint): HIGH (LLM memory requirements)
+- PVOL (Platform volatility): NOMINAL (Stable Docker deployment)
+
+Personnel Factors:
+- ACAP (Analyst capability): HIGH (Strong AI/ML background)
+- PCAP (Programmer capability): HIGH (Full-stack expertise)
+- AEXP (Application experience): NOMINAL (New to multi-agent systems)
+- PEXP (Platform experience): HIGH (Python/Node.js/React expertise)
+- LTEX (Language & tool experience): HIGH (LangGraph/LangChain)
+- PCON (Personnel continuity): NOMINAL (Academic project timeline)
+
+Project Factors:
+- TOOL (Use of tools): HIGH (Advanced AI frameworks, modern stack)
+- SITE (Team distribution): NOMINAL (Co-located team)
+- SCED (Required schedule compression): HIGH (Semester deadline)
+
+4️⃣ SCALE FACTORS
+=================
+
+- PREC (Precedentedness): LOW (Novel 27-agent research automation)
+- FLEX (Development flexibility): NOMINAL (Academic requirements)
+- RESL (Architecture/risk resolution): HIGH (Well-defined architecture)
+- TEAM (Team cohesion): HIGH (Small, focused team)
+- PMAT (Process maturity): NOMINAL (Academic development process)
+
+Scale Factor Sum: 2.5 + 3.0 + 4.5 + 4.5 + 3.0 = 17.5
+B = 0.91 + 0.01 × 17.5 = 1.085
+
+5️⃣ NON-CODE ENGINEERING SCOPE
+==============================
+
+SGP includes:
+✓ Multi-agent orchestration framework
+✓ Real-time pipeline optimization  
+✓ LLM provider switching and fallback
+✓ Live execution engine with SSE streaming
+✓ Quality controls (hallucination detection)
+✓ Comprehensive logging & monitoring
+✓ Docker deployment automation
+✓ Error handling and retry mechanisms
+✓ Multi-source data ingestion automation
+✓ Research paper generation pipeline
+
+Additional complexity multiplier: 1.3x
+
+6️⃣ DELIVERY CONSTRAINTS
+========================
+
+- Desired completion timeline: 4 months (semester project)
+- Team size: 2-3 developers
+- Budget constraints: Academic project (minimal budget)
+- Fixed deadline: YES (Semester end - April 2025)
+- Schedule compression: HIGH (Aggressive timeline for scope)
+
+TECHNOLOGY STACK SUMMARY
+========================
+
+Frontend: React 19, TypeScript, Vite, Zustand, Tailwind CSS, Shadcn/UI
+Backend: Node.js, Express.js, PostgreSQL, JWT Authentication
+AI Engine: Python 3.11, FastAPI, LangGraph, LangChain
+LLM Providers: Google Gemini 2.0 Flash, Groq (Llama/Mistral), Ollama
+Data Sources: ArXiv, Google Scholar, PubMed, DuckDuckGo, Wikipedia
+DevOps: Docker, Docker Compose, Vercel
+
+ARCHITECTURE HIGHLIGHTS
+=======================
+
+- 27 Specialized AI Agents in 10 functional categories
+- Multi-tier architecture: React → Node.js → Python AI Engine
+- Real-time agent activity streaming via Server-Sent Events
+- PRISMA-compliant systematic literature review methodology
+- Multi-source RAG with adversarial verification
+- Automatic LaTeX/PDF generation from research findings
+- Interactive post-research chatbot for Q&A
+
+RISK FACTORS
+============
+
+- High complexity due to multi-agent coordination
+- Dependency on external LLM APIs (rate limits, costs)
+- Academic accuracy requirements (hallucination prevention)
+- Integration complexity across 3-tier architecture
+- Real-time performance requirements
+- Schedule compression due to semester timeline
+
+ESTIMATED EFFORT CALCULATION
+============================
+
+Base Effort = 2.94 × (18,000/1000)^1.085 = 2.94 × 20.67 = 60.8 PM
+
+Effort Multiplier ≈ 2.1 (based on driver ratings)
+Complexity Multiplier = 1.3
+
+Total Effort = 60.8 × 2.1 × 1.3 ≈ 166 Person-Months
+
+Adjusted for academic project scope: ~25-30 Person-Months
+
+RECOMMENDED TEAM SIZE: 3-4 developers
+ESTIMATED TIMELINE: 6-8 months for full production system
+CURRENT PROGRESS: ~70% complete (based on codebase analysis)

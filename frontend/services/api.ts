@@ -485,6 +485,90 @@ class ApiService {
   }
 
   // =====================
+  // WORKSPACE ENDPOINTS
+  // =====================
+
+  async getWorkspaces(): Promise<any[]> {
+    const data = await this.request<{ workspaces: any[] }>('/workspaces');
+    return data.workspaces;
+  }
+
+  async createWorkspace(name: string, description?: string): Promise<any> {
+    const data = await this.request<{ workspace: any }>('/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+    return data.workspace;
+  }
+
+  async getWorkspace(workspaceId: string): Promise<any> {
+    return this.request(`/workspaces/${workspaceId}`);
+  }
+
+  async updateWorkspace(workspaceId: string, updates: { name?: string; description?: string }): Promise<any> {
+    const data = await this.request<{ workspace: any }>(`/workspaces/${workspaceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+    return data.workspace;
+  }
+
+  async deleteWorkspace(workspaceId: string): Promise<void> {
+    await this.request(`/workspaces/${workspaceId}`, { method: 'DELETE' });
+  }
+
+  async startWorkspaceResearch(workspaceId: string, topic: string, depth: string = 'deep'): Promise<any> {
+    return this.request(`/workspaces/${workspaceId}/research/start`, {
+      method: 'POST',
+      body: JSON.stringify({ topic, depth }),
+    });
+  }
+
+  async getWorkspaceSessionStatus(workspaceId: string, sessionId: string): Promise<any> {
+    return this.request(`/workspaces/${workspaceId}/research/${sessionId}/status`);
+  }
+
+  async lockWorkspaceTopic(workspaceId: string, sessionId: string, topic: string): Promise<void> {
+    await this.request(`/workspaces/${workspaceId}/research/${sessionId}/topic`, {
+      method: 'POST',
+      body: JSON.stringify({ topic }),
+    });
+  }
+
+  async getWorkspaceSuggestions(workspaceId: string, sessionId: string): Promise<any> {
+    return this.request(`/workspaces/${workspaceId}/research/${sessionId}/suggestions`);
+  }
+
+  async getWorkspaceSources(workspaceId: string): Promise<any[]> {
+    const data = await this.request<{ sources: any[] }>(`/workspaces/${workspaceId}/sources`);
+    return data.sources;
+  }
+
+  async getWorkspaceSessions(workspaceId: string): Promise<any[]> {
+    const data = await this.request<{ workspace: any; sessions: any[] }>(`/workspaces/${workspaceId}`);
+    return data.sessions || [];
+  }
+
+  async uploadWorkspaceFile(workspaceId: string, file: File): Promise<{ success: boolean; filename: string; chunks_added: number }> {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${BASE_URL}/workspaces/${workspaceId}/upload`, {
+      method: 'POST',
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+      throw new Error(err.error || `Upload failed: ${res.status}`);
+    }
+
+    return res.json();
+  }
+
+  // =====================
   // DATA MAPPING
   // =====================
 

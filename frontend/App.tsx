@@ -5,6 +5,8 @@ import { Toaster } from 'sonner';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { Workspace } from './pages/Workspace';
+import { WorkspaceListPage } from './pages/WorkspaceListPage';
+import { WorkspaceDetailPage } from './pages/WorkspaceDetailPage';
 import { Login } from './pages/LoginPage';
 import { Signup } from './pages/SignupPage';
 import { LandingPage } from './pages/LandingPage';
@@ -79,6 +81,8 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/workspaces" element={<WorkspaceListPage />} />
+              <Route path="/workspace/:wid" element={<WorkspaceDetailPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/research/:id" element={<Workspace />} />
             </Route>

@@ -8,6 +8,43 @@ const auth = require('../middleware/auth');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 
+/**
+ * Fetch RAG context from workspace vector store.
+ * Returns a string of relevant chunks for the given query.
+ */
+async function fetchVectorContext(workspaceId, query) {
+    if (!workspaceId) return '';
+    try {
+        const resp = await axios.post(`${AI_ENGINE_URL}/vectorstore/search`, {
+            workspace_id: workspaceId,
+            query: query,
+            top_k: 5
+        }, { timeout: 5000 });
+        const results = resp.data?.results || [];
+        if (results.length === 0) return '';
+        return results.map((r, i) =>
+            `[Source ${i + 1}] (relevance: ${(r.relevance_score * 100).toFixed(0)}%)\n${r.text}`
+        ).join('\n\n');
+    } catch (err) {
+        logger.warn(`[Chat] Vector search failed: ${err.message}`);
+        return '';
+    }
+}
+
+/**
+ * Resolve workspace_id for a research_id by checking research_sessions.
+ */
+async function resolveWorkspaceId(researchId) {
+    try {
+        const result = await db.query(
+            'SELECT workspace_id FROM research_sessions WHERE id = $1',
+            [researchId]
+        );
+        if (result.rows.length > 0) return result.rows[0].workspace_id;
+    } catch (e) { /* table may not exist */ }
+    return null;
+}
+
 // Send Message to Chatbot
 // Input: { research_id, message, api_key, session_id (optional) }
 router.post('/message', async (req, res) => {
@@ -30,6 +67,13 @@ router.post('/message', async (req, res) => {
 
         const context = research.rows[0].result_json || {};
 
+        // 2b. Fetch workspace RAG context from vector store
+        const workspaceId = req.body.workspace_id || await resolveWorkspaceId(research_id);
+        const ragContext = await fetchVectorContext(workspaceId, message);
+        if (ragContext) {
+            context.vector_rag_context = ragContext;
+        }
+
         // 3. Setup Session
         if (!session_id) session_id = uuidv4();
 
@@ -46,8 +90,8 @@ router.post('/message', async (req, res) => {
         logger.info(`[Chat] Sending message to AI for Session ${session_id}`);
         try {
             const aiResponse = await axios.post(`${AI_ENGINE_URL}/agent/interactive_chatbot`, {
-                task: message, // In chatbot mode, task IS the query
-                findings: context, // Inject the full research context
+                task: message,
+                findings: context,
                 depth: "deep"
             });
 
@@ -58,7 +102,7 @@ router.post('/message', async (req, res) => {
             if (botResponse == null) botResponse = payload;
 
             const replyText = typeof botResponse === 'string' ? botResponse : JSON.stringify(botResponse);
-            
+
             // Validate response before proceeding
             if (!replyText || typeof replyText !== 'string') {
                 throw new Error('Invalid agent response format: empty or non-string response');
@@ -108,6 +152,13 @@ router.post('/stream', async (req, res) => {
         if (research.rows[0].user_id !== user_id) return res.status(403).json({ error: "Unauthorized access" });
 
         const context = research.rows[0].result_json || {};
+
+        // 2b. Fetch workspace RAG context from vector store
+        const workspaceId = req.body.workspace_id || await resolveWorkspaceId(research_id);
+        const ragContext = await fetchVectorContext(workspaceId, message);
+        if (ragContext) {
+            context.vector_rag_context = ragContext;
+        }
 
         // 3. Fetch user memories for context enrichment
         let memoriesContext = {};
