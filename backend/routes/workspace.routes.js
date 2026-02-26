@@ -382,8 +382,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+const os = require('os');
+
 const upload = multer({
-    dest: path.join(__dirname, '..', 'tmp', 'uploads'),
+    dest: os.tmpdir(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
         const allowed = ['.txt', '.md', '.pdf', '.csv', '.json', '.tex'];

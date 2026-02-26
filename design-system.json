@@ -1,549 +1,1039 @@
 {
-  "document": {
-    "title": "Frontend UI/UX Design PRD",
-    "subtitle": "Product Requirements Document",
-    "project": "AI Research & Web Scraping Platform",
-    "stack": ["React (Vite)", "Tailwind CSS", "Radix UI", "JWT Auth", "SSE Streaming"],
-    "version": "1.0",
-    "date": "February 2026"
+  "meta": {
+    "title": "Frontend Design Guide v2.0 — COMPREHENSIVE EDITION",
+    "project": "DeepResearch — AI Multi-Agent Research Platform",
+    "version": "2.0",
+    "date": "February 2026",
+    "stack": ["React (Vite)", "Tailwind CSS", "Radix UI", "Lucide React", "react-markdown"],
+    "audit_issues_fixed": [
+      "Login page: white background behind card — now fully dark",
+      "Workspaces: topbar inconsistency in light/dark toggle",
+      "Profile page: completely redesigned with avatar, plan badge, API keys, danger zone",
+      "Research page: left panel was white — now unified dark surface",
+      "Light/dark mode: unified token contract so NO page ever goes plain white",
+      "Typography: warm cream enforced across all pages, not raw white",
+      "Color differentiation from Claude.ai: new indigo-teal accent system vs Claude terracotta"
+    ],
+    "brand_differentiation_from_claude": {
+      "claude_uses": "Terracotta #C97D4E as primary accent",
+      "deepresearch_uses": "Indigo-Teal dual accent system — #6C63FF (electric indigo) primary + #2DD4BF (research teal) secondary",
+      "rationale": "Indigo signals AI intelligence and depth. Teal signals data, verification, trust. Together they communicate 'serious AI research tool' differently from Claude's warm editorial feel.",
+      "still_shared": "Dark backgrounds, warm cream text, generous whitespace, monospace for data — these are research-tool universals, not Claude-specific"
+    }
   },
 
-  "sections": {
+  "design_tokens": {
 
-    "1_overview": {
-      "title": "Overview & Design Philosophy",
-      "description": "Design language for an AI-powered research and web scraping platform. Inspired by Anthropic Claude.ai and Anthropic.com — signals precision, intellectual depth, and trusted automation without being cold.",
-      "principles": [
-        {
-          "name": "Research-First",
-          "description": "Every visual decision supports reading, analysis, and data consumption",
-          "inspired_by": "Claude.ai chat"
+    "colors": {
+      "description": "Single source of truth. Every component references these tokens. NEVER use raw hex in components.",
+
+      "dark_mode": {
+        "bg":              { "hex": "#080B14", "var": "--color-bg",      "tailwind": "bg-[#080B14]",  "usage": "Root app background — deep navy-black, not flat black" },
+        "bg_secondary":    { "hex": "#0D1117", "var": "--color-bg-sec",  "tailwind": "bg-[#0D1117]",  "usage": "Topbar, sidebar background" },
+        "surface":         { "hex": "#141B2D", "var": "--color-surface", "tailwind": "bg-[#141B2D]",  "usage": "Cards, panels, modals — elevated from bg" },
+        "surface_2":       { "hex": "#1C2540", "var": "--color-surface2","tailwind": "bg-[#1C2540]",  "usage": "Hovered cards, inner panels, nested surfaces" },
+        "surface_3":       { "hex": "#232E4A", "var": "--color-surface3","tailwind": "bg-[#232E4A]",  "usage": "Active/selected states, highlighted rows" },
+        "border":          { "hex": "#1E2D45", "var": "--color-border",  "tailwind": "border-[#1E2D45]","usage": "All borders and dividers" },
+        "border_strong":   { "hex": "#2A3F5F", "var": "--color-border-strong","tailwind": "border-[#2A3F5F]","usage": "Focused inputs, active cards" },
+        "text_primary":    { "hex": "#E8E6F0", "var": "--color-text",    "tailwind": "text-[#E8E6F0]","usage": "Primary body text — warm lavender-white, NOT pure white" },
+        "text_secondary":  { "hex": "#A0AABF", "var": "--color-text-sec","tailwind": "text-[#A0AABF]","usage": "Labels, descriptions, sub-headings" },
+        "text_muted":      { "hex": "#5A6478", "var": "--color-muted",   "tailwind": "text-[#5A6478]","usage": "Placeholders, disabled, timestamps, metadata" },
+        "text_inverted":   { "hex": "#080B14", "var": "--color-text-inv","tailwind": "text-[#080B14]","usage": "Text on accent-colored backgrounds" }
+      },
+
+      "light_mode": {
+        "bg":              { "hex": "#F4F6FB", "var": "--color-bg",      "usage": "Soft blue-grey, NOT pure white" },
+        "bg_secondary":    { "hex": "#EAEFF8", "var": "--color-bg-sec",  "usage": "Topbar, sidebar in light mode" },
+        "surface":         { "hex": "#FFFFFF", "var": "--color-surface", "usage": "Cards, modals" },
+        "surface_2":       { "hex": "#F0F4FC", "var": "--color-surface2","usage": "Hovered cards, inner panels" },
+        "surface_3":       { "hex": "#E2E9F5", "var": "--color-surface3","usage": "Active/selected states" },
+        "border":          { "hex": "#D1D9EE", "var": "--color-border",  "usage": "All borders" },
+        "border_strong":   { "hex": "#9DAFD4", "var": "--color-border-strong","usage": "Focused inputs" },
+        "text_primary":    { "hex": "#0F172A", "var": "--color-text",    "usage": "Primary body text" },
+        "text_secondary":  { "hex": "#3D4F6E", "var": "--color-text-sec","usage": "Labels, descriptions" },
+        "text_muted":      { "hex": "#7B8FAD", "var": "--color-muted",   "usage": "Placeholders, timestamps" },
+        "text_inverted":   { "hex": "#FFFFFF", "var": "--color-text-inv","usage": "Text on accent backgrounds" }
+      },
+
+      "accent_system": {
+        "primary": {
+          "name": "Electric Indigo",
+          "description": "Main brand color — CTAs, active states, links, focus rings",
+          "base":    { "hex": "#6C63FF", "tailwind": "bg-indigo-500" },
+          "hover":   { "hex": "#5A52E0", "tailwind": "bg-indigo-600" },
+          "light":   { "hex": "#8B84FF", "usage": "Hover text links" },
+          "subtle":  { "hex": "#6C63FF1A", "usage": "Accent tinted backgrounds (10% opacity)" },
+          "glow":    { "hex": "#6C63FF33", "usage": "Focus ring glow (20% opacity)" }
         },
-        {
-          "name": "Dark Editorial",
-          "description": "Deep backgrounds, warm cream text — serious but not sterile",
-          "inspired_by": "Anthropic.com"
+        "secondary": {
+          "name": "Research Teal",
+          "description": "Secondary accent — verified states, data, success, live indicators",
+          "base":    { "hex": "#2DD4BF", "tailwind": "text-teal-400" },
+          "hover":   { "hex": "#14B8A6", "tailwind": "text-teal-500" },
+          "subtle":  { "hex": "#2DD4BF1A", "usage": "Teal tinted backgrounds" }
         },
-        {
-          "name": "Precision Signals Trust",
-          "description": "Tight spacing, monospace data, clear status indicators",
-          "inspired_by": "Linear, Vercel"
-        },
-        {
-          "name": "Zero Visual Noise",
-          "description": "No decorative elements that don't serve function",
-          "inspired_by": "Notion, Anthropic"
-        },
-        {
-          "name": "Real-Time Native",
-          "description": "Streaming, progress, live-state are first-class citizens",
-          "inspired_by": "Custom system need"
+        "tertiary": {
+          "name": "Amber Gold",
+          "description": "Highlights, warnings, queued states, premium badges",
+          "base":    { "hex": "#F59E0B", "tailwind": "text-amber-400" },
+          "subtle":  { "hex": "#F59E0B1A", "usage": "Warning tinted backgrounds" }
         }
-      ]
-    },
-
-    "2_color_system": {
-      "title": "Color System",
-      "description": "Built around deep charcoals, warm creams, and a terracotta/clay accent — matching Anthropic/Claude design language while supporting technical precision.",
-
-      "dark_mode_palette": {
-        "bg":           { "hex": "#0D0D0D", "tailwind": "bg-bg",      "usage": "Main app background" },
-        "surface":      { "hex": "#1A1A1A", "tailwind": "bg-surface", "usage": "Cards, panels, sidebars" },
-        "surface_2":    { "hex": "#232323", "tailwind": "",            "usage": "Elevated surfaces, modals" },
-        "border":       { "hex": "#2A2A2A", "tailwind": "border-border","usage": "Dividers, outlines" },
-        "text_primary": { "hex": "#E8E4DC", "tailwind": "text-text",   "usage": "Warm cream — primary body text" },
-        "text_muted":   { "hex": "#888580", "tailwind": "text-muted",  "usage": "Labels, metadata, captions" },
-        "accent":       { "hex": "#C97D4E", "tailwind": "text-accent", "usage": "CTAs, active states, links" },
-        "accent_light": { "hex": "#D4874A", "tailwind": "",            "usage": "Hover state for accent" },
-        "code_blue":    { "hex": "#5B9BD5", "tailwind": "text-code",   "usage": "Data tags, code highlights" },
-        "success":      { "hex": "#7EC8A4", "tailwind": "text-success","usage": "Completed jobs, success states" }
       },
 
-      "light_mode_palette": {
-        "bg":           { "hex": "#FAF9F6", "usage": "Warm off-white, not pure white" },
-        "surface":      { "hex": "#F2EFE9", "usage": "Card backgrounds" },
-        "border":       { "hex": "#DDDAD5", "usage": "Subtle separators" },
-        "text_primary": { "hex": "#1A1A1A", "usage": "Near-black body text" },
-        "text_muted":   { "hex": "#888580", "usage": "Same as dark mode" },
-        "accent":       { "hex": "#C97D4E", "usage": "Terracotta stays constant across modes" }
+      "status_system": {
+        "running":    { "dot": "#3B82F6", "bg": "#0F1E38", "text": "#60A5FA", "border": "#1E3A5F", "animation": "animate-pulse", "icon": "Loader2", "label": "Running" },
+        "queued":     { "dot": "#F59E0B", "bg": "#1C1608", "text": "#FCD34D", "border": "#3D2E0A", "animation": "none",          "icon": "Clock",   "label": "Queued" },
+        "complete":   { "dot": "#2DD4BF", "bg": "#061A18", "text": "#2DD4BF", "border": "#0A3530", "animation": "none",          "icon": "CheckCircle2","label": "Complete" },
+        "failed":     { "dot": "#EF4444", "bg": "#1C0808", "text": "#FCA5A5", "border": "#3D0F0F", "animation": "none",          "icon": "XCircle", "label": "Failed" },
+        "paused":     { "dot": "#5A6478", "bg": "#141B2D", "text": "#A0AABF", "border": "#1E2D45", "animation": "none",          "icon": "PauseCircle","label": "Paused" },
+        "waiting":    { "dot": "#6C63FF", "bg": "#14123A", "text": "#8B84FF", "border": "#2A2570", "animation": "animate-pulse", "icon": "MessageSquare","label": "Awaiting Input" },
+        "processing": { "dot": "#F59E0B", "bg": "#1C1608", "text": "#FCD34D", "border": "#3D2E0A", "animation": "animate-bounce","icon": "Cpu",     "label": "Processing" }
       },
 
-      "status_colors": {
-        "running":  { "hex": "#3B82F6", "bg": "#1A2438", "text": "#93C5FD", "animation": "pulse",  "label": "Running" },
-        "queued":   { "hex": "#D4A017", "bg": "#2A2010", "text": "#FCD34D", "animation": "none",   "label": "Queued" },
-        "complete": { "hex": "#7EC8A4", "bg": "#0A2018", "text": "#6EE7B7", "animation": "none",   "label": "Complete" },
-        "failed":   { "hex": "#C0444A", "bg": "#2A1012", "text": "#FCA5A5", "animation": "none",   "label": "Failed" },
-        "paused":   { "hex": "#888580", "bg": "#1A1A1A", "text": "#9CA3AF", "animation": "none",   "label": "Paused" },
-        "warning":  { "hex": "#D4A017", "bg": "#2A1F0A", "text": "#FCD34D", "animation": "none",   "label": "Warning" },
-        "error":    { "hex": "#C0444A", "bg": "#2A1012", "text": "#FCA5A5", "animation": "none",   "label": "Error" }
+      "semantic": {
+        "success":  { "hex": "#2DD4BF", "bg": "#061A18", "border": "#0A3530" },
+        "warning":  { "hex": "#F59E0B", "bg": "#1C1608", "border": "#3D2E0A" },
+        "error":    { "hex": "#EF4444", "bg": "#1C0808", "border": "#3D0F0F" },
+        "info":     { "hex": "#6C63FF", "bg": "#14123A", "border": "#2A2570" }
       },
 
-      "tailwind_config": {
+      "css_variables_dark": {
+        "--color-bg":            "#080B14",
+        "--color-bg-sec":        "#0D1117",
+        "--color-surface":       "#141B2D",
+        "--color-surface-2":     "#1C2540",
+        "--color-surface-3":     "#232E4A",
+        "--color-border":        "#1E2D45",
+        "--color-border-strong": "#2A3F5F",
+        "--color-text":          "#E8E6F0",
+        "--color-text-sec":      "#A0AABF",
+        "--color-muted":         "#5A6478",
+        "--color-accent":        "#6C63FF",
+        "--color-accent-hover":  "#5A52E0",
+        "--color-teal":          "#2DD4BF",
+        "--color-amber":         "#F59E0B"
+      },
+
+      "css_variables_light": {
+        "--color-bg":            "#F4F6FB",
+        "--color-bg-sec":        "#EAEFF8",
+        "--color-surface":       "#FFFFFF",
+        "--color-surface-2":     "#F0F4FC",
+        "--color-surface-3":     "#E2E9F5",
+        "--color-border":        "#D1D9EE",
+        "--color-border-strong": "#9DAFD4",
+        "--color-text":          "#0F172A",
+        "--color-text-sec":      "#3D4F6E",
+        "--color-muted":         "#7B8FAD",
+        "--color-accent":        "#6C63FF",
+        "--color-accent-hover":  "#5A52E0",
+        "--color-teal":          "#0D9488",
+        "--color-amber":         "#D97706"
+      },
+
+      "tailwind_config_extension": {
         "colors": {
-          "bg":           "#0D0D0D",
-          "surface":      "#1A1A1A",
-          "border":       "#2A2A2A",
-          "text":         "#E8E4DC",
-          "muted":        "#888580",
-          "accent":       "#C97D4E",
-          "accent-light": "#D4874A",
-          "code":         "#5B9BD5",
-          "success":      "#7EC8A4",
-          "warning":      "#D4A017",
-          "error":        "#C0444A"
+          "bg":       "var(--color-bg)",
+          "bg-sec":   "var(--color-bg-sec)",
+          "surface":  "var(--color-surface)",
+          "surface2": "var(--color-surface-2)",
+          "surface3": "var(--color-surface-3)",
+          "border-c": "var(--color-border)",
+          "border-s": "var(--color-border-strong)",
+          "text-c":   "var(--color-text)",
+          "text-sec": "var(--color-text-sec)",
+          "muted-c":  "var(--color-muted)",
+          "accent":   "var(--color-accent)",
+          "accent-h": "var(--color-accent-hover)",
+          "teal":     "var(--color-teal)",
+          "amber-c":  "var(--color-amber)"
         }
-      },
-
-      "css_variables": {
-        "--color-bg":           "#0D0D0D",
-        "--color-surface":      "#1A1A1A",
-        "--color-border":       "#2A2A2A",
-        "--color-text":         "#E8E4DC",
-        "--color-text-muted":   "#888580",
-        "--color-accent":       "#C97D4E",
-        "--color-code":         "#5B9BD5",
-        "--color-success":      "#7EC8A4",
-        "--color-warning":      "#D4A017",
-        "--color-error":        "#C0444A"
       }
     },
 
-    "3_typography": {
-      "title": "Typography System",
-      "description": "Three font families: editorial serif for headlines, humanist sans for UI/body, monospace for all data and code output.",
+    "typography": {
+      "google_fonts_import": "@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');",
 
       "font_families": {
-        "display_h1": {
-          "primary":   "Playfair Display",
-          "fallback":  "Georgia, serif",
-          "source":    "Google Fonts",
-          "weights":   [400, 600, 700]
+        "display": {
+          "name": "Syne",
+          "fallback": "system-ui, sans-serif",
+          "usage": "Logo, hero headlines, landing page display text",
+          "note": "More distinctive than Playfair — geometric, modern, unique to DeepResearch brand",
+          "weights": [600, 700, 800]
         },
-        "heading_body_ui": {
-          "primary":   "Inter",
-          "fallback":  "system-ui, sans-serif",
-          "source":    "Google Fonts / Bunny",
-          "weights":   [400, 500, 600, 700]
+        "heading_body": {
+          "name": "Inter",
+          "fallback": "system-ui, sans-serif",
+          "usage": "All headings H2+, body text, UI labels, buttons",
+          "weights": [400, 500, 600, 700]
         },
-        "code_data_mono": {
-          "primary":   "JetBrains Mono",
-          "fallback":  "Courier New, monospace",
-          "source":    "Google Fonts",
-          "weights":   [400, 500]
-        },
-        "alt_body": {
-          "primary":   "DM Sans",
-          "fallback":  "Inter, sans-serif",
-          "source":    "Google Fonts",
-          "weights":   [400, 500]
+        "mono": {
+          "name": "JetBrains Mono",
+          "fallback": "Courier New, monospace",
+          "usage": "ALL data: IDs, URLs, API keys, JSON, agent logs, code, hashes, timestamps in logs",
+          "weights": [400, 500, 600]
         }
       },
 
-      "google_fonts_import": "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');",
-
       "tailwind_font_family": {
-        "serif": ["Playfair Display", "Georgia", "serif"],
-        "sans":  ["Inter", "DM Sans", "system-ui", "sans-serif"],
-        "mono":  ["JetBrains Mono", "Courier New", "monospace"]
+        "display": ["Syne", "system-ui", "sans-serif"],
+        "sans":    ["Inter", "system-ui", "sans-serif"],
+        "mono":    ["JetBrains Mono", "Courier New", "monospace"]
       },
 
       "type_scale": {
-        "display": { "size": "3.5rem",    "px": "56px", "usage": "Hero headlines, landing page",         "tailwind": "text-6xl font-serif" },
-        "h1":      { "size": "2.25rem",   "px": "36px", "usage": "Page titles, section headers",          "tailwind": "text-4xl font-serif" },
-        "h2":      { "size": "1.5rem",    "px": "24px", "usage": "Sub-sections, card titles",             "tailwind": "text-2xl font-semibold" },
-        "h3":      { "size": "1.125rem",  "px": "18px", "usage": "Feature labels, group headings",        "tailwind": "text-lg font-semibold" },
-        "body_lg": { "size": "1rem",      "px": "16px", "usage": "Primary body text",                     "tailwind": "text-base" },
-        "body":    { "size": "0.875rem",  "px": "14px", "usage": "Secondary text, form labels",           "tailwind": "text-sm" },
-        "caption": { "size": "0.75rem",   "px": "12px", "usage": "Metadata, timestamps, helper text",     "tailwind": "text-xs text-muted" },
-        "code":    { "size": "0.8125rem", "px": "13px", "usage": "All code, JSON, API keys, logs",        "tailwind": "font-mono text-sm" }
+        "display_xl": { "size": "4rem",    "weight": 800, "font": "Syne",  "lh": "1.1",  "tailwind": "text-[4rem] font-display font-extrabold",  "usage": "Landing hero" },
+        "display_lg": { "size": "3rem",    "weight": 700, "font": "Syne",  "lh": "1.15", "tailwind": "text-5xl font-display font-bold",           "usage": "Section heroes" },
+        "h1":         { "size": "2rem",    "weight": 700, "font": "Inter", "lh": "1.3",  "tailwind": "text-3xl font-sans font-bold",              "usage": "Page titles" },
+        "h2":         { "size": "1.5rem",  "weight": 600, "font": "Inter", "lh": "1.4",  "tailwind": "text-2xl font-sans font-semibold",          "usage": "Section titles, card headers" },
+        "h3":         { "size": "1.125rem","weight": 600, "font": "Inter", "lh": "1.5",  "tailwind": "text-lg font-sans font-semibold",           "usage": "Sub-section labels" },
+        "body_lg":    { "size": "1rem",    "weight": 400, "font": "Inter", "lh": "1.75", "tailwind": "text-base font-sans",                       "usage": "Primary reading body text" },
+        "body":       { "size": "0.875rem","weight": 400, "font": "Inter", "lh": "1.6",  "tailwind": "text-sm font-sans",                         "usage": "UI labels, secondary body" },
+        "caption":    { "size": "0.75rem", "weight": 400, "font": "Inter", "lh": "1.5",  "tailwind": "text-xs font-sans text-muted-c",            "usage": "Timestamps, metadata, helper text" },
+        "code_lg":    { "size": "0.875rem","weight": 500, "font": "JetBrains Mono","lh": "1.7","tailwind": "text-sm font-mono",                   "usage": "Code blocks, log streams" },
+        "code_sm":    { "size": "0.75rem", "weight": 400, "font": "JetBrains Mono","lh": "1.5","tailwind": "text-xs font-mono",                   "usage": "Inline data values, IDs, badges" }
       }
     },
 
-    "4_spacing_layout": {
-      "title": "Spacing, Grid & Layout",
-      "description": "8px base unit. Tailwind default spacing scale. Generous padding is core to the Anthropic aesthetic.",
-
-      "base_unit": "8px",
-      "grid_system": "CSS Grid + Flexbox",
-
-      "layout_structure": {
-        "topbar_height":       "64px",
-        "sidebar_width":       "240px",
-        "right_panel_width":   "320px",
-        "content_max_width":   "1280px",
-        "report_max_width":    "720px (optimal reading width)"
+    "spacing": {
+      "base_unit": "4px",
+      "scale": {
+        "1":  "4px",   "2":  "8px",   "3": "12px",  "4": "16px",
+        "5":  "20px",  "6":  "24px",  "8": "32px",  "10": "40px",
+        "12": "48px",  "16": "64px",  "20": "80px", "24": "96px"
       },
-
-      "spacing_tokens": {
-        "xs":  { "value": "4px",  "tailwind": "p-1",  "usage": "Icon padding, tight inline" },
-        "sm":  { "value": "8px",  "tailwind": "p-2",  "usage": "Badge/tag padding" },
-        "md":  { "value": "16px", "tailwind": "p-4",  "usage": "Card internal padding (min)" },
-        "lg":  { "value": "24px", "tailwind": "p-6",  "usage": "Section padding, card standard" },
-        "xl":  { "value": "32px", "tailwind": "p-8",  "usage": "Page section vertical spacing" },
-        "2xl": { "value": "48px", "tailwind": "p-12", "usage": "Hero sections, major gaps" },
-        "3xl": { "value": "64px", "tailwind": "p-16", "usage": "Landing page breathing room" }
-      },
-
-      "border_radius": {
-        "buttons":        { "value": "8px",  "tailwind": "rounded-lg" },
-        "inputs":         { "value": "8px",  "tailwind": "rounded-lg" },
-        "cards_panels":   { "value": "12px", "tailwind": "rounded-xl" },
-        "modals_sheets":  { "value": "16px", "tailwind": "rounded-2xl" },
-        "badges_tags":    { "value": "6px",  "tailwind": "rounded-md" },
-        "avatars":        { "value": "50%",  "tailwind": "rounded-full" },
-        "code_blocks":    { "value": "8px",  "tailwind": "rounded-lg" }
+      "component_padding": {
+        "card":           "p-6 (24px)",
+        "card_compact":   "p-4 (16px)",
+        "card_spacious":  "p-8 (32px)",
+        "input":          "px-4 py-2.5",
+        "button_md":      "px-5 py-2.5",
+        "button_sm":      "px-3 py-1.5",
+        "button_lg":      "px-7 py-3",
+        "sidebar_item":   "px-3 py-2",
+        "topbar":         "px-6 h-16",
+        "page_container": "px-6 py-8 max-w-7xl mx-auto",
+        "section_gap":    "space-y-8",
+        "card_grid_gap":  "gap-6"
       }
     },
 
-    "5_components": {
-      "title": "Component Library",
-      "description": "All components use Radix UI primitives styled with Tailwind CSS.",
-
-      "buttons": {
-        "height": { "default": "40px", "sm": "32px", "lg": "48px" },
-        "font":   "Inter 14px medium",
-        "radius": "8px",
-        "variants": {
-          "primary":   { "bg": "#C97D4E", "text": "#FFFFFF", "usage": "Start job, Save, Submit — one per screen" },
-          "secondary": { "bg": "#1A1A1A", "text": "#E8E4DC", "usage": "Secondary actions, exports" },
-          "ghost":     { "bg": "transparent", "text": "#888580", "usage": "Tertiary actions, cancel" },
-          "danger":    { "bg": "#C0444A", "text": "#FFFFFF", "usage": "Delete, stop job" },
-          "icon":      { "bg": "transparent", "text": "#888580", "usage": "Toolbar icons, compact actions" }
-        },
-        "tailwind_classes": {
-          "primary":   "bg-accent text-white rounded-lg px-4 h-10 font-medium hover:bg-accent-light transition-colors",
-          "secondary": "bg-surface text-text border border-border rounded-lg px-4 h-10 font-medium hover:border-accent transition-colors",
-          "ghost":     "bg-transparent text-muted rounded-lg px-4 h-10 font-medium hover:text-text transition-colors",
-          "danger":    "bg-error text-white rounded-lg px-4 h-10 font-medium hover:opacity-90 transition-opacity"
-        }
-      },
-
-      "inputs": {
-        "background":    "#1A1A1A",
-        "border":        "1px solid #2A2A2A",
-        "border_focus":  "1px solid #C97D4E",
-        "shadow_focus":  "0 0 0 3px rgba(201, 125, 78, 0.15)",
-        "border_radius": "8px",
-        "padding":       "10px 14px",
-        "font":          "Inter 14px",
-        "color":         "#E8E4DC",
-        "placeholder_color": "#888580",
-        "tailwind_base": "bg-surface border border-border rounded-lg px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-all"
-      },
-
-      "cards": {
-        "base":     { "bg": "#1A1A1A", "border": "1px solid #2A2A2A", "shadow": "none",        "usage": "Workspace cards, job list items" },
-        "elevated": { "bg": "#232323", "border": "1px solid #333333", "shadow": "sm",           "usage": "Modal content, featured items" },
-        "code":     { "bg": "#111111", "border": "1px solid #2A2A2A", "shadow": "inner",        "usage": "Log output, API response viewer" },
-        "info":     { "bg": "#1A1A2E", "border": "1px solid #2C2C54", "shadow": "none",        "usage": "Research summaries, AI output" },
-        "warning":  { "bg": "#2A1F0A", "border": "1px solid #D4A017", "shadow": "none",        "usage": "Rate limit notices, alerts" },
-        "tailwind_base": "bg-surface border border-border rounded-xl p-6 transition-all"
-      },
-
-      "status_badges": {
-        "description": "Always show dot + text label. Never color alone (accessibility).",
-        "structure": "<span class='status-badge'><span class='dot'></span> Status Text</span>",
-        "variants": {
-          "running":  { "dot": "#3B82F6", "bg": "#1A2438", "text": "#93C5FD", "dot_class": "animate-pulse" },
-          "queued":   { "dot": "#D4A017", "bg": "#2A2010", "text": "#FCD34D", "dot_class": "" },
-          "complete": { "dot": "#7EC8A4", "bg": "#0A2018", "text": "#6EE7B7", "dot_class": "" },
-          "failed":   { "dot": "#C0444A", "bg": "#2A1012", "text": "#FCA5A5", "dot_class": "" },
-          "paused":   { "dot": "#888580", "bg": "#1A1A1A", "text": "#9CA3AF", "dot_class": "" }
-        }
-      },
-
-      "data_tables": {
-        "header_bg":    "#1A1A2E",
-        "header_text":  "#FFFFFF",
-        "header_font":  "Inter 13px semibold",
-        "row_odd_dark": "#111111",
-        "row_even_dark":"#161616",
-        "row_odd_light":"#FAF9F6",
-        "row_even_light":"#F0EDE8",
-        "row_hover":    "rgba(201, 125, 78, 0.06)",
-        "cell_padding": "10px 16px",
-        "border":       "1px solid #2A2A2A",
-        "url_id_font":  "JetBrains Mono 12px",
-        "note":         "Truncate long cells with tooltip on hover"
-      },
-
-      "code_blocks": {
-        "background":    "#111111",
-        "border":        "1px solid #2A2A2A",
-        "border_left":   "3px solid #C97D4E",
-        "border_radius": "8px",
-        "padding":       "16px 20px",
-        "font":          "JetBrains Mono",
-        "font_size":     "13px",
-        "line_height":   "1.7",
-        "text_color":    "#CDD6F4",
-        "overflow_x":    "auto",
-        "streaming_variant": {
-          "max_height":      "400px",
-          "overflow_y":      "auto",
-          "scroll_behavior": "smooth"
-        },
-        "tailwind_base": "bg-[#111111] border border-border border-l-4 border-l-accent rounded-lg p-5 font-mono text-sm text-[#CDD6F4] overflow-x-auto"
-      },
-
-      "icons": {
-        "library":      "Lucide React",
-        "stroke_weight":"1.5px",
-        "style":        "stroke (never filled)",
-        "sizes": {
-          "nav":     "20px",
-          "inline":  "16px",
-          "toolbar": "18px",
-          "empty_state": "48px"
-        },
-        "key_mappings": {
-          "new_job":         "PlusCircle",
-          "running_agent":   "Loader2 (spin animation)",
-          "complete":        "CheckCircle2",
-          "failed":          "XCircle",
-          "web_scraping":    "Globe",
-          "ai_engine":       "Brain or Cpu",
-          "report":          "FileText",
-          "api_key":         "KeyRound",
-          "settings":        "Settings2",
-          "copy":            "Copy → Check on success",
-          "export":          "Download",
-          "stream_live":     "Radio",
-          "workspace":       "FolderOpen",
-          "search":          "Search",
-          "filter":          "Filter",
-          "sort":            "ArrowUpDown"
-        }
-      }
+    "border_radius": {
+      "sm":   { "value": "6px",   "tailwind": "rounded-md",    "usage": "Badges, tags, small chips" },
+      "md":   { "value": "8px",   "tailwind": "rounded-lg",    "usage": "Buttons, inputs, small cards" },
+      "lg":   { "value": "12px",  "tailwind": "rounded-xl",    "usage": "Cards, panels — standard" },
+      "xl":   { "value": "16px",  "tailwind": "rounded-2xl",   "usage": "Modals, large panels" },
+      "2xl":  { "value": "24px",  "tailwind": "rounded-3xl",   "usage": "Hero cards, feature blocks" },
+      "full": { "value": "9999px","tailwind": "rounded-full",  "usage": "Avatars, toggle pills, dot indicators" }
     },
 
-    "6_page_layouts": {
-      "title": "Page Layouts & Screens",
-
-      "auth": {
-        "name": "Authentication (Login / Register)",
-        "description": "Minimal, centered, dark. Single-column card on dark background. No sidebar.",
-        "card_max_width": "440px",
-        "card_bg": "#1A1A1A",
-        "card_border": "1px solid #2A2A2A",
-        "card_radius": "16px",
-        "logo_height": "40px (centered above card)",
-        "cta_style": "Full width, Primary, 48px height",
-        "tailwind_layout": "min-h-screen bg-bg flex items-center justify-center p-4"
-      },
-
-      "dashboard": {
-        "name": "Dashboard / Home",
-        "description": "Summary of all workspaces, recent jobs, platform health.",
-        "sections": {
-          "stats_bar":    "4 KPI cards — Total jobs, Success rate, Credits used, Active agents",
-          "recent_jobs":  "Last 10 jobs with status badge, workspace name, created timestamp",
-          "active_agents":"Live-polling list of running agents with streaming progress bar",
-          "quick_start":  "Prominent CTA to create new workspace or start a research job"
-        },
-        "grid": "3-column at desktop, 1-column on mobile"
-      },
-
-      "workspace_research": {
-        "name": "Workspace / Research Job Page",
-        "description": "Core screen. Split layout: left config + agent tree, right live output stream and final report.",
-        "layout": "CSS Grid — 3fr / 2fr — or full-width output mode",
-        "left_panel": {
-          "contents": [
-            "Job title + description",
-            "Topic Selection UI (blocks until user confirms — Radix Dialog)",
-            "Agent tree: 20+ agents shown as collapsible tree with status dots",
-            "Human-in-the-loop prompts with approve/reject buttons"
-          ]
-        },
-        "right_panel": {
-          "contents": [
-            "Live log stream (code block, auto-scroll, JetBrains Mono)",
-            "Agent transition events with timestamps",
-            "Completed state: Markdown report with syntax highlighting",
-            "Export buttons: Copy, Download .md, Download .docx"
-          ]
-        }
-      },
-
-      "reports": {
-        "name": "Reports View",
-        "description": "Final Markdown output rendered in clean document format.",
-        "container_max_width": "720px centered",
-        "body_font":  "Inter 16px, line-height 1.8",
-        "heading_font": "Playfair Display — H1 32px, H2 24px, H3 18px",
-        "code_inline_bg": "#F0EDE8",
-        "code_block": "Full dark code block component",
-        "source_citations": "Footnote-style, muted color, external link icon"
-      },
-
-      "settings": {
-        "name": "Settings & API Keys",
-        "api_key_display": "Masked by default (••••••••) with toggle-reveal eye icon",
-        "copy_action": "Single click copy with toast feedback (Copy → Check icon swap)"
-      }
-    },
-
-    "7_motion_animation": {
-      "title": "Motion & Animation",
-      "rule": "Animations add information (status changes, loading, transitions) — never decorative. Respect prefers-reduced-motion.",
-      "animations": {
-        "page_transition":   { "type": "fade + translateY(8px)", "duration": "180ms", "easing": "ease-out" },
-        "card_hover":        { "type": "translateY(-2px) + shadow", "duration": "120ms", "easing": "ease-out" },
-        "button_press":      { "type": "scale(0.97)", "duration": "80ms", "easing": "ease-in-out" },
-        "modal_open":        { "type": "scale(0.96→1) + fade", "duration": "200ms", "easing": "ease-out" },
-        "status_running":    { "type": "dot pulse / breathe", "duration": "2s", "easing": "ease-in-out infinite" },
-        "streaming_text":    { "type": "char-by-char appear", "duration": "natural", "easing": "none" },
-        "sidebar_collapse":  { "type": "width transition", "duration": "200ms", "easing": "ease-in-out" },
-        "toast":             { "type": "slide-in from bottom-right", "duration": "240ms", "easing": "spring" }
-      },
-      "reduced_motion_css": "@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }"
-    },
-
-    "8_responsiveness": {
-      "title": "Responsive Breakpoints",
-      "breakpoints": {
-        "mobile":  { "min": "0px",    "layout": "Single column. Sidebar hidden (hamburger). Job tree collapsible." },
-        "tablet":  { "min": "768px",  "layout": "Sidebar as overlay. Main content full width." },
-        "desktop": { "min": "1024px", "layout": "Full sidebar (240px) + main content. Standard layout." },
-        "wide":    { "min": "1280px", "layout": "3-column layout available. Right config panel appears." },
-        "ultra":   { "min": "1536px", "layout": "Research view: left config + center stream + right panel." }
-      },
-      "tailwind_screens": {
-        "sm":  "640px",
-        "md":  "768px",
-        "lg":  "1024px",
-        "xl":  "1280px",
-        "2xl": "1536px"
-      }
-    },
-
-    "9_accessibility": {
-      "title": "Accessibility (A11y)",
-      "target": "WCAG 2.1 AA",
-      "requirements": {
-        "color_contrast":    "All text meets 4.5:1 (AA). Accent on dark bg verified.",
-        "focus_rings":       "2px offset ring in accent color on all focusable elements",
-        "status_indicators": "Color + text label always — never color alone",
-        "loading_states":    "aria-live='polite' on streaming output container",
-        "modal_focus":       "Radix Dialog handles focus trap natively",
-        "icon_labels":       "aria-label on all icon-only buttons",
-        "reduced_motion":    "@media (prefers-reduced-motion) disables all transitions",
-        "error_messages":    "role='alert' + inline below input field, not just toast"
-      }
-    },
-
-    "10_tech_implementation": {
-      "title": "Tech Stack & Implementation Notes",
-
-      "stack": {
-        "framework":   "React 18 (Vite)",
-        "styling":     "Tailwind CSS",
-        "components":  "Radix UI",
-        "state":       "Zustand or React Context",
-        "auth":        "JWT (stored in httpOnly cookie)",
-        "realtime":    "Server-Sent Events (SSE)",
-        "markdown":    "react-markdown + remark-gfm + rehype-highlight",
-        "icons":       "Lucide React",
-        "routing":     "React Router v6"
-      },
-
-      "sse_streaming_pattern": {
-        "description": "Core real-time feature for AI agent log streaming.",
-        "code": "const eventSource = new EventSource(`${API_URL}/events?jobId=${id}`, { headers: { Authorization: `Bearer ${token}` } }); eventSource.onmessage = (e) => { const data = JSON.parse(e.data); if (data.type === 'agent_log') appendLog(data.content); if (data.type === 'agent_change') setCurrentAgent(data.agent); if (data.type === 'complete') { setReport(data.markdown); setStatus('complete'); } if (data.type === 'error') { setStatus('failed'); setError(data.message); }; };",
-        "states": ["connecting", "streaming", "complete", "failed"],
-        "auto_scroll": "useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [logs]);"
-      },
-
-      "hitl_pattern": {
-        "description": "Human-in-the-loop topic selection — blocks interaction until user confirms.",
-        "states": ["running", "waiting_for_human", "complete", "failed"],
-        "when_waiting": [
-          "Stop auto-scrolling log",
-          "Show Radix Dialog with proposed topics from AI",
-          "Render highlighted callout card (accent border) in log stream",
-          "User selects/edits → POST to /research/update-state",
-          "Resume streaming on confirmation"
-        ]
-      },
-
-      "markdown_rendering": {
-        "packages": ["react-markdown", "remark-gfm", "react-syntax-highlighter"],
-        "heading_font": "Playfair Display via custom MDX components prop",
-        "body_font": "Inter via className overrides"
-      },
-
-      "env_variables": {
-        "VITE_API_BASE_URL": "Points to Node.js Backend API (e.g. http://localhost:5000/api)",
-        "VITE_AI_ENGINE_URL": "Points to Python FastAPI AI Engine (e.g. http://localhost:8000)"
-      }
-    },
-
-    "11_dos_and_donts": {
-      "title": "Design Do's and Don'ts",
-
-      "do": [
-        { "rule": "Use warm cream (#E8E4DC) for text, not pure white", "reason": "Reduces eye strain, matches Anthropic" },
-        { "rule": "Show monospace font for all data/IDs/URLs", "reason": "Signals precision and technical depth" },
-        { "rule": "Always pair status dots with text labels", "reason": "Accessibility — never color alone" },
-        { "rule": "Use generous padding — min 24px in cards", "reason": "Core to the editorial aesthetic" },
-        { "rule": "Show streaming state visually (animated dot + log)", "reason": "Core product differentiator" },
-        { "rule": "Use Playfair Display only for display/H1 headlines", "reason": "Hierarchy and restraint" },
-        { "rule": "Validate inputs inline, below the field", "reason": "Better UX than toast-only errors" }
-      ],
-
-      "dont": [
-        { "rule": "Use pure white (#FFFFFF) as body text on dark bg", "reason": "Harsh, doesn't match Anthropic warmth" },
-        { "rule": "Add decorative gradients or glow effects", "reason": "Visual noise — breaks the minimal ethos" },
-        { "rule": "Use filled icons", "reason": "Too heavy for this aesthetic — use Lucide stroke only" },
-        { "rule": "Use more than 2 font families on one screen", "reason": "Stick to serif + sans + mono only" },
-        { "rule": "Use bright neon accents (#00FF00, etc.)", "reason": "Signals 'hacker tool', not 'research lab'" },
-        { "rule": "Animate elements without functional purpose", "reason": "Distraction — animations carry information" },
-        { "rule": "Show raw technical error codes to end users", "reason": "Translate to human-readable messages" }
-      ]
-    },
-
-    "12_checklist": {
-      "title": "Frontend Developer Ship Checklist",
-      "description": "Run through before shipping any new page or component.",
-      "items": [
-        "Fonts loaded: Inter, Playfair Display, JetBrains Mono",
-        "Tailwind config extended with full color/font tokens",
-        "Dark mode class ('dark') toggled on <html>",
-        "All status badges: dot + text label (not color only)",
-        "All data/ID/URL values rendered in JetBrains Mono",
-        "All interactive elements have :focus-visible ring",
-        "SSE stream has connect / streaming / complete / error UI states",
-        "HITL topic-selection modal blocks interaction properly",
-        "Markdown report uses Playfair headings + Inter body",
-        "All icon-only buttons have aria-label",
-        "Animations disabled under prefers-reduced-motion",
-        "Responsive: tested at 375px, 768px, 1280px widths"
-      ]
+    "shadows": {
+      "sm":     "0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+      "md":     "0 4px 12px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3)",
+      "lg":     "0 10px 30px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4)",
+      "accent": "0 0 0 3px rgba(108,99,255,0.25)",
+      "teal":   "0 0 0 3px rgba(45,212,191,0.25)",
+      "glow_accent": "0 0 20px rgba(108,99,255,0.3)",
+      "glow_teal":   "0 0 20px rgba(45,212,191,0.2)"
     }
   },
 
-  "quick_reference": {
-    "primary_fonts": {
-      "heading": "Playfair Display",
-      "body_ui": "Inter",
-      "code_data": "JetBrains Mono"
+  "global_styles": {
+    "html_body": {
+      "dark_mode_class": "Add 'dark' class to <html> element",
+      "body_dark":  "background-color: #080B14; color: #E8E6F0; font-family: Inter, sans-serif;",
+      "body_light": "background-color: #F4F6FB; color: #0F172A; font-family: Inter, sans-serif;",
+      "scrollbar_dark": "::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #080B14; } ::-webkit-scrollbar-thumb { background: #1E2D45; border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: #2A3F5F; }",
+      "selection": "::selection { background: rgba(108,99,255,0.3); color: #E8E6F0; }"
     },
-    "primary_colors": {
-      "background": "#0D0D0D",
-      "surface": "#1A1A1A",
-      "text": "#E8E4DC",
-      "accent": "#C97D4E",
-      "muted": "#888580"
+    "focus_ring": "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg",
+    "reduced_motion": "@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }"
+  },
+
+  "components": {
+
+    "layout": {
+      "topbar": {
+        "height": "64px (h-16)",
+        "bg_dark":  "#0D1117 with border-bottom 1px #1E2D45",
+        "bg_light": "#EAEFF8 with border-bottom 1px #D1D9EE",
+        "tailwind": "h-16 bg-bg-sec border-b border-border-c flex items-center px-6 sticky top-0 z-50 backdrop-blur-sm",
+        "logo_style": "font-display font-bold text-xl text-text-c — 'Deep' normal + 'Research' text-accent",
+        "nav_items": "text-sm font-sans text-text-sec hover:text-text-c transition-colors",
+        "right_section": "flex items-center gap-3",
+        "theme_toggle": "IconButton with Sun/Moon icon, 36px, ghost variant",
+        "user_avatar": "40px rounded-full bg-surface2 border border-border-c — initials or photo"
+      },
+
+      "sidebar": {
+        "width_collapsed": "64px",
+        "width_expanded":  "260px",
+        "bg_dark":  "#0D1117 with border-right 1px #1E2D45",
+        "bg_light": "#EAEFF8 with border-right 1px #D1D9EE",
+        "tailwind": "w-[260px] bg-bg-sec border-r border-border-c flex flex-col h-[calc(100vh-64px)] sticky top-16 overflow-y-auto",
+        "section_label": "text-xs font-sans font-semibold text-muted-c uppercase tracking-widest px-4 mb-2 mt-6",
+        "nav_item": {
+          "default":  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-sec hover:bg-surface hover:text-text-c transition-all cursor-pointer",
+          "active":   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-accent bg-surface2 font-medium border border-border-s",
+          "icon_size":"16px Lucide icon, stroke 1.5"
+        },
+        "bottom_section": "mt-auto border-t border-border-c p-4 — shows user info + plan badge",
+        "user_info_bottom": {
+          "avatar":  "32px rounded-full",
+          "name":    "text-sm font-medium text-text-c",
+          "plan":    "text-xs font-mono text-teal — 'Pro Plan' badge",
+          "layout":  "flex items-center gap-3"
+        }
+      },
+
+      "main_content": {
+        "tailwind": "flex-1 overflow-y-auto bg-bg p-6 md:p-8",
+        "max_width": "max-w-7xl mx-auto",
+        "page_header": "flex items-start justify-between mb-8",
+        "page_title_area": "flex flex-col gap-1",
+        "page_title":    "text-2xl font-sans font-bold text-text-c",
+        "page_subtitle": "text-sm font-sans text-text-sec"
+      }
     },
-    "key_tailwind_classes": {
-      "page_bg":        "bg-[#0D0D0D] text-[#E8E4DC]",
-      "card":           "bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-6",
-      "button_primary": "bg-[#C97D4E] text-white rounded-lg px-4 h-10 font-medium font-sans",
-      "input":          "bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg px-3.5 py-2.5 text-sm text-[#E8E4DC] focus:border-[#C97D4E]",
-      "code_block":     "bg-[#111111] border border-[#2A2A2A] border-l-4 border-l-[#C97D4E] rounded-lg p-5 font-mono text-sm text-[#CDD6F4]",
-      "heading_1":      "font-serif text-4xl font-bold text-[#1A1A2E]",
-      "data_value":     "font-mono text-[#5B9BD5] text-sm"
+
+    "buttons": {
+      "base": "inline-flex items-center justify-center gap-2 rounded-lg font-sans font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:opacity-40 disabled:cursor-not-allowed",
+      "sizes": {
+        "sm": "h-8  px-3 text-xs",
+        "md": "h-10 px-5 text-sm",
+        "lg": "h-12 px-7 text-base"
+      },
+      "variants": {
+        "primary": {
+          "tailwind": "bg-accent text-white hover:bg-accent-h active:scale-[0.97] shadow-sm hover:shadow-glow-accent",
+          "usage": "Main CTA — one per view maximum"
+        },
+        "secondary": {
+          "tailwind": "bg-surface2 text-text-c border border-border-c hover:bg-surface3 hover:border-border-s active:scale-[0.97]",
+          "usage": "Secondary actions"
+        },
+        "ghost": {
+          "tailwind": "bg-transparent text-text-sec hover:bg-surface hover:text-text-c active:scale-[0.97]",
+          "usage": "Tertiary, cancel, toolbar actions"
+        },
+        "teal": {
+          "tailwind": "bg-teal text-bg font-semibold hover:opacity-90 active:scale-[0.97]",
+          "usage": "Confirm/verify actions, approve in HITL"
+        },
+        "danger": {
+          "tailwind": "bg-red-600 text-white hover:bg-red-700 active:scale-[0.97]",
+          "usage": "Delete, stop, destructive actions"
+        },
+        "outline_accent": {
+          "tailwind": "bg-transparent border border-accent text-accent hover:bg-accent hover:text-white active:scale-[0.97]",
+          "usage": "Highlighted secondary action"
+        }
+      }
+    },
+
+    "inputs": {
+      "base": "w-full rounded-lg font-sans text-sm transition-all duration-150 focus:outline-none",
+      "dark_style": "bg-surface border border-border-c text-text-c placeholder:text-muted-c focus:border-accent focus:ring-2 focus:ring-accent/20",
+      "light_style": "bg-white border border-border-c text-text-c placeholder:text-muted-c focus:border-accent focus:ring-2 focus:ring-accent/20",
+      "sizes": {
+        "sm": "px-3 py-1.5 text-xs",
+        "md": "px-4 py-2.5 text-sm",
+        "lg": "px-4 py-3 text-base"
+      },
+      "label": "block text-xs font-sans font-medium text-text-sec mb-1.5",
+      "helper": "text-xs font-sans text-muted-c mt-1.5",
+      "error_message": "text-xs font-sans text-red-400 mt-1.5",
+      "error_input_override": "border-red-500 focus:border-red-500 focus:ring-red-500/20",
+      "search_input": "pl-10 — add Search icon absolutely positioned left-3",
+      "textarea": "min-h-[120px] resize-y — same base styles as input"
+    },
+
+    "cards": {
+      "base":       "bg-surface border border-border-c rounded-xl p-6 transition-all duration-200",
+      "hoverable":  "bg-surface border border-border-c rounded-xl p-6 transition-all duration-200 hover:bg-surface2 hover:border-border-s hover:shadow-md cursor-pointer",
+      "active":     "bg-surface2 border border-accent rounded-xl p-6 shadow-accent",
+      "elevated":   "bg-surface2 border border-border-c rounded-xl p-6 shadow-lg",
+      "ghost":      "bg-transparent border border-dashed border-border-c rounded-xl p-6 hover:border-border-s transition-colors",
+      "code_panel": "bg-[#080B14] border border-border-c border-l-4 border-l-accent rounded-xl overflow-hidden",
+      "info_panel": "bg-[#14123A] border border-[#2A2570] rounded-xl p-5",
+      "warn_panel": "bg-[#1C1608] border border-[#3D2E0A] rounded-xl p-5",
+      "success_panel": "bg-[#061A18] border border-[#0A3530] rounded-xl p-5",
+      "kpi_card": {
+        "tailwind": "bg-surface border border-border-c rounded-xl p-6 flex flex-col gap-3",
+        "label":  "text-xs font-sans font-medium text-text-sec uppercase tracking-wider",
+        "value":  "text-3xl font-display font-bold text-text-c",
+        "delta_positive": "text-xs font-mono text-teal",
+        "delta_negative": "text-xs font-mono text-red-400",
+        "icon_container": "w-10 h-10 rounded-lg bg-surface2 flex items-center justify-center"
+      }
+    },
+
+    "badges_chips": {
+      "base": "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-mono font-medium",
+      "status": {
+        "running":    "bg-[#0F1E38] text-blue-400 border border-[#1E3A5F]",
+        "queued":     "bg-[#1C1608] text-amber-400 border border-[#3D2E0A]",
+        "complete":   "bg-[#061A18] text-teal-400 border border-[#0A3530]",
+        "failed":     "bg-[#1C0808] text-red-400  border border-[#3D0F0F]",
+        "paused":     "bg-[#141B2D] text-slate-400 border border-[#1E2D45]",
+        "waiting":    "bg-[#14123A] text-indigo-400 border border-[#2A2570]"
+      },
+      "plan_badges": {
+        "free":    "bg-surface2 text-text-sec border border-border-c text-xs font-mono px-2 py-0.5 rounded-md",
+        "pro":     "bg-[#14123A] text-indigo-300 border border-[#2A2570] text-xs font-mono px-2 py-0.5 rounded-md",
+        "team":    "bg-[#061A18] text-teal-300 border border-[#0A3530] text-xs font-mono px-2 py-0.5 rounded-md",
+        "enterprise": "bg-[#1C1608] text-amber-300 border border-[#3D2E0A] text-xs font-mono px-2 py-0.5 rounded-md"
+      },
+      "dot": "w-1.5 h-1.5 rounded-full inline-block",
+      "rule": "ALWAYS render: <dot> + <text label>. NEVER color alone."
+    },
+
+    "data_tables": {
+      "container": "w-full border border-border-c rounded-xl overflow-hidden",
+      "header_row": "bg-surface2 border-b border-border-c",
+      "header_cell": "px-4 py-3 text-left text-xs font-sans font-semibold text-text-sec uppercase tracking-wider",
+      "body_row_odd":  "bg-surface",
+      "body_row_even": "bg-[#111827]",
+      "body_row_hover":"hover:bg-surface2 transition-colors cursor-pointer",
+      "body_cell": "px-4 py-3 text-sm font-sans text-text-c",
+      "body_cell_mono": "px-4 py-3 text-xs font-mono text-teal truncate max-w-[200px]",
+      "body_cell_muted": "px-4 py-3 text-xs font-sans text-muted-c",
+      "empty_state": "py-16 text-center text-text-sec font-sans text-sm",
+      "pagination": "flex items-center justify-between px-4 py-3 border-t border-border-c text-xs font-sans text-text-sec"
+    },
+
+    "code_log_blocks": {
+      "code_block": {
+        "container": "bg-[#080B14] border border-border-c border-l-4 border-l-accent rounded-xl overflow-hidden",
+        "header": "flex items-center justify-between px-4 py-2 border-b border-border-c bg-surface",
+        "header_label": "text-xs font-mono text-muted-c",
+        "copy_button": "ghost sm button with Copy icon",
+        "body": "p-5 font-mono text-sm text-[#A9B1D6] leading-relaxed overflow-x-auto",
+        "line_numbers": "select-none text-muted-c mr-4 text-right min-w-[2rem]"
+      },
+      "log_stream": {
+        "container": "bg-[#080B14] border border-border-c rounded-xl overflow-hidden flex flex-col h-[500px]",
+        "header": "flex items-center justify-between px-4 py-3 border-b border-border-c bg-surface shrink-0",
+        "status_indicator": "flex items-center gap-2 text-xs font-mono",
+        "body": "flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed scroll-smooth",
+        "log_line_normal":  "text-[#A9B1D6] py-0.5",
+        "log_line_agent":   "text-teal-400 font-medium py-0.5",
+        "log_line_error":   "text-red-400 py-0.5",
+        "log_line_warning": "text-amber-400 py-0.5",
+        "log_line_success": "text-teal py-0.5",
+        "log_line_system":  "text-muted-c italic py-0.5",
+        "timestamp": "text-[#5A6478] mr-3 select-none",
+        "auto_scroll_hook": "useEffect(() => { ref.current?.scrollTo(0, ref.current.scrollHeight); }, [logs]);"
+      }
+    },
+
+    "status_badges_full": {
+      "component_template": "<span class='status-badge'><span class='dot animate-pulse'></span> Running</span>",
+      "rule": "dot + text label ALWAYS. dot is w-2 h-2 rounded-full inline-block mr-1.5"
+    },
+
+    "modals_dialogs": {
+      "overlay": "fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4",
+      "panel": "bg-surface border border-border-c rounded-2xl shadow-lg w-full max-w-lg p-6 relative",
+      "header": "flex items-start justify-between mb-6",
+      "title": "text-lg font-sans font-semibold text-text-c",
+      "close_btn": "ghost icon button top-right",
+      "footer": "flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border-c",
+      "use_radix": "Always use Radix UI Dialog — handles focus trap, a11y, escape key automatically"
+    },
+
+    "toasts": {
+      "container": "fixed bottom-6 right-6 z-[100] flex flex-col gap-2 max-w-sm w-full",
+      "base": "bg-surface2 border border-border-c rounded-xl p-4 shadow-lg flex items-start gap-3 text-sm font-sans",
+      "success": "border-teal-800 bg-[#061A18]",
+      "error":   "border-red-800 bg-[#1C0808]",
+      "info":    "border-indigo-800 bg-[#14123A]",
+      "animation": "slide-in-from-right + fade — 240ms spring"
+    },
+
+    "empty_states": {
+      "container": "flex flex-col items-center justify-center py-20 text-center",
+      "icon_wrapper": "w-16 h-16 rounded-2xl bg-surface2 border border-border-c flex items-center justify-center mb-5",
+      "icon": "Lucide icon, 28px, stroke 1px, text-muted-c",
+      "title": "text-base font-sans font-semibold text-text-c mb-2",
+      "description": "text-sm font-sans text-text-sec max-w-xs mx-auto mb-6",
+      "cta": "primary button"
+    },
+
+    "icons": {
+      "library": "Lucide React — ALWAYS stroke, NEVER filled",
+      "default_stroke": "1.5",
+      "sizes": {
+        "xs":    "12px — micro indicators",
+        "sm":    "14px — inline text icons",
+        "md":    "16px — nav items, form icons (DEFAULT)",
+        "lg":    "20px — card headers, prominent actions",
+        "xl":    "24px — page headers",
+        "hero":  "48px — empty states"
+      }
     }
+  },
+
+  "pages": {
+
+    "landing": {
+      "route": "/",
+      "theme": "dark forced — always dark regardless of system preference",
+      "bg": "#080B14",
+
+      "topbar": {
+        "bg": "bg-[#080B14]/80 backdrop-blur-md border-b border-[#1E2D45]/50 sticky top-0 z-50",
+        "logo": "font-display font-bold text-xl — 'Deep' text-text-c + 'Research' text-accent",
+        "nav_links": ["Features", "About", "Pricing"],
+        "nav_style": "text-sm text-text-sec hover:text-text-c transition-colors",
+        "cta_right": "primary button 'Get Started' md size",
+        "secondary_right": "ghost button 'Sign In'"
+      },
+
+      "hero": {
+        "layout": "flex flex-col items-center text-center pt-32 pb-24 px-6",
+        "announcement_chip": {
+          "style": "inline-flex items-center gap-2 bg-surface border border-accent/30 rounded-full px-4 py-1.5 text-xs font-mono text-accent mb-8",
+          "content": "v2.0 Now Available • Multi-Agent Research"
+        },
+        "headline": {
+          "line1": "font-display font-extrabold text-[3.5rem] md:text-[5rem] leading-none text-text-c — 'The Operating System for'",
+          "line2": "font-display font-extrabold text-[3.5rem] md:text-[5rem] leading-none text-accent italic — 'Deep Research'"
+        },
+        "subheadline": "text-lg md:text-xl font-sans text-text-sec max-w-2xl mx-auto mt-6 leading-relaxed",
+        "cta_group": "flex items-center gap-4 mt-10 justify-center",
+        "cta_primary": "primary lg button 'Start Researching →'",
+        "cta_secondary": "secondary lg button 'View Documentation'",
+        "hero_visual": {
+          "description": "Mock terminal window showing the multi-agent system in action",
+          "container": "bg-surface border border-border-c rounded-2xl overflow-hidden shadow-2xl mt-20 max-w-5xl mx-auto",
+          "terminal_bar": "bg-surface2 px-4 py-3 flex items-center gap-2 border-b border-border-c",
+          "terminal_dots": "w-3 h-3 rounded-full — red #FF5F57, yellow #FEBC2E, green #28C840",
+          "terminal_title": "text-xs font-mono text-muted-c mx-auto"
+        }
+      },
+
+      "features_section": {
+        "layout": "py-24 px-6",
+        "section_label": "text-xs font-mono text-accent uppercase tracking-widest text-center mb-4",
+        "title": "text-3xl font-display font-bold text-text-c text-center mb-4",
+        "subtitle": "text-text-sec text-center max-w-2xl mx-auto mb-16",
+        "grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto",
+        "feature_card": {
+          "base": "bg-surface border border-border-c rounded-2xl p-6 hover:border-accent/40 hover:bg-surface2 transition-all duration-200",
+          "icon_wrapper": "w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-5",
+          "icon_color": "text-accent",
+          "title": "font-sans font-semibold text-text-c mb-2",
+          "description": "font-sans text-sm text-text-sec leading-relaxed"
+        }
+      },
+
+      "pricing_section": {
+        "layout": "py-24 px-6 bg-surface/30",
+        "grid": "grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mt-16",
+        "plan_card_base": "bg-surface border border-border-c rounded-2xl p-8",
+        "plan_card_featured": "bg-[#14123A] border border-accent rounded-2xl p-8 relative — add 'Most Popular' badge",
+        "price": "font-display font-bold text-4xl text-text-c",
+        "period": "text-text-sec text-sm",
+        "features_list": "space-y-3 mt-6 mb-8",
+        "feature_item": "flex items-center gap-3 text-sm font-sans text-text-sec",
+        "feature_check": "CheckCircle2 16px text-teal"
+      }
+    },
+
+    "login": {
+      "route": "/#/login",
+      "critical_fixes": [
+        "Background MUST be #080B14 full screen — NOT white or grey",
+        "Card on dark bg, NOT dark card on light bg",
+        "Input fields must be dark surface style"
+      ],
+      "layout": "min-h-screen bg-[#080B14] flex flex-col items-center justify-center p-4",
+      "logo_area": {
+        "icon": "Terminal icon 40px in accent color inside rounded-xl bg-surface border border-border-c",
+        "title": "font-display font-bold text-2xl text-text-c mt-4",
+        "subtitle": "text-sm font-sans text-text-sec mt-1"
+      },
+      "card": {
+        "tailwind": "bg-[#141B2D] border border-[#1E2D45] rounded-2xl p-8 w-full max-w-md mt-8 shadow-2xl",
+        "title": "text-lg font-sans font-semibold text-text-c mb-6"
+      },
+      "form": {
+        "email_input": "dark input md — label 'Email Address' above",
+        "password_input": "dark input md — label 'Password' above — with show/hide toggle icon right",
+        "submit_button": "primary lg w-full mt-6 'Sign In'",
+        "forgot_link": "text-xs font-sans text-accent hover:text-accent-h float-right mt-1.5",
+        "divider": "or continue with — flex items-center gap-3 text-xs text-muted-c my-5",
+        "oauth_buttons": "grid grid-cols-2 gap-3",
+        "oauth_btn": "secondary md w-full with provider icon left — GitHub, Google"
+      },
+      "footer_link": "text-sm font-sans text-text-sec text-center mt-6 — 'No account? <accent link>Register</accent>'"
+    },
+
+    "register": {
+      "route": "/#/register",
+      "same_layout_as": "login",
+      "additional_fields": ["Name", "Email", "Password", "Confirm Password"],
+      "terms": "text-xs font-sans text-muted-c mt-4 text-center — 'By registering you agree to our <accent>Terms</accent> and <accent>Privacy Policy</accent>'"
+    },
+
+    "dashboard": {
+      "route": "/#/dashboard",
+      "layout": "sidebar + main content",
+
+      "kpi_bar": {
+        "layout": "grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8",
+        "cards": [
+          { "label": "Total Researches", "icon": "FileSearch", "icon_color": "text-accent" },
+          { "label": "Success Rate",     "icon": "TrendingUp",  "icon_color": "text-teal" },
+          { "label": "Active Agents",    "icon": "Cpu",         "icon_color": "text-amber-c" },
+          { "label": "Credits Used",     "icon": "Zap",         "icon_color": "text-blue-400" }
+        ]
+      },
+
+      "recent_jobs": {
+        "title": "Recent Research Jobs",
+        "title_style": "text-lg font-sans font-semibold text-text-c",
+        "table_columns": ["Title", "Status", "Agents", "Sources", "Created", "Actions"],
+        "empty_state": {
+          "icon": "FlaskConical 48px",
+          "title": "No research jobs yet",
+          "description": "Start a new research job to see it here",
+          "cta": "primary 'Start Research'"
+        }
+      },
+
+      "active_agents_widget": {
+        "title": "Live Agent Activity",
+        "container": "bg-surface border border-border-c rounded-xl overflow-hidden",
+        "agent_row": "flex items-center justify-between px-4 py-3 border-b border-border-c last:border-b-0",
+        "agent_name": "text-sm font-sans font-medium text-text-c",
+        "agent_type": "text-xs font-mono text-muted-c",
+        "progress_bar": "h-1 bg-surface2 rounded-full overflow-hidden mt-1",
+        "progress_fill": "h-full bg-accent rounded-full transition-all duration-500",
+        "polling": "Poll every 3 seconds — GET /api/jobs?status=running"
+      },
+
+      "quick_actions": {
+        "title": "Quick Start",
+        "layout": "grid grid-cols-1 md:grid-cols-3 gap-4",
+        "action_cards": [
+          { "label": "New Research",    "icon": "PlusCircle",  "desc": "Start a new AI research job",       "variant": "primary" },
+          { "label": "View Reports",    "icon": "FileText",    "desc": "Browse completed reports",          "variant": "secondary" },
+          { "label": "API Settings",    "icon": "KeyRound",    "desc": "Manage your API keys",              "variant": "secondary" }
+        ]
+      }
+    },
+
+    "workspaces": {
+      "route": "/#/workspaces",
+      "critical_fixes": [
+        "Fix 've.getWorkspaces is not a function' — this is a broken API hook",
+        "Topbar must be dark bg — currently showing white in light toggle",
+        "Sidebar must always stay visible and dark bg-bg-sec"
+      ],
+
+      "page_header": {
+        "title": "Workspaces",
+        "title_style": "text-2xl font-sans font-bold text-text-c",
+        "icon": "FolderOpen 24px text-accent mr-3",
+        "subtitle": "Each workspace is an isolated research environment",
+        "cta": "primary button '+ New Workspace' top-right"
+      },
+
+      "workspace_grid": {
+        "layout": "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mt-6",
+        "workspace_card": {
+          "base": "bg-surface border border-border-c rounded-xl p-5 hover:bg-surface2 hover:border-border-s transition-all duration-200 cursor-pointer group",
+          "header": "flex items-start justify-between mb-4",
+          "icon_area": "w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center",
+          "icon": "FolderOpen 20px text-accent",
+          "title": "font-sans font-semibold text-text-c group-hover:text-accent transition-colors",
+          "date": "text-xs font-mono text-muted-c",
+          "description": "text-sm font-sans text-text-sec mt-2 line-clamp-2",
+          "footer": "flex items-center justify-between mt-4 pt-4 border-t border-border-c",
+          "stats": "flex items-center gap-4 text-xs font-mono text-muted-c",
+          "status_badge": "status badge component",
+          "menu_button": "ghost icon button — MoreHorizontal icon — shows on card hover"
+        }
+      },
+
+      "empty_state": {
+        "icon": "Search 48px",
+        "title": "No workspaces yet",
+        "description": "Create your first workspace to start a new research session",
+        "cta": "primary 'Create Your First Workspace'"
+      },
+
+      "new_workspace_modal": {
+        "title": "Create New Workspace",
+        "fields": [
+          { "label": "Workspace Name",  "type": "text",     "placeholder": "e.g. Quantum Computing Research" },
+          { "label": "Description",     "type": "textarea", "placeholder": "What will this workspace focus on?" },
+          { "label": "Research Domain", "type": "select",   "options": ["Computer Science", "Biology", "Finance", "Physics", "Other"] }
+        ],
+        "footer_buttons": ["ghost Cancel", "primary Create Workspace"]
+      }
+    },
+
+    "research_job": {
+      "route": "/#/research/:id",
+
+      "layout": {
+        "outer": "flex h-[calc(100vh-64px)] overflow-hidden",
+        "left_panel": "w-[340px] shrink-0 border-r border-border-c bg-bg-sec overflow-y-auto flex flex-col",
+        "right_panel": "flex-1 flex flex-col overflow-hidden bg-bg",
+        "collapse_button": "ghost icon ChevronLeft to collapse left panel to 0 — state managed"
+      },
+
+      "left_panel_sections": {
+        "job_header": {
+          "container": "p-5 border-b border-border-c",
+          "title": "font-sans font-semibold text-text-c text-base leading-snug",
+          "status_badge": "status badge component mt-2",
+          "job_id": "text-xs font-mono text-muted-c mt-1"
+        },
+
+        "agent_tree": {
+          "container": "p-4 flex-1",
+          "section_label": "text-xs font-sans font-semibold text-text-sec uppercase tracking-wider mb-3",
+          "agent_row": "flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-surface transition-colors",
+          "agent_dot": "w-2 h-2 rounded-full shrink-0",
+          "agent_name": "text-sm font-sans text-text-sec",
+          "agent_status": "ml-auto text-xs font-mono text-muted-c",
+          "current_agent_highlight": "bg-surface2 border-l-2 border-l-accent pl-3",
+          "agents_list": [
+            "Orchestrator", "Planner", "Web Scraper", "Data Extractor",
+            "Reasoning Engine", "Fact Checker", "Source Validator",
+            "Content Writer", "Citation Builder", "Quality Reviewer",
+            "Gap Analyzer", "Synthesizer", "Formatter", "LaTeX Writer"
+          ]
+        },
+
+        "hitl_block": {
+          "trigger": "job.status === 'waiting_for_human'",
+          "container": "mx-4 mb-4 bg-[#14123A] border border-accent rounded-xl p-4",
+          "header": "flex items-center gap-2 mb-3",
+          "icon": "MessageSquare 16px text-accent animate-pulse",
+          "title": "text-sm font-sans font-semibold text-accent",
+          "description": "text-xs font-sans text-text-sec mb-4",
+          "topic_list": "space-y-2 mb-4",
+          "topic_item": "flex items-center gap-2 text-sm font-sans text-text-c bg-surface2 rounded-lg px-3 py-2 cursor-pointer hover:bg-surface3",
+          "topic_checkbox": "w-4 h-4 accent-color rounded",
+          "buttons": "flex gap-2 mt-4",
+          "approve_btn": "teal sm flex-1 'Approve'",
+          "reject_btn":  "danger sm 'Reject'"
+        },
+
+        "job_metadata": {
+          "container": "p-4 border-t border-border-c mt-auto",
+          "row": "flex items-center justify-between py-1.5",
+          "key": "text-xs font-sans text-muted-c",
+          "value": "text-xs font-mono text-text-sec"
+        }
+      },
+
+      "right_panel_sections": {
+        "panel_tabs": {
+          "container": "flex items-center gap-1 px-5 py-3 border-b border-border-c bg-bg-sec shrink-0",
+          "tab": "px-4 py-1.5 rounded-lg text-sm font-sans text-text-sec hover:text-text-c cursor-pointer transition-colors",
+          "tab_active": "bg-surface2 text-text-c font-medium",
+          "tabs": ["Live Feed", "Preview", "LaTeX", "Sources", "Resources"]
+        },
+
+        "live_feed": {
+          "use": "log_stream component from components.code_log_blocks",
+          "header_content": "Agent: {currentAgentName} — status badge — source count",
+          "note": "This is the primary view while job is running"
+        },
+
+        "preview_panel": {
+          "container": "flex-1 overflow-y-auto p-8",
+          "inner": "max-w-[720px] mx-auto",
+          "paper_card": "bg-surface border border-border-c rounded-2xl p-10",
+          "report_title": "font-display font-bold text-3xl text-text-c mb-2",
+          "report_meta":  "font-sans text-sm text-text-sec italic mb-1",
+          "report_date":  "font-mono text-xs text-muted-c mb-8",
+          "divider":      "border-t border-border-c mb-8",
+          "body_prose": {
+            "h1": "font-display font-bold text-2xl text-text-c mt-8 mb-4",
+            "h2": "font-sans font-semibold text-xl text-text-c mt-6 mb-3",
+            "h3": "font-sans font-semibold text-base text-text-sec mt-5 mb-2",
+            "p":  "font-sans text-base text-text-c leading-[1.85] mb-4",
+            "strong": "font-semibold text-text-c",
+            "em": "italic text-text-sec",
+            "code_inline": "font-mono text-xs bg-surface2 text-teal px-1.5 py-0.5 rounded",
+            "blockquote": "border-l-4 border-accent pl-4 italic text-text-sec my-4",
+            "ul": "list-disc list-inside space-y-1 mb-4 text-sm font-sans text-text-c",
+            "ol": "list-decimal list-inside space-y-1 mb-4 text-sm font-sans text-text-c",
+            "table": "data_table component — full width"
+          },
+          "bottom_bar": "flex items-center justify-between mt-10 pt-6 border-t border-border-c",
+          "confidence_badge": "flex items-center gap-2 text-sm font-mono text-teal",
+          "source_count": "flex items-center gap-2 text-sm font-mono text-text-sec",
+          "export_buttons": "flex items-center gap-2"
+        },
+
+        "sources_panel": {
+          "container": "flex-1 overflow-y-auto p-5",
+          "source_card": "bg-surface border border-border-c rounded-xl p-4 mb-3",
+          "source_title": "font-sans font-medium text-text-c text-sm mb-1",
+          "source_url": "font-mono text-xs text-teal truncate",
+          "source_verified": "flex items-center gap-1 text-xs font-mono text-teal mt-2",
+          "verified_icon": "CheckCircle2 12px"
+        }
+      }
+    },
+
+    "profile": {
+      "route": "/#/profile",
+      "critical_fixes": [
+        "Current profile page is dangerously bare — 2 inputs and a button",
+        "Needs: avatar, plan info, usage stats, notification prefs, API keys, danger zone"
+      ],
+      "layout": "max-w-3xl mx-auto space-y-6 py-8",
+
+      "sections": {
+
+        "profile_header_card": {
+          "tailwind": "bg-surface border border-border-c rounded-2xl p-8",
+          "avatar_section": {
+            "avatar": "w-20 h-20 rounded-full bg-accent/20 border-2 border-accent flex items-center justify-center text-2xl font-display font-bold text-accent",
+            "initials_logic": "First letter of first + last name",
+            "upload_overlay": "Camera icon on hover — triggers file input",
+            "user_name": "text-xl font-sans font-bold text-text-c mt-4",
+            "user_email": "text-sm font-mono text-text-sec",
+            "plan_badge": "plan_badge component — 'Pro Plan' in indigo mt-2",
+            "joined_date": "text-xs font-mono text-muted-c mt-1 — 'Member since Feb 2026'"
+          },
+          "stats_row": {
+            "layout": "grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-border-c",
+            "stat_item": "flex flex-col items-center",
+            "stat_value": "font-display font-bold text-2xl text-text-c",
+            "stat_label": "text-xs font-sans text-muted-c mt-1",
+            "stats": ["Total Researches", "Sources Analyzed", "Reports Generated"]
+          }
+        },
+
+        "account_details_card": {
+          "tailwind": "bg-surface border border-border-c rounded-2xl p-6",
+          "title": "text-base font-sans font-semibold text-text-c mb-5",
+          "fields": [
+            { "label": "Full Name",    "type": "text",     "editable": true },
+            { "label": "Email",        "type": "email",    "editable": false, "helper": "Email address cannot be edited." },
+            { "label": "Username",     "type": "text",     "editable": true },
+            { "label": "Bio",          "type": "textarea", "editable": true,  "placeholder": "Tell us about your research interests..." }
+          ],
+          "save_button": "primary md 'Save Changes' float-right",
+          "success_toast": "show toast on successful save"
+        },
+
+        "plan_usage_card": {
+          "tailwind": "bg-surface border border-border-c rounded-2xl p-6",
+          "title": "text-base font-sans font-semibold text-text-c mb-5",
+          "current_plan_block": {
+            "layout": "flex items-center justify-between p-4 bg-[#14123A] border border-[#2A2570] rounded-xl mb-5",
+            "plan_name": "font-display font-bold text-lg text-accent",
+            "plan_desc": "text-sm font-sans text-text-sec mt-0.5",
+            "upgrade_btn": "outline_accent sm 'Upgrade Plan'"
+          },
+          "usage_meters": [
+            { "label": "Research Credits", "icon": "Zap",        "used": "number", "total": "number", "color": "accent" },
+            { "label": "API Calls",        "icon": "Activity",   "used": "number", "total": "number", "color": "teal" },
+            { "label": "Storage Used",     "icon": "HardDrive",  "used": "string", "total": "string", "color": "amber-c" }
+          ],
+          "meter_bar": "h-1.5 bg-surface2 rounded-full overflow-hidden",
+          "meter_fill": "h-full rounded-full transition-all duration-700",
+          "meter_label": "flex items-center justify-between text-xs font-mono text-text-sec mb-1.5"
+        },
+
+        "api_keys_card": {
+          "tailwind": "bg-surface border border-border-c rounded-2xl p-6",
+          "title": "text-base font-sans font-semibold text-text-c mb-1",
+          "subtitle": "text-sm font-sans text-text-sec mb-5",
+          "key_row": {
+            "container": "flex items-center justify-between p-4 bg-surface2 border border-border-c rounded-xl mb-3",
+            "key_info": "flex flex-col gap-0.5",
+            "key_name": "text-sm font-sans font-medium text-text-c",
+            "key_value": "font-mono text-xs text-muted-c — masked: dr_••••••••••••••••xxxx",
+            "created_date": "text-xs font-mono text-muted-c",
+            "actions": "flex items-center gap-2",
+            "reveal_btn": "ghost icon Eye/EyeOff 16px",
+            "copy_btn":   "ghost icon Copy 16px — swaps to Check on copy",
+            "delete_btn": "ghost icon Trash2 16px text-red-400"
+          },
+          "create_btn": "secondary md w-full '+ Create New API Key' mt-2",
+          "create_modal": {
+            "fields": ["Key Name", "Permissions (read/write/admin)", "Expiry"],
+            "shows_key_once": "After creation, show full key in modal with copy button. Warn: you will not see this again."
+          }
+        },
+
+        "preferences_card": {
+          "tailwind": "bg-surface border border-border-c rounded-2xl p-6",
+          "title": "text-base font-sans font-semibold text-text-c mb-5",
+          "preference_row": "flex items-center justify-between py-3 border-b border-border-c last:border-b-0",
+          "pref_label": "text-sm font-sans text-text-c",
+          "pref_desc": "text-xs font-sans text-muted-c mt-0.5",
+          "toggle": "Radix Switch component — accent color when on",
+          "preferences": [
+            { "label": "Email Notifications",    "desc": "Get notified when research jobs complete" },
+            { "label": "Auto-save Reports",      "desc": "Automatically save reports to workspace" },
+            { "label": "Dark Mode",              "desc": "Toggle dark/light theme" },
+            { "label": "Compact Sidebar",        "desc": "Collapse sidebar to icon-only mode by default" },
+            { "label": "Stream Auto-scroll",     "desc": "Auto-scroll log output during live research" }
+          ]
+        },
+
+        "danger_zone_card": {
+          "tailwind": "bg-[#1C0808] border border-[#3D0F0F] rounded-2xl p-6",
+          "title": "text-base font-sans font-semibold text-red-400 mb-1",
+          "subtitle": "text-sm font-sans text-text-sec mb-5",
+          "actions": [
+            {
+              "label": "Export All Data",
+              "desc": "Download all your research data and reports as a ZIP archive",
+              "btn": "secondary sm 'Export Data'"
+            },
+            {
+              "label": "Delete All Workspaces",
+              "desc": "Permanently delete all workspaces and associated research data",
+              "btn": "danger sm 'Delete All Workspaces'"
+            },
+            {
+              "label": "Delete Account",
+              "desc": "Permanently delete your account. This action cannot be undone.",
+              "btn": "danger sm 'Delete Account'",
+              "requires_confirmation_modal": true,
+              "confirmation_text": "Type your email to confirm"
+            }
+          ]
+        }
+      }
+    },
+
+    "settings": {
+      "route": "/#/settings",
+      "layout": "sidebar-sub-nav + content — two column inside main area",
+      "sub_nav_items": ["General", "API Keys", "Notifications", "Billing", "Team", "Integrations"],
+      "sub_nav_style": "vertical list, same as sidebar nav_item style but inside the main content area"
+    }
+  },
+
+  "theme_management": {
+    "critical_rule": "The dark/light toggle MUST apply CSS variables only — never hardcoded colors in components. All colors must come from CSS variables. This is why some pages looked inconsistent — they had hardcoded colors.",
+
+    "implementation": {
+      "html_class": "Toggle 'dark' class on <html> element",
+      "css_pattern": ":root { /* light mode vars */ } .dark { /* dark mode vars */ }",
+      "react_hook": "useTheme() — reads localStorage 'theme', applies class to document.documentElement",
+      "initial_load": "Check localStorage → if no preference → check prefers-color-scheme → default dark"
+    },
+
+    "what_must_never_happen": [
+      "A page having bg-white or bg-gray-X hardcoded — use bg-[var(--color-bg)]",
+      "Text being text-white hardcoded — use text-[var(--color-text)]",
+      "A card being bg-gray-800 hardcoded — use bg-[var(--color-surface)]",
+      "Topbar going white on light mode toggle — it should go to --color-bg-sec"
+    ],
+
+    "topbar_light_mode_fix": "bg-[#EAEFF8] border-b border-[#D1D9EE] — NOT white",
+    "sidebar_light_mode_fix": "bg-[#EAEFF8] border-r border-[#D1D9EE] — NOT white",
+    "login_page_fix": "ALWAYS bg-[#080B14] regardless of theme toggle — auth pages are always dark"
+  },
+
+  "motion": {
+    "principle": "Every animation conveys information. No decorative motion.",
+    "durations": {
+      "instant":  "80ms  — button press scale",
+      "fast":     "150ms — hover states, tooltip appear",
+      "normal":   "200ms — modal open, panel slide",
+      "slow":     "300ms — page transitions, sidebar collapse",
+      "very_slow":"500ms — progress bars, chart animations"
+    },
+    "animations": {
+      "page_enter":       "opacity 0→1 + translateY 12px→0 — 200ms ease-out",
+      "card_hover":       "translateY -2px + shadow increase — 150ms ease-out",
+      "button_press":     "scale 0.96 — 80ms ease-in-out",
+      "modal_enter":      "scale 0.95→1 + opacity 0→1 — 200ms ease-out",
+      "modal_overlay":    "opacity 0→1 — 150ms",
+      "agent_pulse":      "opacity 0.6→1 — 1.5s ease-in-out infinite",
+      "sidebar_collapse": "width + opacity — 250ms ease-in-out",
+      "progress_bar":     "width transition — 500ms ease-out",
+      "toast_enter":      "translateX 100%→0 + opacity — 240ms spring",
+      "toast_exit":       "translateX 0→100% + opacity — 180ms ease-in",
+      "log_append":       "no animation — text appears instantly (streaming)"
+    }
+  },
+
+  "accessibility": {
+    "target": "WCAG 2.1 AA",
+    "focus_ring": "2px solid #6C63FF with 2px offset — visible on ALL interactive elements",
+    "color_contrast": {
+      "text_on_bg":       "#E8E6F0 on #080B14 — ratio 12.1:1 AAA",
+      "text_sec_on_bg":   "#A0AABF on #080B14 — ratio 5.8:1 AA",
+      "accent_on_bg":     "#6C63FF on #080B14 — ratio 4.8:1 AA",
+      "teal_on_surface":  "#2DD4BF on #141B2D — ratio 7.2:1 AAA"
+    },
+    "requirements": [
+      "All status badges: dot + text label (never color alone)",
+      "All icon-only buttons: aria-label attribute",
+      "All modals: Radix Dialog (focus trap built-in)",
+      "Streaming output: aria-live='polite' on container",
+      "Error messages: role='alert' inline below input",
+      "All images: alt text",
+      "Keyboard navigation: full tab support across all pages",
+      "Reduced motion: @media (prefers-reduced-motion) removes all transitions"
+    ]
+  },
+
+  "known_bugs_to_fix": {
+    "bug_1": {
+      "issue": "ve.getWorkspaces is not a function",
+      "page": "/#/workspaces",
+      "cause": "API hook naming mismatch — likely the exported function name changed",
+      "fix": "Check the API service file — find where getWorkspaces is exported. Likely renamed to fetchWorkspaces or useWorkspaces. Update the import in the Workspaces page component."
+    },
+    "bug_2": {
+      "issue": "Login page has white/grey background",
+      "page": "/#/login",
+      "cause": "Page using CSS variable --color-bg which becomes light in light mode",
+      "fix": "Override explicitly: className='min-h-screen bg-[#080B14]' — auth pages are ALWAYS dark"
+    },
+    "bug_3": {
+      "issue": "Topbar goes white on light mode toggle",
+      "cause": "Topbar using bg-white or bg-surface which resolves to #FFFFFF in light mode",
+      "fix": "Use bg-[var(--color-bg-sec)] which is #EAEFF8 in light mode — not white"
+    },
+    "bug_4": {
+      "issue": "Research page left panel is plain white",
+      "page": "/#/research/:id",
+      "cause": "Left panel using default bg or bg-white",
+      "fix": "Apply bg-[var(--color-bg-sec)] border-r border-[var(--color-border)]"
+    },
+    "bug_5": {
+      "issue": "Sidebar disappears or becomes blank in light mode",
+      "fix": "Same as topbar fix — use CSS variables not hardcoded colors"
+    }
+  },
+
+  "developer_checklist": {
+    "before_shipping_any_page": [
+      "Every color is a CSS variable or design token — no raw hex in JSX",
+      "Light mode tested: toggle theme, every element has correct light colors",
+      "Dark mode tested: all surfaces visible, no invisible-on-dark elements",
+      "Font: h1 tags use font-display (Syne), body uses font-sans (Inter), data uses font-mono",
+      "Status badges: dot + text label on every single status indicator",
+      "Buttons: correct variant used, hover state visible, focus ring visible",
+      "Inputs: dark surface style, placeholder visible, focus ring accent color",
+      "Responsive: tested at 375px / 768px / 1280px",
+      "Empty states: every list/grid has a proper empty state component",
+      "Loading states: skeleton loaders or spinners while data is fetching",
+      "Error states: API errors shown in-UI, not just console",
+      "All icon-only buttons have aria-label",
+      "Tab navigation works through all interactive elements",
+      "No console errors on page load"
+    ]
   }
 }

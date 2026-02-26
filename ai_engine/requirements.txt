@@ -21,6 +21,7 @@ langchain-google-genai
 langchain-groq
 langchain-huggingface
 langchain-ollama
+langchain-openai
 ollama
 
 # =========================

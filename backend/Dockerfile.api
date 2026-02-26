@@ -1,0 +1,27 @@
+FROM node:20-slim AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+FROM node:20-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Install bash just in case
+RUN apt-get update && apt-get install -y bash && rm -rf /var/lib/apt/lists/*
+
+# Use non-root user
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+COPY --from=builder --chown=appuser:appgroup /app/package*.json ./
+COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:appgroup /app .
+
+USER appuser
+
+ENV PORT=5000
+EXPOSE $PORT
+
+CMD ["node", "server.js"]

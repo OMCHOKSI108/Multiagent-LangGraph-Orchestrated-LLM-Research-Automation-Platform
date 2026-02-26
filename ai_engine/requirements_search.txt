@@ -11,6 +11,7 @@ langchain-ollama==0.1.0
 langchain-google-genai==1.0.0
 langchain-groq==0.1.0
 langgraph==0.0.26
+langchain_openai
 
 # Search Provider Dependencies
 duckduckgo-search==4.1.1

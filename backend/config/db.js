@@ -6,9 +6,13 @@ dotenv.config();
 let pool;
 
 if (process.env.DATABASE_URL) {
+    let connStr = process.env.DATABASE_URL;
+    if (connStr.includes('sslmode=')) {
+        connStr = connStr.split('?')[0]; // Strip sslmode query param to prevent pg-connection-string from overriding ssl object
+    }
     pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        connectionString: connStr,
+        ssl: { rejectUnauthorized: false }
     });
 } else {
     const requiredEnvVars = ['DB_USER', 'DB_HOST', 'DB_NAME', 'DB_PASSWORD', 'DB_PORT'];
