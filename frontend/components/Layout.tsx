@@ -52,7 +52,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
     return (
         <div className="flex h-screen w-full bg-background font-sans overflow-hidden">
-            <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border bg-background">
+            <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border bg-surface">
                 <div className="flex h-full w-full items-center justify-between px-3 sm:px-4 lg:px-6">
                     <div className="flex items-center gap-2 sm:gap-3">
                         {!isWorkspace && (
@@ -136,7 +136,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
             {/* Persistent Desktop Sidebar (non-workspace screens) */}
             {!isWorkspace && isDesktopSidebarOpen && (
-                <aside className="hidden md:block w-72 shrink-0 border-r border-border bg-card pt-14">
+                <aside className="hidden md:block w-72 shrink-0 border-r border-border bg-surface pt-14">
                     <Sidebar className="w-full h-full border-r-0" />
                 </aside>
             )}

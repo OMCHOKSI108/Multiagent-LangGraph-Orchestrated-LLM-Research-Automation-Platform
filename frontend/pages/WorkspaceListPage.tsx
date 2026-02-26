@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import { Workspace } from '../types';
 import { useResearchStore } from '../store';
 import { toast } from 'sonner';
 import {
@@ -19,28 +17,19 @@ import {
 export function WorkspaceListPage() {
     const navigate = useNavigate();
     const isAuthenticated = useResearchStore((s) => s.isAuthenticated);
-    const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-    const [loading, setLoading] = useState(true);
+    const workspaces = useResearchStore((s) => s.workspaces);
+    const loading = useResearchStore((s) => s.workspacesLoading);
+    const storeFetchWorkspaces = useResearchStore((s) => s.fetchWorkspaces);
+    const storeCreateWorkspace = useResearchStore((s) => s.createWorkspace);
+    const storeArchiveWorkspace = useResearchStore((s) => s.archiveWorkspace);
     const [createOpen, setCreateOpen] = useState(false);
     const [newName, setNewName] = useState('');
     const [newDesc, setNewDesc] = useState('');
     const [creating, setCreating] = useState(false);
 
-    const fetchWorkspaces = async () => {
-        try {
-            setLoading(true);
-            const data = await api.getWorkspaces();
-            setWorkspaces(data);
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to load workspaces');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (isAuthenticated) fetchWorkspaces();
-    }, [isAuthenticated]);
+        if (isAuthenticated) storeFetchWorkspaces();
+    }, [isAuthenticated, storeFetchWorkspaces]);
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -48,12 +37,11 @@ export function WorkspaceListPage() {
 
         try {
             setCreating(true);
-            const ws = await api.createWorkspace(newName.trim(), newDesc.trim() || undefined);
-            toast.success(`Workspace "${ws.name}" created`);
+            const wsId = await storeCreateWorkspace(newName.trim(), newDesc.trim() || undefined);
             setCreateOpen(false);
             setNewName('');
             setNewDesc('');
-            navigate(`/workspace/${ws.id}`);
+            navigate(`/workspace/${wsId}`);
         } catch (err: any) {
             toast.error(err.message || 'Failed to create workspace');
         } finally {
@@ -64,11 +52,9 @@ export function WorkspaceListPage() {
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`Archive workspace "${name}"? Research data will be preserved.`)) return;
         try {
-            await api.deleteWorkspace(id);
-            toast.success('Workspace archived');
-            setWorkspaces((prev) => prev.filter((w) => w.id !== id));
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to archive workspace');
+            await storeArchiveWorkspace(id);
+        } catch {
+            // Error toast is handled by the store
         }
     };
 
