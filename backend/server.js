@@ -14,6 +14,9 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http:/
     .map(origin => origin.trim())
     .filter(Boolean);
 
+// Trust the first proxy (Railway/Vercel) so rate-limiting gets the real client IP
+app.set('trust proxy', 1);
+
 // Global limiter (lenient in development to avoid blocking local UX)
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
