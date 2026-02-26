@@ -19,12 +19,26 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['Playfair Display', 'Georgia', 'serif'],
+        sans: ['Inter', 'DM Sans', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Courier New', 'monospace'],
         display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        border: "hsl(var(--border))",
+        bg: "#0D0D0D",
+        surface: "#1A1A1A",
+        border: "#2A2A2A",
+        text: "#E8E4DC",
+        muted: "#888580",
+        accent: {
+          DEFAULT: "#C97D4E",
+          light: "#D4874A"
+        },
+        code: "#5B9BD5",
+        success: "#7EC8A4",
+        warning: "#D4A017",
+        error: "#C0444A",
+        // Keep root variables for radix/shadcn compat if needed further down
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -45,14 +59,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -61,32 +67,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Black & White palette for direct use
-        gray: {
-          50: "#f9fafb",
-          100: "#f3f4f6",
-          200: "#e5e7eb",
-          300: "#d1d5db",
-          400: "#9ca3af",
-          500: "#6b7280",
-          600: "#4b5563",
-          700: "#374151",
-          800: "#1f2937",
-          900: "#111827",
-        },
-        black: {
-          DEFAULT: "#000000",
-          900: "#000000",
-        },
-        white: {
-          DEFAULT: "#ffffff",
-          50: "#ffffff",
-        },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "8px",
+        md: "6px",
+        sm: "4px",
+        xl: "12px",
+        "2xl": "16px",
+        full: "50%"
       },
       keyframes: {
         "accordion-down": {
