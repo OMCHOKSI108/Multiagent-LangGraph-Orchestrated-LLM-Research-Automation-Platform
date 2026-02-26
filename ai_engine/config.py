@@ -39,19 +39,28 @@ print(f"[Config] LLM_STATUS = {LLM_STATUS} (mode={LLM_MODE})")
 # ============================
 # API Keys (for Online Mode)
 # ============================
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Multi-key Groq support: GROQ_API_1, GROQ_API_2, GROQ_API_3
-# Also supports legacy single GROQ_API_KEY
-_groq_keys_raw = [
-    os.getenv("GROQ_API_1", ""),
-    os.getenv("GROQ_API_2", ""),
-    os.getenv("GROQ_API_3", ""),
-    os.getenv("GROQ_API_KEY", ""),  # Legacy single key
-]
-GROQ_API_KEYS = [k.strip() for k in _groq_keys_raw if k and k.strip()]
-# Keep first key as GROQ_API_KEY for backward compatibility
+def _parse_keys(prefix: str, legacy_key: str = None):
+    """Helper to parse multi-keys like OPENROUTER_API_1,_2, etc."""
+    raw = [
+        os.getenv(f"{prefix}_1", ""),
+        os.getenv(f"{prefix}_2", ""),
+        os.getenv(f"{prefix}_3", "")
+    ]
+    if legacy_key:
+        raw.append(os.getenv(legacy_key, ""))
+    return [k.strip() for k in raw if k and k.strip()]
+
+# Multi-key OpenRouter support
+OPENROUTER_API_KEYS = _parse_keys("OPENROUTER_API")
+
+# Multi-key Groq support
+GROQ_API_KEYS = _parse_keys("GROQ_API", "GROQ_API_KEY")
 GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else None
+
+# Multi-key Gemini support
+GEMINI_API_KEYS = _parse_keys("GEMINI_API", "GEMINI_API_KEY")
+GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else None
 
 # ============================
 # Offline Model Settings (Ollama)

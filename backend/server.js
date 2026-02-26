@@ -44,6 +44,12 @@ app.use(cors({
 }));
 app.use(globalLimiter);
 app.use(express.json({ limit: '10mb' })); // Limit body size
+
+// Initialize Passport Strategies
+const passport = require('passport');
+require('./config/passport');
+app.use(passport.initialize());
+
 app.use('/generated_images', express.static('generated_images'));
 app.use('/research_images', express.static(require('path').join(__dirname, '..', 'frontend', 'public', 'research_images')));
 app.use('/auth/login', authLimiter);

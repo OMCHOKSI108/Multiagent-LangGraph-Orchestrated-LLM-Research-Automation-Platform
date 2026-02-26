@@ -263,6 +263,10 @@ Thumbs.db
 
 # Temporary files
 *.tmp
+.planning
+planning
+.env
+
 *.temp
 
 ai_engine/agent/

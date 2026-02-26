@@ -17,6 +17,8 @@ import logging
 from typing import Any, Dict
 from .ollama_provider import OllamaProvider
 from .groq_provider import GroqProvider
+from .openrouter_provider import OpenRouterProvider
+from .gemini_provider import GeminiProvider
 from .base import LLMProvider
 
 logger = logging.getLogger("ai_engine.llm.factory")
@@ -92,14 +94,12 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
                 )
 
     elif llm_status == "ONLINE":
-        groq_keys = getattr(cfg, "GROQ_API_KEYS", [])
+        provider = _resolve_online_provider(cfg, model_name)
 
-        if groq_keys:
-            provider = _create_groq_provider(cfg, model_name)
-        else:
+        if provider is None or not provider.is_available():
             logger.warning(
-                "[Factory] LLM_STATUS=ONLINE but no Groq API keys found. "
-                "Falling back to Ollama (OFFLINE)."
+                f"[Factory] Selected ONLINE provider for {model_name} is unavailable "
+                "(missing keys). Falling back to Ollama (OFFLINE)."
             )
             provider = _create_ollama_provider(cfg, model_name)
 
@@ -119,6 +119,31 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
     return provider
 
 
+def _resolve_online_provider(cfg, model_name: str) -> LLMProvider:
+    """Intelligently routes the model string to the correct provider."""
+    # 1. Explicit routing via prefix
+    if model_name.startswith("openrouter/"):
+        return _create_openrouter_provider(cfg, model_name)
+    if model_name.startswith("gemini/"):
+        return _create_gemini_provider(cfg, model_name)
+    if model_name.startswith("groq/"):
+        # Strip the prefix for Groq (if needed) or pass it along
+        return _create_groq_provider(cfg, model_name.replace("groq/", ""))
+
+    # 2. Implicit routing / Fallback cascade
+    if "gemma" in model_name.lower() or "llama" in model_name.lower() and getattr(cfg, "GROQ_API_KEYS", []):
+        return _create_groq_provider(cfg, model_name)
+        
+    if getattr(cfg, "OPENROUTER_API_KEYS", []):
+        return _create_openrouter_provider(cfg, model_name)
+    if getattr(cfg, "GROQ_API_KEYS", []):
+        return _create_groq_provider(cfg, model_name)
+    if getattr(cfg, "GEMINI_API_KEYS", []):
+        return _create_gemini_provider(cfg, model_name)
+        
+    return None
+
+
 def _create_ollama_provider(cfg, model_name: str) -> OllamaProvider:
     """Creates an OllamaProvider with config values."""
     base_url = getattr(cfg, "OLLAMA_BASE_URL", "http://localhost:11434")
@@ -134,6 +159,26 @@ def _create_groq_provider(cfg, model_name: str) -> GroqProvider:
     groq_keys = getattr(cfg, "GROQ_API_KEYS", [])
     return GroqProvider(
         api_keys=groq_keys,
+        model_name=model_name,
+        temperature=0.7,
+    )
+
+
+def _create_openrouter_provider(cfg, model_name: str) -> 'OpenRouterProvider':
+    openrouter_keys = getattr(cfg, "OPENROUTER_API_KEYS", [])
+    # Strip the openrouter/ prefix for the actual downstream request if needed
+    clean_model = model_name.replace("openrouter/", "", 1) if model_name.startswith("openrouter/") else model_name
+    return OpenRouterProvider(
+        api_keys=openrouter_keys,
+        model_name=clean_model,
+        temperature=0.7,
+    )
+
+
+def _create_gemini_provider(cfg, model_name: str) -> 'GeminiProvider':
+    gemini_keys = getattr(cfg, "GEMINI_API_KEYS", [])
+    return GeminiProvider(
+        api_keys=gemini_keys,
         model_name=model_name,
         temperature=0.7,
     )

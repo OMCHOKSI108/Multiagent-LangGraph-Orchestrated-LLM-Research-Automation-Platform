@@ -9,6 +9,45 @@ if (!global.SSE_TOKENS) {
     global.SSE_TOKENS = new Map();
 }
 
+/**
+ * Verify research ownership across both research_logs and research_sessions.
+ * Returns the table name if found, null otherwise.
+ */
+async function verifyResearchOwnership(researchId, userId) {
+    // Try research_logs first (legacy)
+    let result = await db.query('SELECT id FROM research_logs WHERE id = $1 AND user_id = $2', [researchId, userId]);
+    if (result.rows.length > 0) return 'research_logs';
+
+    // Fallback to research_sessions (workspace flow)
+    try {
+        result = await db.query('SELECT id FROM research_sessions WHERE id = $1 AND user_id = $2', [researchId, userId]);
+        if (result.rows.length > 0) return 'research_sessions';
+    } catch (e) { /* table may not exist */ }
+
+    return null;
+}
+
+/**
+ * Get research status from whichever table contains the given ID.
+ */
+async function getResearchStatus(researchId) {
+    let result = await db.query(
+        `SELECT status, current_stage, started_at, completed_at, title FROM research_logs WHERE id = $1`,
+        [researchId]
+    );
+    if (result.rows.length > 0) return { table: 'research_logs', ...result.rows[0] };
+
+    try {
+        result = await db.query(
+            `SELECT status, current_stage, started_at, completed_at, title FROM research_sessions WHERE id = $1`,
+            [researchId]
+        );
+        if (result.rows.length > 0) return { table: 'research_sessions', ...result.rows[0] };
+    } catch (e) { /* table may not exist */ }
+
+    return null;
+}
+
 // Generate a short-lived SSE token for EventSource clients.
 // GET /events/token/:research_id
 router.get('/token/:research_id', auth, async (req, res) => {
@@ -16,9 +55,9 @@ router.get('/token/:research_id', auth, async (req, res) => {
         const { research_id } = req.params;
         const userId = req.user.id;
 
-        // Verify ownership of research
-        const research = await db.query('SELECT id FROM research_logs WHERE id = $1 AND user_id = $2', [research_id, userId]);
-        if (research.rows.length === 0) {
+        // Verify ownership across both tables
+        const tableName = await verifyResearchOwnership(research_id, userId);
+        if (!tableName) {
             return res.status(404).json({ error: 'Research not found or not owned by user' });
         }
 
@@ -49,9 +88,9 @@ router.get('/stream/:research_id', auth, async (req, res) => {
     const { research_id } = req.params;
     const userId = req.user.id;
 
-    // Verify ownership before streaming
-    const ownership = await db.query('SELECT id FROM research_logs WHERE id = $1 AND user_id = $2', [research_id, userId]);
-    if (ownership.rows.length === 0) {
+    // Verify ownership across both tables
+    const tableName = await verifyResearchOwnership(research_id, userId);
+    if (!tableName) {
         return res.status(403).json({ error: 'Not authorized' });
     }
 
@@ -137,15 +176,10 @@ router.get('/stream/:research_id', auth, async (req, res) => {
                 lastSourceId = sourcesResult.rows[sourcesResult.rows.length - 1].id;
             }
 
-            // Get current research status
-            const statusResult = await db.query(
-                `SELECT status, current_stage, started_at, completed_at, title
-                 FROM research_logs WHERE id = $1`,
-                [research_id]
-            );
+            // Get current research status from whichever table has it
+            const status = await getResearchStatus(research_id);
 
-            if (statusResult.rows.length > 0) {
-                const status = statusResult.rows[0];
+            if (status) {
                 res.write(`data: ${JSON.stringify({
                     type: 'status',
                     status: status.status,
@@ -156,11 +190,9 @@ router.get('/stream/:research_id', auth, async (req, res) => {
                 })}\n\n`);
 
                 if (status.status === 'completed' || status.status === 'failed') {
-                    // send final status and done event, then finish the stream
                     res.write(`data: ${JSON.stringify({ type: 'status', status: status.status, current_stage: status.current_stage, completed_at: status.completed_at })}\n\n`);
                     res.write(`data: ${JSON.stringify({ type: 'done', status: status.status })}\n\n`);
                     isCompleted = true;
-                    // end the response after a short delay to ensure client receives the final events
                     setTimeout(() => {
                         try { res.end(); } catch (e) { }
                     }, 500);
@@ -208,12 +240,20 @@ router.post('/', async (req, res) => {
                 [research_id, eventId, stage || 'unknown', severity || 'info', category || 'stage', message, details || {}]
             );
 
-            // Update current_stage on research_logs
+            // Update current_stage on whichever table has this research
             if (stage) {
-                await db.query(
+                const updated = await db.query(
                     `UPDATE research_logs SET current_stage = $1, updated_at = NOW() WHERE id = $2`,
                     [stage, research_id]
                 );
+                if (updated.rowCount === 0) {
+                    try {
+                        await db.query(
+                            `UPDATE research_sessions SET current_stage = $1, updated_at = NOW() WHERE id = $2`,
+                            [stage, research_id]
+                        );
+                    } catch (e) { /* table may not exist */ }
+                }
             }
         } catch (dbErr) {
             // Handle Foreign Key Violation (Research ID not found)
@@ -283,10 +323,19 @@ router.patch('/research/:id/rename', auth, async (req, res) => {
             return res.status(400).json({ error: 'Title required' });
         }
 
-        const result = await db.query(
+        let result = await db.query(
             `UPDATE research_logs SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, title`,
             [title, id, req.user.id]
         );
+
+        if (result.rows.length === 0) {
+            try {
+                result = await db.query(
+                    `UPDATE research_sessions SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, title`,
+                    [title, id, req.user.id]
+                );
+            } catch (e) { /* table may not exist */ }
+        }
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Research not found or not authorized' });
@@ -309,9 +358,9 @@ router.get('/:research_id', auth, async (req, res) => {
         const { research_id } = req.params;
         const userId = req.user.id;
 
-        // Verify ownership/access
-        const research = await db.query('SELECT id FROM research_logs WHERE id = $1 AND user_id = $2', [research_id, userId]);
-        if (research.rows.length === 0) {
+        // Verify ownership across both tables
+        const tableName = await verifyResearchOwnership(research_id, userId);
+        if (!tableName) {
             return res.status(404).json({ error: 'Research not found' });
         }
 
@@ -351,9 +400,9 @@ router.get('/:research_id/sources', auth, async (req, res) => {
         const { research_id } = req.params;
         const userId = req.user.id;
 
-        // Verify ownership
-        const research = await db.query('SELECT id FROM research_logs WHERE id = $1 AND user_id = $2', [research_id, userId]);
-        if (research.rows.length === 0) {
+        // Verify ownership across both tables
+        const tableName = await verifyResearchOwnership(research_id, userId);
+        if (!tableName) {
             return res.status(404).json({ error: 'Research not found' });
         }
 

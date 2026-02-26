@@ -13,6 +13,21 @@ function getJwtSecretOrThrow(res) {
     return jwtSecret;
 }
 
+// --- OAuth Routes ---
+const passport = require('passport');
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+if (process.env.GOOGLE_CLIENT_ID) {
+    router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+    router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: ${FRONTEND_URL}/login?error=oauth_failed }), (req, res) => { const jwtSecret = getJwtSecretOrThrow(res); if (!jwtSecret) return; const token = jwt.sign({ id: req.user.id, username: req.user.username }, jwtSecret, { expiresIn: '24h' }); res.redirect(${FRONTEND_URL}/oauth/callback?token=\); });
+}
+
+if (process.env.GITHUB_CLIENT_ID) {
+    router.get('/github', passport.authenticate('github', { scope: ['user:email'], session: false }));
+    router.get('/github/callback', passport.authenticate('github', { session: false, failureRedirect: ${FRONTEND_URL}/login?error=oauth_failed }), (req, res) => { const jwtSecret = getJwtSecretOrThrow(res); if (!jwtSecret) return; const token = jwt.sign({ id: req.user.id, username: req.user.username }, jwtSecret, { expiresIn: '24h' }); res.redirect(${FRONTEND_URL}/oauth/callback?token=\); });
+}
+// --------------------
+
 // Signup
 router.post('/signup', async (req, res) => {
     try {

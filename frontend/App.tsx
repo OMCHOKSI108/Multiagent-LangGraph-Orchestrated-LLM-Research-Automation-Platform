@@ -12,6 +12,7 @@ import { Signup } from './pages/SignupPage';
 import { LandingPage } from './pages/LandingPage';
 import { SharedView } from './pages/SharedView';
 import { ProfilePage } from './pages/ProfilePage';
+import { OAuthCallback } from './pages/OAuthCallback';
 import { SettingsModal } from './components/SettingsModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { useResearchStore } from './store';
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/shared/:token" element={<SharedView />} />
+            <Route path="/oauth/callback" element={<OAuthCallback />} />
 
             {/* Protected Routes */}
             <Route

@@ -1,0 +1,20 @@
+\contentsline {section}{\numberline {1}Introduction}{2}{section.1}%
+\contentsline {subsubsection}{\numberline {1.0.1}Background: Quantitative Reasoning as a Fundamental Skill}{2}{subsubsection.1.0.1}%
+\contentsline {subsubsection}{\numberline {1.0.2}Problem Statement: The Challenge at Hand}{2}{subsubsection.1.0.2}%
+\contentsline {subsubsection}{\numberline {1.0.3}Motivation: Importance of Addressing this Issue}{3}{subsubsection.1.0.3}%
+\contentsline {subsubsection}{\numberline {1.0.4}Contributions: Unveiling Effective Teaching Strategies in Quants Maths}{3}{subsubsection.1.0.4}%
+\contentsline {subsection}{\numberline {1.1}References:}{3}{subsection.1.1}%
+\contentsline {section}{\numberline {2}Related Work}{4}{section.2}%
+\contentsline {section}{\numberline {3}Methodology}{5}{section.3}%
+\contentsline {subsubsection}{\numberline {3.0.1}Introduction to Research Design and Approach}{5}{subsubsection.3.0.1}%
+\contentsline {subsubsection}{\numberline {3.0.2}Data Collection Methods}{5}{subsubsection.3.0.2}%
+\contentsline {subsubsection}{\numberline {3.0.3}Analysis Techniques and Procedures}{5}{subsubsection.3.0.3}%
+\contentsline {subsubsection}{\numberline {3.0.4}Tools Used}{6}{subsubsection.3.0.4}%
+\contentsline {subsubsection}{\numberline {3.0.5}Mathematical Models Used}{6}{subsubsection.3.0.5}%
+\contentsline {subsubsection}{\numberline {3.0.6}Validation or Verification Approach}{6}{subsubsection.3.0.6}%
+\contentsline {subsubsection}{\numberline {3.0.7}Uncertainties \& Limitations in Data Collection Process}{6}{subsubsection.3.0.7}%
+\contentsline {subsubsection}{\numberline {3.0.8}Conclusion of Methodology Section}{6}{subsubsection.3.0.8}%
+\contentsline {section}{\numberline {4}Experiments}{7}{section.4}%
+\contentsline {subsubsection}{\numberline {4.0.1}Datasets, Baselines, Metrics, and Experimental Setup Overview}{7}{subsubsection.4.0.1}%
+\contentsline {subsubsection}{\numberline {4.0.2}Baseline Assessment and Methodological Approach: Table 1. Characteristics of Identified Studies within the Dataset}{8}{subsubsection.4.0.2}%
+\contentsline {subsubsection}{\numberline {4.0.3}Key Findings from Dataset Analysis: Quantitative Insights into Quants Mathematics Education}{8}{subsubsection.4.0.3}%
