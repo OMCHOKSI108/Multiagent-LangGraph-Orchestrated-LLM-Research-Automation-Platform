@@ -55,9 +55,12 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
     },
         async (accessToken, refreshToken, profile, done) => {
             try {
-                let email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null;
+                let email = profile.emails && profile.emails.length > 0
+                    ? profile.emails[0].value
+                    : `github_${profile.id}@no-email.github.com`; // Fallback for private emails
+
                 if (!email) {
-                    return done(new Error("No email found from GitHub profile. Ensure your GitHub email is public or scope allows fetching."), null);
+                    return done(new Error("Failed to resolve a fallback email for GitHub profile"), null);
                 }
 
                 // Check if user exists
