@@ -8,18 +8,6 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      proxy: {
-        '/auth': 'http://localhost:5000',
-        '/user': 'http://localhost:5000',
-        '/research': 'http://localhost:5000',
-        '/chat': 'http://localhost:5000',
-        '/events': 'http://localhost:5000',
-        '/agents': 'http://localhost:5000',
-        '/memories': 'http://localhost:5000',
-        '/export': 'http://localhost:5000',
-        '/usage': 'http://localhost:5000',
-        '/generated_images': 'http://localhost:5000',
-      }
     },
     plugins: [react()],
     define: {
