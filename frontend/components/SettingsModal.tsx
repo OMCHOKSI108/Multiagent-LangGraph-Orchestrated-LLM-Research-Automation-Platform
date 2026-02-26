@@ -51,17 +51,17 @@ export const SettingsModal = () => {
 
     return (
         <div
-            className="dark fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/35 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+            className="dark fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
             onClick={handleBackdropClick}
         >
             <div
                 ref={modalRef}
-                className="bg-white dark:bg-dark-secondary rounded-xl shadow-2xl border border-zinc-200 dark:border-dark-300 w-full max-w-4xl h-[600px] flex overflow-hidden animate-in zoom-in-95 duration-200"
+                className="bg-surface rounded-xl shadow-2xl border border-border w-full max-w-4xl h-[600px] flex overflow-hidden animate-in zoom-in-95 duration-200"
             >
 
                 {/* Sidebar Navigation */}
-                <div className="w-64 bg-zinc-50 dark:bg-dark-primary border-r border-zinc-200 dark:border-dark-300 flex flex-col p-4">
-                    <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-6 px-3">Settings</h2>
+                <div className="w-64 bg-bg border-r border-border flex flex-col p-4">
+                    <h2 className="text-xs font-bold text-muted uppercase tracking-wider mb-6 px-3">Settings</h2>
                     <div className="space-y-1">
                         <NavButton
                             active={activeTab === 'profile'}
@@ -97,7 +97,7 @@ export const SettingsModal = () => {
                     <div className="mt-auto pt-4 border-t border-zinc-200 dark:border-dark-300">
                         <button
                             onClick={() => { closeSettings(); logout(); }}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors"
                         >
                             <LogOut className="w-4 h-4" /> Log Out
                         </button>
@@ -105,9 +105,9 @@ export const SettingsModal = () => {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex-1 flex flex-col bg-white dark:bg-dark-secondary">
-                    <div className="h-16 border-b border-zinc-100 dark:border-dark-300 flex items-center justify-between px-8 shrink-0">
-                        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                <div className="flex-1 flex flex-col bg-surface">
+                    <div className="h-16 border-b border-border flex items-center justify-between px-8 shrink-0">
+                        <h3 className="text-lg font-semibold text-text">
                             {activeTab === 'profile' && 'User Profile'}
                             {activeTab === 'api' && 'API Configuration'}
                             {activeTab === 'usage' && 'Usage Analytics'}
@@ -116,7 +116,7 @@ export const SettingsModal = () => {
                         </h3>
                         <button
                             onClick={closeSettings}
-                            className="p-2 -mr-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-dark-200 rounded-full transition-colors"
+                            className="p-2 -mr-2 text-muted hover:text-text hover:bg-surface rounded-full transition-colors"
                             aria-label="Close settings"
                         >
                             <X className="w-5 h-5" />
@@ -129,13 +129,13 @@ export const SettingsModal = () => {
                         {activeTab === 'usage' && usageStats && (
                             <div className="space-y-8 max-w-2xl">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-5 border border-zinc-200 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
-                                        <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Total Tokens</div>
-                                        <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">{(usageStats.totalTokens / 1000).toFixed(1)}k</div>
+                                    <div className="p-5 border border-border rounded-xl bg-bg/50">
+                                        <div className="text-sm font-medium text-muted mb-1">Total Tokens</div>
+                                        <div className="text-2xl font-bold text-text font-mono">{(usageStats.totalTokens / 1000).toFixed(1)}k</div>
                                     </div>
-                                    <div className="p-5 border border-zinc-200 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
-                                        <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Estimated Cost</div>
-                                        <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 font-mono">${usageStats.cost.toFixed(2)}</div>
+                                    <div className="p-5 border border-border rounded-xl bg-bg/50">
+                                        <div className="text-sm font-medium text-muted mb-1">Estimated Cost</div>
+                                        <div className="text-2xl font-bold text-text font-mono">${usageStats.cost.toFixed(2)}</div>
                                     </div>
                                 </div>
                                 <UsageChart data={usageStats.history} />
@@ -165,8 +165,8 @@ const NavButton = ({ active, onClick, icon: Icon, label }: any) => (
     <button
         onClick={onClick}
         className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all ${active
-            ? 'bg-white dark:bg-dark-200 text-zinc-900 dark:text-zinc-100 shadow-subtle border border-zinc-200 dark:border-dark-300'
-            : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-dark-200 hover:text-zinc-900 dark:hover:text-zinc-100'
+            ? 'bg-accent/10 text-accent border border-accent/20'
+            : 'text-muted hover:bg-surface hover:text-text'
             }`}
     >
         <Icon className="w-4 h-4" />
@@ -195,34 +195,34 @@ const ProfileSettings = ({ user, updatePassword }: any) => {
 
     return (
         <div className="max-w-md space-y-8">
-            <div className="flex items-center gap-4 p-4 border border-zinc-100 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
-                <div className="w-12 h-12 bg-zinc-900 dark:bg-zinc-100 rounded-full flex items-center justify-center text-lg font-bold text-white dark:text-zinc-900">
+            <div className="flex items-center gap-4 p-4 border border-border rounded-xl bg-bg/50">
+                <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-lg font-bold text-white">
                     {user?.name?.[0]}
                 </div>
                 <div>
-                    <div className="font-semibold text-zinc-900 dark:text-zinc-100">{user?.name}</div>
-                    <div className="text-sm text-zinc-500 dark:text-zinc-400">{user?.email}</div>
+                    <div className="font-semibold text-text">{user?.name}</div>
+                    <div className="text-sm text-muted">{user?.email}</div>
                 </div>
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-4">
-                <h4 className="font-medium text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-dark-300 pb-2">Change Password</h4>
+                <h4 className="font-medium text-text border-b border-border pb-2">Change Password</h4>
                 <div>
-                    <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">Current Password</label>
+                    <label className="block text-xs font-medium text-muted mb-1.5">Current Password</label>
                     <input
                         type="password"
                         value={current}
                         onChange={e => setCurrent(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white dark:bg-dark-primary border border-zinc-300 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all"
+                        className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-text focus:ring-2 focus:ring-accent/15 focus:border-accent outline-none transition-all"
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5">New Password</label>
+                    <label className="block text-xs font-medium text-muted mb-1.5">New Password</label>
                     <input
                         type="password"
                         value={newPass}
                         onChange={e => setNewPass(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white dark:bg-dark-primary border border-zinc-300 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all"
+                        className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-text focus:ring-2 focus:ring-accent/15 focus:border-accent outline-none transition-all"
                     />
                 </div>
 
@@ -230,7 +230,7 @@ const ProfileSettings = ({ user, updatePassword }: any) => {
                     <button
                         type="submit"
                         disabled={!current || !newPass || status === 'loading'}
-                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 transition-all shadow-subtle hover:shadow-md"
+                        className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 transition-all shadow-subtle hover:shadow-md"
                     >
                         {status === 'loading' ? 'Updating...' : 'Update Password'}
                     </button>
@@ -304,32 +304,32 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
 
     return (
         <div className="max-w-xl space-y-8">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 rounded-lg text-sm text-blue-700 dark:text-blue-300 flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+            <div className="bg-accent/10 border border-accent/20 p-4 rounded-lg text-sm text-accent flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-accent shrink-0 mt-0.5" />
                 <p>
                     API keys are stored securely in your browser's local storage. They are never sent to our servers, only directly to the AI providers via our secure proxy.
                 </p>
             </div>
 
             {/* Personal Access Token Section */}
-            <div className="bg-zinc-50 dark:bg-dark-primary/50 p-4 rounded-xl border border-zinc-200 dark:border-dark-300">
+            <div className="bg-zinc-50 dark:bg-dark-primary/50 p-4 rounded-xl border border-border">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-900">
+                        <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white">
                             <Key className="w-4 h-4" />
                         </div>
                         <div>
-                            <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 font-display block">
+                            <label className="text-sm font-semibold text-text font-display block">
                                 Personal Access Token
                             </label>
-                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                            <span className="text-xs text-muted">
                                 Key for accessing Antigravity API programmatically
                             </span>
                         </div>
                     </div>
                     <button
                         onClick={() => handleGenerateKey('dre')}
-                        className="px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm"
+                        className="px-3 py-1.5 bg-accent text-white rounded-md text-xs font-medium hover:brightness-110 transition-colors shadow-sm"
                     >
                         Generate New Key
                     </button>
@@ -338,23 +338,23 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
 
             <div className="space-y-6">
                 {['gemini', 'groq'].map(provider => (
-                    <div key={provider} className="group bg-zinc-50 dark:bg-dark-primary/50 p-4 rounded-xl border border-zinc-200 dark:border-dark-300 transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
+                    <div key={provider} className="group bg-zinc-50 dark:bg-dark-primary/50 p-4 rounded-xl border border-border transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                                 <ProviderIcon provider={provider} />
                                 <div>
-                                    <label className="text-sm font-semibold capitalize text-zinc-900 dark:text-zinc-100 font-display block">
+                                    <label className="text-sm font-semibold capitalize text-text font-display block">
                                         {provider === 'gemini' ? 'Google Gemini' : 'Groq Cloud'}
                                     </label>
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    <span className="text-xs text-muted">
                                         {provider === 'gemini' ? 'Required for reasoning & vision' : 'Required for fast inference'}
                                     </span>
                                 </div>
                             </div>
                             {results[provider] && (
                                 <span className={`text-xs font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${results[provider].status === 'ok'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900'
-                                    : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900'}`}>
+                                    ? 'bg-success/10 text-success border-success/20'
+                                    : 'bg-error/10 text-error border-error/20'}`}>
                                     {results[provider].status === 'ok' ? <Check className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
                                     {results[provider].status === 'ok' ? 'Connected' : 'Error'}
                                 </span>
@@ -367,12 +367,12 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                                     value={keys[provider] || ''}
                                     onChange={e => handleChange(provider, e.target.value)}
                                     placeholder={provider === 'gemini' ? "AIzaSy..." : "gsk_..."}
-                                    className="w-full px-4 py-2.5 bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 focus:border-zinc-900 dark:focus:border-zinc-500 outline-none transition-all font-mono shadow-sm"
+                                    className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-text focus:ring-2 focus:ring-accent/15 focus:border-accent outline-none transition-all font-mono shadow-sm"
                                 />
                             </div>
                             <button
                                 onClick={() => handleGenerateKey(provider)}
-                                className="px-3 py-2.5 bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-dark-300 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all shadow-sm hover:shadow-md active:scale-95"
+                                className="px-3 py-2.5 bg-surface border border-border rounded-lg text-sm font-medium text-text hover:bg-surface hover:text-zinc-900 dark:hover:text-zinc-100 transition-all shadow-sm hover:shadow-md active:scale-95"
                                 title="Generate Key"
                             >
                                 <Key className="w-4 h-4" />
@@ -380,7 +380,7 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
                             <button
                                 onClick={() => handleTest(provider)}
                                 disabled={testing === provider || !keys[provider]}
-                                className="px-5 py-2.5 bg-white dark:bg-dark-secondary border border-zinc-200 dark:border-dark-300 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-dark-300 hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-50 transition-all shadow-sm hover:shadow-md active:scale-95"
+                                className="px-5 py-2.5 bg-surface border border-border rounded-lg text-sm font-medium text-text hover:bg-surface hover:text-zinc-900 dark:hover:text-zinc-100 disabled:opacity-50 transition-all shadow-sm hover:shadow-md active:scale-95"
                             >
                                 {testing === provider ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Test'}
                             </button>
@@ -397,7 +397,7 @@ const ApiSettings = ({ apiKeys, onSave, onTest }: any) => {
             <div className="pt-6 border-t border-zinc-100 dark:border-dark-300 flex justify-end">
                 <button
                     onClick={() => onSave(keys)}
-                    className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-8 py-3 rounded-xl text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2"
+                    className="bg-accent text-white px-8 py-3 rounded-xl text-sm font-medium hover:brightness-110 transition-all shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2"
                 >
                     <Check className="w-4 h-4" />
                     Save Configuration
@@ -422,8 +422,8 @@ const ApiDocsSettings = () => {
     return (
         <div className="max-w-2xl space-y-8">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800 p-6 rounded-xl">
-                <h4 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Interactive API Documentation</h4>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                <h4 className="text-lg font-semibold text-text mb-2">Interactive API Documentation</h4>
+                <p className="text-sm text-muted mb-4">
                     Explore all available endpoints with Swagger UI. Test requests directly from your browser.
                 </p>
                 <div className="flex gap-3">
@@ -431,7 +431,7 @@ const ApiDocsSettings = () => {
                         href={`${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')}/docs`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                        className="inline-flex items-center gap-2 bg-accent hover:brightness-110 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm"
                     >
                         <ExternalLink className="w-4 h-4" />
                         Open Swagger UI (AI Engine)
@@ -440,7 +440,7 @@ const ApiDocsSettings = () => {
                         href={(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/+$/, '')}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors shadow-sm"
+                        className="inline-flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:brightness-110 transition-colors shadow-sm"
                     >
                         <ExternalLink className="w-4 h-4" />
                         Backend API Status
@@ -450,15 +450,15 @@ const ApiDocsSettings = () => {
 
             {/* Personal Access Token */}
             {apiKey && (
-                <div className="p-5 border border-zinc-200 dark:border-dark-300 rounded-xl bg-zinc-50/50 dark:bg-dark-primary/50">
+                <div className="p-5 border border-border rounded-xl bg-bg/50">
                     <div className="flex items-center justify-between mb-3">
                         <div>
-                            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Your API Key</h4>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Use this key in the <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">x-api-key</code> header or <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">api_key</code> body param</p>
+                            <h4 className="text-sm font-semibold text-text">Your API Key</h4>
+                            <p className="text-xs text-muted">Use this key in the <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">x-api-key</code> header or <code className="bg-zinc-200 dark:bg-zinc-700 px-1 rounded">api_key</code> body param</p>
                         </div>
                         <button
                             onClick={copyKey}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-md text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-white rounded-md text-xs font-medium hover:brightness-110 transition-colors"
                         >
                             {copied ? <><Check className="w-3.5 h-3.5" /> Copied</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
                         </button>
@@ -471,7 +471,7 @@ const ApiDocsSettings = () => {
 
             {/* Quick Reference */}
             <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-100 dark:border-dark-300 pb-2">Quick Reference</h4>
+                <h4 className="text-sm font-semibold text-text border-b border-border pb-2">Quick Reference</h4>
                 <div className="space-y-3">
                     {[
                         { method: 'POST', path: '/auth/login', desc: 'Authenticate & get JWT token' },
@@ -486,8 +486,8 @@ const ApiDocsSettings = () => {
                         <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-dark-200 transition-colors">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${ep.method === 'GET' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                                 }`}>{ep.method}</span>
-                            <code className="text-xs font-mono text-zinc-700 dark:text-zinc-300">{ep.path}</code>
-                            <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-auto">{ep.desc}</span>
+                            <code className="text-xs font-mono text-text">{ep.path}</code>
+                            <span className="text-xs text-muted ml-auto">{ep.desc}</span>
                         </div>
                     ))}
                 </div>

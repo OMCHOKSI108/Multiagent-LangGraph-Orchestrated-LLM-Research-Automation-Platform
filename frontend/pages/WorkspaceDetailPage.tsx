@@ -139,21 +139,21 @@ export const WorkspaceDetailPage = () => {
             </div>
 
             {/* New Research Form */}
-            <div className="bg-card border border-border rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">Start New Research</h2>
+            <div className="bg-surface border border-border rounded-xl p-6">
+                <h2 className="text-lg font-bold font-serif text-text mb-4">Start New Research</h2>
                 <form onSubmit={handleStartResearch} className="flex gap-3">
                     <input
                         type="text"
                         value={topic}
                         onChange={(e) => setTopic(e.target.value)}
                         placeholder="Enter research topic... (e.g., 'Impact of AI on Healthcare')"
-                        className="flex-1 px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                        className="flex-1 px-4 py-3 bg-bg border border-border rounded-lg text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 transition"
                         disabled={isCreating}
                     />
                     <button
                         type="submit"
                         disabled={!topic.trim() || isCreating}
-                        className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                        className="px-6 py-3 bg-accent text-white rounded-lg font-medium hover:bg-[#D4874A] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
                     >
                         {isCreating ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -166,9 +166,9 @@ export const WorkspaceDetailPage = () => {
             </div>
 
             {/* File Upload */}
-            <div className="bg-card border border-border rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">Upload Documents</h2>
-                <p className="text-sm text-muted-foreground mb-4">Upload files to build the workspace knowledge base for RAG-enhanced chat.</p>
+            <div className="bg-surface border border-border rounded-xl p-6">
+                <h2 className="text-lg font-bold font-serif text-text mb-4">Upload Documents</h2>
+                <p className="text-sm text-muted mb-4">Upload files to build the workspace knowledge base for RAG-enhanced chat.</p>
                 <div className="flex items-center gap-4">
                     <label
                         className={`flex-1 flex items-center justify-center gap-3 px-4 py-8 border-2 border-dashed rounded-lg cursor-pointer transition ${isUploading
@@ -224,29 +224,29 @@ export const WorkspaceDetailPage = () => {
 
             {/* Sessions List */}
             <div>
-                <h2 className="text-lg font-semibold text-foreground mb-4">
+                <h2 className="text-lg font-bold font-serif text-text mb-4">
                     Research Sessions ({sessions.length})
                 </h2>
 
                 {sessions.length === 0 ? (
                     <div className="text-center py-16 border border-dashed border-border rounded-xl">
-                        <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No research sessions yet</p>
-                        <p className="text-sm text-muted-foreground mt-1">Start your first research above!</p>
+                        <FileText className="w-12 h-12 text-muted mx-auto mb-4" />
+                        <p className="text-muted">No research sessions yet</p>
+                        <p className="text-sm text-muted mt-1">Start your first research above!</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {sessions.map((session) => (
                             <div
                                 key={session.id}
-                                className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition cursor-pointer group"
+                                className="bg-surface border border-border rounded-xl p-4 hover:border-accent/30 transition cursor-pointer group"
                                 onClick={() => navigate(`/research/${session.id}`)}
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         {getStatusIcon(session.status as SessionStatus)}
                                         <div className="min-w-0 flex-1">
-                                            <h3 className="font-medium text-foreground truncate">
+                                            <h3 className="font-semibold text-text truncate">
                                                 {session.task || session.title || 'Untitled Research'}
                                             </h3>
                                             <p className="text-xs text-muted-foreground mt-0.5">

@@ -51,7 +51,7 @@ interface MarkdownRendererProps {
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content, className }) => {
   return (
-    <div className={`prose-research w-full max-w-none ${className || ''}`}>
+    <div className={`prose-research w-full max-w-[720px] mx-auto ${className || ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -68,7 +68,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ c
                 <div className="bg-secondary px-3 py-1.5 border-b border-border text-xs font-mono text-muted-foreground flex justify-between">
                   <span>{match[1]}</span>
                 </div>
-                <pre className="!bg-card !m-0 !p-4 overflow-x-auto">
+                <pre className="bg-[#111111] border border-border border-l-4 border-l-accent rounded-lg p-5 font-mono text-sm text-[#CDD6F4] overflow-x-auto">
                   <code className={`${className} !text-sm !font-mono text-foreground`} {...props}>
                     {children}
                   </code>

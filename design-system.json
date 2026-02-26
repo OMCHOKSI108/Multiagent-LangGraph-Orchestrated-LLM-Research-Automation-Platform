@@ -1,0 +1,549 @@
+{
+  "document": {
+    "title": "Frontend UI/UX Design PRD",
+    "subtitle": "Product Requirements Document",
+    "project": "AI Research & Web Scraping Platform",
+    "stack": ["React (Vite)", "Tailwind CSS", "Radix UI", "JWT Auth", "SSE Streaming"],
+    "version": "1.0",
+    "date": "February 2026"
+  },
+
+  "sections": {
+
+    "1_overview": {
+      "title": "Overview & Design Philosophy",
+      "description": "Design language for an AI-powered research and web scraping platform. Inspired by Anthropic Claude.ai and Anthropic.com — signals precision, intellectual depth, and trusted automation without being cold.",
+      "principles": [
+        {
+          "name": "Research-First",
+          "description": "Every visual decision supports reading, analysis, and data consumption",
+          "inspired_by": "Claude.ai chat"
+        },
+        {
+          "name": "Dark Editorial",
+          "description": "Deep backgrounds, warm cream text — serious but not sterile",
+          "inspired_by": "Anthropic.com"
+        },
+        {
+          "name": "Precision Signals Trust",
+          "description": "Tight spacing, monospace data, clear status indicators",
+          "inspired_by": "Linear, Vercel"
+        },
+        {
+          "name": "Zero Visual Noise",
+          "description": "No decorative elements that don't serve function",
+          "inspired_by": "Notion, Anthropic"
+        },
+        {
+          "name": "Real-Time Native",
+          "description": "Streaming, progress, live-state are first-class citizens",
+          "inspired_by": "Custom system need"
+        }
+      ]
+    },
+
+    "2_color_system": {
+      "title": "Color System",
+      "description": "Built around deep charcoals, warm creams, and a terracotta/clay accent — matching Anthropic/Claude design language while supporting technical precision.",
+
+      "dark_mode_palette": {
+        "bg":           { "hex": "#0D0D0D", "tailwind": "bg-bg",      "usage": "Main app background" },
+        "surface":      { "hex": "#1A1A1A", "tailwind": "bg-surface", "usage": "Cards, panels, sidebars" },
+        "surface_2":    { "hex": "#232323", "tailwind": "",            "usage": "Elevated surfaces, modals" },
+        "border":       { "hex": "#2A2A2A", "tailwind": "border-border","usage": "Dividers, outlines" },
+        "text_primary": { "hex": "#E8E4DC", "tailwind": "text-text",   "usage": "Warm cream — primary body text" },
+        "text_muted":   { "hex": "#888580", "tailwind": "text-muted",  "usage": "Labels, metadata, captions" },
+        "accent":       { "hex": "#C97D4E", "tailwind": "text-accent", "usage": "CTAs, active states, links" },
+        "accent_light": { "hex": "#D4874A", "tailwind": "",            "usage": "Hover state for accent" },
+        "code_blue":    { "hex": "#5B9BD5", "tailwind": "text-code",   "usage": "Data tags, code highlights" },
+        "success":      { "hex": "#7EC8A4", "tailwind": "text-success","usage": "Completed jobs, success states" }
+      },
+
+      "light_mode_palette": {
+        "bg":           { "hex": "#FAF9F6", "usage": "Warm off-white, not pure white" },
+        "surface":      { "hex": "#F2EFE9", "usage": "Card backgrounds" },
+        "border":       { "hex": "#DDDAD5", "usage": "Subtle separators" },
+        "text_primary": { "hex": "#1A1A1A", "usage": "Near-black body text" },
+        "text_muted":   { "hex": "#888580", "usage": "Same as dark mode" },
+        "accent":       { "hex": "#C97D4E", "usage": "Terracotta stays constant across modes" }
+      },
+
+      "status_colors": {
+        "running":  { "hex": "#3B82F6", "bg": "#1A2438", "text": "#93C5FD", "animation": "pulse",  "label": "Running" },
+        "queued":   { "hex": "#D4A017", "bg": "#2A2010", "text": "#FCD34D", "animation": "none",   "label": "Queued" },
+        "complete": { "hex": "#7EC8A4", "bg": "#0A2018", "text": "#6EE7B7", "animation": "none",   "label": "Complete" },
+        "failed":   { "hex": "#C0444A", "bg": "#2A1012", "text": "#FCA5A5", "animation": "none",   "label": "Failed" },
+        "paused":   { "hex": "#888580", "bg": "#1A1A1A", "text": "#9CA3AF", "animation": "none",   "label": "Paused" },
+        "warning":  { "hex": "#D4A017", "bg": "#2A1F0A", "text": "#FCD34D", "animation": "none",   "label": "Warning" },
+        "error":    { "hex": "#C0444A", "bg": "#2A1012", "text": "#FCA5A5", "animation": "none",   "label": "Error" }
+      },
+
+      "tailwind_config": {
+        "colors": {
+          "bg":           "#0D0D0D",
+          "surface":      "#1A1A1A",
+          "border":       "#2A2A2A",
+          "text":         "#E8E4DC",
+          "muted":        "#888580",
+          "accent":       "#C97D4E",
+          "accent-light": "#D4874A",
+          "code":         "#5B9BD5",
+          "success":      "#7EC8A4",
+          "warning":      "#D4A017",
+          "error":        "#C0444A"
+        }
+      },
+
+      "css_variables": {
+        "--color-bg":           "#0D0D0D",
+        "--color-surface":      "#1A1A1A",
+        "--color-border":       "#2A2A2A",
+        "--color-text":         "#E8E4DC",
+        "--color-text-muted":   "#888580",
+        "--color-accent":       "#C97D4E",
+        "--color-code":         "#5B9BD5",
+        "--color-success":      "#7EC8A4",
+        "--color-warning":      "#D4A017",
+        "--color-error":        "#C0444A"
+      }
+    },
+
+    "3_typography": {
+      "title": "Typography System",
+      "description": "Three font families: editorial serif for headlines, humanist sans for UI/body, monospace for all data and code output.",
+
+      "font_families": {
+        "display_h1": {
+          "primary":   "Playfair Display",
+          "fallback":  "Georgia, serif",
+          "source":    "Google Fonts",
+          "weights":   [400, 600, 700]
+        },
+        "heading_body_ui": {
+          "primary":   "Inter",
+          "fallback":  "system-ui, sans-serif",
+          "source":    "Google Fonts / Bunny",
+          "weights":   [400, 500, 600, 700]
+        },
+        "code_data_mono": {
+          "primary":   "JetBrains Mono",
+          "fallback":  "Courier New, monospace",
+          "source":    "Google Fonts",
+          "weights":   [400, 500]
+        },
+        "alt_body": {
+          "primary":   "DM Sans",
+          "fallback":  "Inter, sans-serif",
+          "source":    "Google Fonts",
+          "weights":   [400, 500]
+        }
+      },
+
+      "google_fonts_import": "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');",
+
+      "tailwind_font_family": {
+        "serif": ["Playfair Display", "Georgia", "serif"],
+        "sans":  ["Inter", "DM Sans", "system-ui", "sans-serif"],
+        "mono":  ["JetBrains Mono", "Courier New", "monospace"]
+      },
+
+      "type_scale": {
+        "display": { "size": "3.5rem",    "px": "56px", "usage": "Hero headlines, landing page",         "tailwind": "text-6xl font-serif" },
+        "h1":      { "size": "2.25rem",   "px": "36px", "usage": "Page titles, section headers",          "tailwind": "text-4xl font-serif" },
+        "h2":      { "size": "1.5rem",    "px": "24px", "usage": "Sub-sections, card titles",             "tailwind": "text-2xl font-semibold" },
+        "h3":      { "size": "1.125rem",  "px": "18px", "usage": "Feature labels, group headings",        "tailwind": "text-lg font-semibold" },
+        "body_lg": { "size": "1rem",      "px": "16px", "usage": "Primary body text",                     "tailwind": "text-base" },
+        "body":    { "size": "0.875rem",  "px": "14px", "usage": "Secondary text, form labels",           "tailwind": "text-sm" },
+        "caption": { "size": "0.75rem",   "px": "12px", "usage": "Metadata, timestamps, helper text",     "tailwind": "text-xs text-muted" },
+        "code":    { "size": "0.8125rem", "px": "13px", "usage": "All code, JSON, API keys, logs",        "tailwind": "font-mono text-sm" }
+      }
+    },
+
+    "4_spacing_layout": {
+      "title": "Spacing, Grid & Layout",
+      "description": "8px base unit. Tailwind default spacing scale. Generous padding is core to the Anthropic aesthetic.",
+
+      "base_unit": "8px",
+      "grid_system": "CSS Grid + Flexbox",
+
+      "layout_structure": {
+        "topbar_height":       "64px",
+        "sidebar_width":       "240px",
+        "right_panel_width":   "320px",
+        "content_max_width":   "1280px",
+        "report_max_width":    "720px (optimal reading width)"
+      },
+
+      "spacing_tokens": {
+        "xs":  { "value": "4px",  "tailwind": "p-1",  "usage": "Icon padding, tight inline" },
+        "sm":  { "value": "8px",  "tailwind": "p-2",  "usage": "Badge/tag padding" },
+        "md":  { "value": "16px", "tailwind": "p-4",  "usage": "Card internal padding (min)" },
+        "lg":  { "value": "24px", "tailwind": "p-6",  "usage": "Section padding, card standard" },
+        "xl":  { "value": "32px", "tailwind": "p-8",  "usage": "Page section vertical spacing" },
+        "2xl": { "value": "48px", "tailwind": "p-12", "usage": "Hero sections, major gaps" },
+        "3xl": { "value": "64px", "tailwind": "p-16", "usage": "Landing page breathing room" }
+      },
+
+      "border_radius": {
+        "buttons":        { "value": "8px",  "tailwind": "rounded-lg" },
+        "inputs":         { "value": "8px",  "tailwind": "rounded-lg" },
+        "cards_panels":   { "value": "12px", "tailwind": "rounded-xl" },
+        "modals_sheets":  { "value": "16px", "tailwind": "rounded-2xl" },
+        "badges_tags":    { "value": "6px",  "tailwind": "rounded-md" },
+        "avatars":        { "value": "50%",  "tailwind": "rounded-full" },
+        "code_blocks":    { "value": "8px",  "tailwind": "rounded-lg" }
+      }
+    },
+
+    "5_components": {
+      "title": "Component Library",
+      "description": "All components use Radix UI primitives styled with Tailwind CSS.",
+
+      "buttons": {
+        "height": { "default": "40px", "sm": "32px", "lg": "48px" },
+        "font":   "Inter 14px medium",
+        "radius": "8px",
+        "variants": {
+          "primary":   { "bg": "#C97D4E", "text": "#FFFFFF", "usage": "Start job, Save, Submit — one per screen" },
+          "secondary": { "bg": "#1A1A1A", "text": "#E8E4DC", "usage": "Secondary actions, exports" },
+          "ghost":     { "bg": "transparent", "text": "#888580", "usage": "Tertiary actions, cancel" },
+          "danger":    { "bg": "#C0444A", "text": "#FFFFFF", "usage": "Delete, stop job" },
+          "icon":      { "bg": "transparent", "text": "#888580", "usage": "Toolbar icons, compact actions" }
+        },
+        "tailwind_classes": {
+          "primary":   "bg-accent text-white rounded-lg px-4 h-10 font-medium hover:bg-accent-light transition-colors",
+          "secondary": "bg-surface text-text border border-border rounded-lg px-4 h-10 font-medium hover:border-accent transition-colors",
+          "ghost":     "bg-transparent text-muted rounded-lg px-4 h-10 font-medium hover:text-text transition-colors",
+          "danger":    "bg-error text-white rounded-lg px-4 h-10 font-medium hover:opacity-90 transition-opacity"
+        }
+      },
+
+      "inputs": {
+        "background":    "#1A1A1A",
+        "border":        "1px solid #2A2A2A",
+        "border_focus":  "1px solid #C97D4E",
+        "shadow_focus":  "0 0 0 3px rgba(201, 125, 78, 0.15)",
+        "border_radius": "8px",
+        "padding":       "10px 14px",
+        "font":          "Inter 14px",
+        "color":         "#E8E4DC",
+        "placeholder_color": "#888580",
+        "tailwind_base": "bg-surface border border-border rounded-lg px-3.5 py-2.5 text-sm text-text placeholder:text-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/15 transition-all"
+      },
+
+      "cards": {
+        "base":     { "bg": "#1A1A1A", "border": "1px solid #2A2A2A", "shadow": "none",        "usage": "Workspace cards, job list items" },
+        "elevated": { "bg": "#232323", "border": "1px solid #333333", "shadow": "sm",           "usage": "Modal content, featured items" },
+        "code":     { "bg": "#111111", "border": "1px solid #2A2A2A", "shadow": "inner",        "usage": "Log output, API response viewer" },
+        "info":     { "bg": "#1A1A2E", "border": "1px solid #2C2C54", "shadow": "none",        "usage": "Research summaries, AI output" },
+        "warning":  { "bg": "#2A1F0A", "border": "1px solid #D4A017", "shadow": "none",        "usage": "Rate limit notices, alerts" },
+        "tailwind_base": "bg-surface border border-border rounded-xl p-6 transition-all"
+      },
+
+      "status_badges": {
+        "description": "Always show dot + text label. Never color alone (accessibility).",
+        "structure": "<span class='status-badge'><span class='dot'></span> Status Text</span>",
+        "variants": {
+          "running":  { "dot": "#3B82F6", "bg": "#1A2438", "text": "#93C5FD", "dot_class": "animate-pulse" },
+          "queued":   { "dot": "#D4A017", "bg": "#2A2010", "text": "#FCD34D", "dot_class": "" },
+          "complete": { "dot": "#7EC8A4", "bg": "#0A2018", "text": "#6EE7B7", "dot_class": "" },
+          "failed":   { "dot": "#C0444A", "bg": "#2A1012", "text": "#FCA5A5", "dot_class": "" },
+          "paused":   { "dot": "#888580", "bg": "#1A1A1A", "text": "#9CA3AF", "dot_class": "" }
+        }
+      },
+
+      "data_tables": {
+        "header_bg":    "#1A1A2E",
+        "header_text":  "#FFFFFF",
+        "header_font":  "Inter 13px semibold",
+        "row_odd_dark": "#111111",
+        "row_even_dark":"#161616",
+        "row_odd_light":"#FAF9F6",
+        "row_even_light":"#F0EDE8",
+        "row_hover":    "rgba(201, 125, 78, 0.06)",
+        "cell_padding": "10px 16px",
+        "border":       "1px solid #2A2A2A",
+        "url_id_font":  "JetBrains Mono 12px",
+        "note":         "Truncate long cells with tooltip on hover"
+      },
+
+      "code_blocks": {
+        "background":    "#111111",
+        "border":        "1px solid #2A2A2A",
+        "border_left":   "3px solid #C97D4E",
+        "border_radius": "8px",
+        "padding":       "16px 20px",
+        "font":          "JetBrains Mono",
+        "font_size":     "13px",
+        "line_height":   "1.7",
+        "text_color":    "#CDD6F4",
+        "overflow_x":    "auto",
+        "streaming_variant": {
+          "max_height":      "400px",
+          "overflow_y":      "auto",
+          "scroll_behavior": "smooth"
+        },
+        "tailwind_base": "bg-[#111111] border border-border border-l-4 border-l-accent rounded-lg p-5 font-mono text-sm text-[#CDD6F4] overflow-x-auto"
+      },
+
+      "icons": {
+        "library":      "Lucide React",
+        "stroke_weight":"1.5px",
+        "style":        "stroke (never filled)",
+        "sizes": {
+          "nav":     "20px",
+          "inline":  "16px",
+          "toolbar": "18px",
+          "empty_state": "48px"
+        },
+        "key_mappings": {
+          "new_job":         "PlusCircle",
+          "running_agent":   "Loader2 (spin animation)",
+          "complete":        "CheckCircle2",
+          "failed":          "XCircle",
+          "web_scraping":    "Globe",
+          "ai_engine":       "Brain or Cpu",
+          "report":          "FileText",
+          "api_key":         "KeyRound",
+          "settings":        "Settings2",
+          "copy":            "Copy → Check on success",
+          "export":          "Download",
+          "stream_live":     "Radio",
+          "workspace":       "FolderOpen",
+          "search":          "Search",
+          "filter":          "Filter",
+          "sort":            "ArrowUpDown"
+        }
+      }
+    },
+
+    "6_page_layouts": {
+      "title": "Page Layouts & Screens",
+
+      "auth": {
+        "name": "Authentication (Login / Register)",
+        "description": "Minimal, centered, dark. Single-column card on dark background. No sidebar.",
+        "card_max_width": "440px",
+        "card_bg": "#1A1A1A",
+        "card_border": "1px solid #2A2A2A",
+        "card_radius": "16px",
+        "logo_height": "40px (centered above card)",
+        "cta_style": "Full width, Primary, 48px height",
+        "tailwind_layout": "min-h-screen bg-bg flex items-center justify-center p-4"
+      },
+
+      "dashboard": {
+        "name": "Dashboard / Home",
+        "description": "Summary of all workspaces, recent jobs, platform health.",
+        "sections": {
+          "stats_bar":    "4 KPI cards — Total jobs, Success rate, Credits used, Active agents",
+          "recent_jobs":  "Last 10 jobs with status badge, workspace name, created timestamp",
+          "active_agents":"Live-polling list of running agents with streaming progress bar",
+          "quick_start":  "Prominent CTA to create new workspace or start a research job"
+        },
+        "grid": "3-column at desktop, 1-column on mobile"
+      },
+
+      "workspace_research": {
+        "name": "Workspace / Research Job Page",
+        "description": "Core screen. Split layout: left config + agent tree, right live output stream and final report.",
+        "layout": "CSS Grid — 3fr / 2fr — or full-width output mode",
+        "left_panel": {
+          "contents": [
+            "Job title + description",
+            "Topic Selection UI (blocks until user confirms — Radix Dialog)",
+            "Agent tree: 20+ agents shown as collapsible tree with status dots",
+            "Human-in-the-loop prompts with approve/reject buttons"
+          ]
+        },
+        "right_panel": {
+          "contents": [
+            "Live log stream (code block, auto-scroll, JetBrains Mono)",
+            "Agent transition events with timestamps",
+            "Completed state: Markdown report with syntax highlighting",
+            "Export buttons: Copy, Download .md, Download .docx"
+          ]
+        }
+      },
+
+      "reports": {
+        "name": "Reports View",
+        "description": "Final Markdown output rendered in clean document format.",
+        "container_max_width": "720px centered",
+        "body_font":  "Inter 16px, line-height 1.8",
+        "heading_font": "Playfair Display — H1 32px, H2 24px, H3 18px",
+        "code_inline_bg": "#F0EDE8",
+        "code_block": "Full dark code block component",
+        "source_citations": "Footnote-style, muted color, external link icon"
+      },
+
+      "settings": {
+        "name": "Settings & API Keys",
+        "api_key_display": "Masked by default (••••••••) with toggle-reveal eye icon",
+        "copy_action": "Single click copy with toast feedback (Copy → Check icon swap)"
+      }
+    },
+
+    "7_motion_animation": {
+      "title": "Motion & Animation",
+      "rule": "Animations add information (status changes, loading, transitions) — never decorative. Respect prefers-reduced-motion.",
+      "animations": {
+        "page_transition":   { "type": "fade + translateY(8px)", "duration": "180ms", "easing": "ease-out" },
+        "card_hover":        { "type": "translateY(-2px) + shadow", "duration": "120ms", "easing": "ease-out" },
+        "button_press":      { "type": "scale(0.97)", "duration": "80ms", "easing": "ease-in-out" },
+        "modal_open":        { "type": "scale(0.96→1) + fade", "duration": "200ms", "easing": "ease-out" },
+        "status_running":    { "type": "dot pulse / breathe", "duration": "2s", "easing": "ease-in-out infinite" },
+        "streaming_text":    { "type": "char-by-char appear", "duration": "natural", "easing": "none" },
+        "sidebar_collapse":  { "type": "width transition", "duration": "200ms", "easing": "ease-in-out" },
+        "toast":             { "type": "slide-in from bottom-right", "duration": "240ms", "easing": "spring" }
+      },
+      "reduced_motion_css": "@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }"
+    },
+
+    "8_responsiveness": {
+      "title": "Responsive Breakpoints",
+      "breakpoints": {
+        "mobile":  { "min": "0px",    "layout": "Single column. Sidebar hidden (hamburger). Job tree collapsible." },
+        "tablet":  { "min": "768px",  "layout": "Sidebar as overlay. Main content full width." },
+        "desktop": { "min": "1024px", "layout": "Full sidebar (240px) + main content. Standard layout." },
+        "wide":    { "min": "1280px", "layout": "3-column layout available. Right config panel appears." },
+        "ultra":   { "min": "1536px", "layout": "Research view: left config + center stream + right panel." }
+      },
+      "tailwind_screens": {
+        "sm":  "640px",
+        "md":  "768px",
+        "lg":  "1024px",
+        "xl":  "1280px",
+        "2xl": "1536px"
+      }
+    },
+
+    "9_accessibility": {
+      "title": "Accessibility (A11y)",
+      "target": "WCAG 2.1 AA",
+      "requirements": {
+        "color_contrast":    "All text meets 4.5:1 (AA). Accent on dark bg verified.",
+        "focus_rings":       "2px offset ring in accent color on all focusable elements",
+        "status_indicators": "Color + text label always — never color alone",
+        "loading_states":    "aria-live='polite' on streaming output container",
+        "modal_focus":       "Radix Dialog handles focus trap natively",
+        "icon_labels":       "aria-label on all icon-only buttons",
+        "reduced_motion":    "@media (prefers-reduced-motion) disables all transitions",
+        "error_messages":    "role='alert' + inline below input field, not just toast"
+      }
+    },
+
+    "10_tech_implementation": {
+      "title": "Tech Stack & Implementation Notes",
+
+      "stack": {
+        "framework":   "React 18 (Vite)",
+        "styling":     "Tailwind CSS",
+        "components":  "Radix UI",
+        "state":       "Zustand or React Context",
+        "auth":        "JWT (stored in httpOnly cookie)",
+        "realtime":    "Server-Sent Events (SSE)",
+        "markdown":    "react-markdown + remark-gfm + rehype-highlight",
+        "icons":       "Lucide React",
+        "routing":     "React Router v6"
+      },
+
+      "sse_streaming_pattern": {
+        "description": "Core real-time feature for AI agent log streaming.",
+        "code": "const eventSource = new EventSource(`${API_URL}/events?jobId=${id}`, { headers: { Authorization: `Bearer ${token}` } }); eventSource.onmessage = (e) => { const data = JSON.parse(e.data); if (data.type === 'agent_log') appendLog(data.content); if (data.type === 'agent_change') setCurrentAgent(data.agent); if (data.type === 'complete') { setReport(data.markdown); setStatus('complete'); } if (data.type === 'error') { setStatus('failed'); setError(data.message); }; };",
+        "states": ["connecting", "streaming", "complete", "failed"],
+        "auto_scroll": "useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [logs]);"
+      },
+
+      "hitl_pattern": {
+        "description": "Human-in-the-loop topic selection — blocks interaction until user confirms.",
+        "states": ["running", "waiting_for_human", "complete", "failed"],
+        "when_waiting": [
+          "Stop auto-scrolling log",
+          "Show Radix Dialog with proposed topics from AI",
+          "Render highlighted callout card (accent border) in log stream",
+          "User selects/edits → POST to /research/update-state",
+          "Resume streaming on confirmation"
+        ]
+      },
+
+      "markdown_rendering": {
+        "packages": ["react-markdown", "remark-gfm", "react-syntax-highlighter"],
+        "heading_font": "Playfair Display via custom MDX components prop",
+        "body_font": "Inter via className overrides"
+      },
+
+      "env_variables": {
+        "VITE_API_BASE_URL": "Points to Node.js Backend API (e.g. http://localhost:5000/api)",
+        "VITE_AI_ENGINE_URL": "Points to Python FastAPI AI Engine (e.g. http://localhost:8000)"
+      }
+    },
+
+    "11_dos_and_donts": {
+      "title": "Design Do's and Don'ts",
+
+      "do": [
+        { "rule": "Use warm cream (#E8E4DC) for text, not pure white", "reason": "Reduces eye strain, matches Anthropic" },
+        { "rule": "Show monospace font for all data/IDs/URLs", "reason": "Signals precision and technical depth" },
+        { "rule": "Always pair status dots with text labels", "reason": "Accessibility — never color alone" },
+        { "rule": "Use generous padding — min 24px in cards", "reason": "Core to the editorial aesthetic" },
+        { "rule": "Show streaming state visually (animated dot + log)", "reason": "Core product differentiator" },
+        { "rule": "Use Playfair Display only for display/H1 headlines", "reason": "Hierarchy and restraint" },
+        { "rule": "Validate inputs inline, below the field", "reason": "Better UX than toast-only errors" }
+      ],
+
+      "dont": [
+        { "rule": "Use pure white (#FFFFFF) as body text on dark bg", "reason": "Harsh, doesn't match Anthropic warmth" },
+        { "rule": "Add decorative gradients or glow effects", "reason": "Visual noise — breaks the minimal ethos" },
+        { "rule": "Use filled icons", "reason": "Too heavy for this aesthetic — use Lucide stroke only" },
+        { "rule": "Use more than 2 font families on one screen", "reason": "Stick to serif + sans + mono only" },
+        { "rule": "Use bright neon accents (#00FF00, etc.)", "reason": "Signals 'hacker tool', not 'research lab'" },
+        { "rule": "Animate elements without functional purpose", "reason": "Distraction — animations carry information" },
+        { "rule": "Show raw technical error codes to end users", "reason": "Translate to human-readable messages" }
+      ]
+    },
+
+    "12_checklist": {
+      "title": "Frontend Developer Ship Checklist",
+      "description": "Run through before shipping any new page or component.",
+      "items": [
+        "Fonts loaded: Inter, Playfair Display, JetBrains Mono",
+        "Tailwind config extended with full color/font tokens",
+        "Dark mode class ('dark') toggled on <html>",
+        "All status badges: dot + text label (not color only)",
+        "All data/ID/URL values rendered in JetBrains Mono",
+        "All interactive elements have :focus-visible ring",
+        "SSE stream has connect / streaming / complete / error UI states",
+        "HITL topic-selection modal blocks interaction properly",
+        "Markdown report uses Playfair headings + Inter body",
+        "All icon-only buttons have aria-label",
+        "Animations disabled under prefers-reduced-motion",
+        "Responsive: tested at 375px, 768px, 1280px widths"
+      ]
+    }
+  },
+
+  "quick_reference": {
+    "primary_fonts": {
+      "heading": "Playfair Display",
+      "body_ui": "Inter",
+      "code_data": "JetBrains Mono"
+    },
+    "primary_colors": {
+      "background": "#0D0D0D",
+      "surface": "#1A1A1A",
+      "text": "#E8E4DC",
+      "accent": "#C97D4E",
+      "muted": "#888580"
+    },
+    "key_tailwind_classes": {
+      "page_bg":        "bg-[#0D0D0D] text-[#E8E4DC]",
+      "card":           "bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-6",
+      "button_primary": "bg-[#C97D4E] text-white rounded-lg px-4 h-10 font-medium font-sans",
+      "input":          "bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg px-3.5 py-2.5 text-sm text-[#E8E4DC] focus:border-[#C97D4E]",
+      "code_block":     "bg-[#111111] border border-[#2A2A2A] border-l-4 border-l-[#C97D4E] rounded-lg p-5 font-mono text-sm text-[#CDD6F4]",
+      "heading_1":      "font-serif text-4xl font-bold text-[#1A1A2E]",
+      "data_value":     "font-mono text-[#5B9BD5] text-sm"
+    }
+  }
+}

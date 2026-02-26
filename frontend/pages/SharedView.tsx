@@ -127,7 +127,7 @@ export const SharedView: React.FC = () => {
         }
 
         const result = await response.json();
-        
+
         // Transform data to match expected interfaces
         const transformedData: SharedResearch = {
           research: result.research,
@@ -148,7 +148,7 @@ export const SharedView: React.FC = () => {
             items_found: source.items_found || 0
           }))
         };
-        
+
         setData(transformedData);
       } catch (err: any) {
         if (err.name !== 'AbortError') {
@@ -171,8 +171,8 @@ export const SharedView: React.FC = () => {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-accent" />
+          <p className="text-sm text-muted">
             Loading shared research…
           </p>
         </div>
@@ -189,12 +189,12 @@ export const SharedView: React.FC = () => {
       <div className="h-screen flex items-center justify-center bg-background">
         <Card className="p-8 max-w-md mx-auto text-center">
           <div className="flex items-center justify-center mb-4">
-            <AlertCircle className="h-12 w-12 text-destructive" />
+            <AlertCircle className="h-12 w-12 text-error" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">
+          <h2 className="text-xl font-bold font-serif mb-2">
             Research Not Available
           </h2>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted mb-4">
             {error || 'This shared research could not be loaded.'}
           </p>
           <Button
@@ -233,17 +233,17 @@ export const SharedView: React.FC = () => {
       ? viz.image_urls
       : Array.isArray(viz?.images_metadata)
         ? viz.images_metadata
-            .map((img) => (img?.local ? `/${img.local}` : img?.original || ''))
-            .filter(Boolean)
+          .map((img) => (img?.local ? `/${img.local}` : img?.original || ''))
+          .filter(Boolean)
         : [];
 
   const diagrams = Array.isArray(resultJson.diagrams)
     ? resultJson.diagrams
     : [
-        viz?.timeline_mermaid,
-        viz?.methodology_mermaid,
-        viz?.data_chart_mermaid
-      ].filter(Boolean) as string[];
+      viz?.timeline_mermaid,
+      viz?.methodology_mermaid,
+      viz?.data_chart_mermaid
+    ].filter(Boolean) as string[];
 
   const fallbackMarkdown =
     resultJson.final_state?.findings?.multi_stage_report?.markdown_report ||
@@ -261,18 +261,18 @@ export const SharedView: React.FC = () => {
   ========================= */
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-bg text-text font-sans">
 
       {/* ===== Header ===== */}
-      <div className="shrink-0 border-b border-border bg-card">
+      <div className="shrink-0 border-b border-border bg-surface">
         <div className="h-16 flex items-center justify-between px-6">
 
           <div>
-            <h1 className="text-xl font-semibold text-foreground">
+            <h1 className="text-xl font-bold font-serif text-text">
               {research.topic}
             </h1>
 
-            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 mt-1 text-sm text-muted">
               <div className="flex items-center gap-1">
                 <User className="h-3 w-3" />
                 {research.username}
@@ -284,11 +284,10 @@ export const SharedView: React.FC = () => {
               </div>
 
               <span
-                className={`px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider ${
-                  isCompleted
-                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                }`}
+                className={`px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wider ${isCompleted
+                    ? 'bg-success/10 text-success border border-success/20'
+                    : 'bg-warning/10 text-warning border border-warning/20'
+                  }`}
               >
                 {research.status}
               </span>
@@ -321,9 +320,9 @@ export const SharedView: React.FC = () => {
       </div>
 
       {/* ===== Content ===== */}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 grid grid-cols-[320px_1fr] min-h-0">
 
-        <div className="flex-1 border-r border-border bg-slate-50/50 dark:bg-card/30">
+        <div className="border-r border-border bg-surface">
           <DataExplorer
             sources={sources}
             visuals={visuals}
@@ -332,7 +331,7 @@ export const SharedView: React.FC = () => {
           />
         </div>
 
-        <div className="flex-1 bg-white dark:bg-card">
+        <div className="bg-bg">
           <DocumentPreview
             markdown={research.report_markdown || fallbackMarkdown}
             latexSource={research.latex_source || fallbackLatex}
@@ -344,10 +343,10 @@ export const SharedView: React.FC = () => {
       </div>
 
       {/* ===== Footer ===== */}
-      <div className="shrink-0 border-t border-border bg-muted/30 px-6 py-2">
-        <p className="text-xs text-muted-foreground text-center">
+      <div className="shrink-0 border-t border-border bg-surface/50 px-6 py-2">
+        <p className="text-xs text-muted text-center">
           Powered by{' '}
-          <span className="font-medium text-primary">
+          <span className="font-medium text-accent">
             Deep Research Engine
           </span>
           {' '}• Shared research view

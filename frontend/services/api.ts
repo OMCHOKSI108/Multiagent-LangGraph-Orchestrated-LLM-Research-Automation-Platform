@@ -173,6 +173,13 @@ class ApiService {
     });
   }
 
+  async updateResearchState(id: string, stateUpdate: any): Promise<void> {
+    await this.request(`/research/update-state`, {
+      method: 'POST',
+      body: JSON.stringify({ research_id: id, ...stateUpdate }),
+    });
+  }
+
   async selectTopic(id: string, topic: string): Promise<void> {
     // This method assumes `this.request` is the intended underlying fetch helper,
     // as `this.fetchWithAuth` is not defined in the current class.
@@ -209,23 +216,35 @@ class ApiService {
     onEvent: (data: any) => void,
     onError?: (error: Event) => void
   ): EventSource {
-    // EventSource cannot send custom headers, so pass auth token in query.
     const token = localStorage.getItem('dre_token');
     const url = `${BASE_URL}/events/stream/${researchId}${token ? `?token=${token}` : ''}`;
     const eventSource = new EventSource(url);
 
-    eventSource.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        onEvent(data);
-      } catch (err) {
-        console.warn('Failed to parse SSE event:', e.data);
-      }
+    const safeParse = (data: string) => {
+      try { return JSON.parse(data); } catch { return {}; }
     };
 
-    eventSource.onerror = (e) => {
-      console.error('SSE connection error:', e);
+    eventSource.addEventListener('agent_log', (e: any) => {
+      onEvent({ type: 'event', ...safeParse(e.data) });
+    });
+
+    eventSource.addEventListener('agent_change', (e: any) => {
+      onEvent({ type: 'status', ...safeParse(e.data) });
+    });
+
+    eventSource.addEventListener('complete', (e: any) => {
+      onEvent({ type: 'status', status: 'completed', current_stage: 'completed', ...safeParse(e.data) });
+    });
+
+    eventSource.addEventListener('error', (e: any) => {
+      console.error('SSE event error:', e);
       onError?.(e);
+    });
+
+    // Fallback for legacy events
+    eventSource.onmessage = (e) => {
+      const data = safeParse(e.data);
+      if (Object.keys(data).length > 0) onEvent(data);
     };
 
     return eventSource;

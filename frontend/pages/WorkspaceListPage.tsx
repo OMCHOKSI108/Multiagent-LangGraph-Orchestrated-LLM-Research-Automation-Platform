@@ -84,22 +84,22 @@ export function WorkspaceListPage() {
     };
 
     return (
-        <div className="min-h-screen p-6 md:p-10">
+        <div className="min-h-screen p-6 md:p-10 bg-bg text-text font-sans">
             {/* Header */}
             <div className="max-w-5xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">
-                            <FolderOpen className="inline-block w-8 h-8 mr-3 text-primary" />
+                        <h1 className="text-3xl font-bold font-serif tracking-tight text-text">
+                            <FolderOpen className="inline-block w-8 h-8 mr-3 text-accent" />
                             Workspaces
                         </h1>
-                        <p className="text-muted-foreground mt-1">
+                        <p className="text-muted mt-1">
                             Each workspace is an isolated research environment with its own topics, sources, and chat history.
                         </p>
                     </div>
                     <button
                         onClick={() => setCreateOpen(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent text-white hover:bg-[#D4874A] transition-colors font-medium shadow-sm"
                     >
                         <Plus className="w-4 h-4" />
                         New Workspace
@@ -108,35 +108,35 @@ export function WorkspaceListPage() {
 
                 {/* Create Modal */}
                 {createOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/50 backdrop-blur-sm">
                         <form
                             onSubmit={handleCreate}
-                            className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-md mx-4"
+                            className="bg-surface border border-border rounded-xl shadow-2xl p-6 w-full max-w-md mx-4"
                         >
-                            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                <FolderPlus className="w-5 h-5 text-primary" />
+                            <h2 className="text-xl font-bold font-serif mb-4 flex items-center gap-2 text-text">
+                                <FolderPlus className="w-5 h-5 text-accent" />
                                 Create New Workspace
                             </h2>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-1.5">Name *</label>
+                                    <label className="block text-sm font-medium mb-1.5 text-text">Name *</label>
                                     <input
                                         autoFocus
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
                                         placeholder="e.g. Quantum Computing Research"
-                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text focus:outline-none focus:ring-2 focus:ring-accent/50"
                                         maxLength={255}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1.5">Description (optional)</label>
+                                    <label className="block text-sm font-medium mb-1.5 text-text">Description (optional)</label>
                                     <textarea
                                         value={newDesc}
                                         onChange={(e) => setNewDesc(e.target.value)}
                                         placeholder="Brief description of the research focus..."
                                         rows={3}
-                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                                        className="w-full px-3 py-2 rounded-lg border border-border bg-bg text-text focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
                                     />
                                 </div>
                             </div>
@@ -164,24 +164,24 @@ export function WorkspaceListPage() {
                 {/* Loading */}
                 {loading && (
                     <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <Loader2 className="w-8 h-8 animate-spin text-accent" />
                     </div>
                 )}
 
                 {/* Empty State */}
                 {!loading && workspaces.length === 0 && (
                     <div className="text-center py-20 px-4">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-6">
-                            <Search className="w-10 h-10 text-primary" />
+                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-accent/10 mb-6">
+                            <Search className="w-10 h-10 text-accent" />
                         </div>
-                        <h2 className="text-2xl font-semibold mb-2">No workspaces yet</h2>
-                        <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                        <h2 className="text-2xl font-bold font-serif mb-2 text-text">No workspaces yet</h2>
+                        <p className="text-muted max-w-md mx-auto mb-6">
                             Create your first workspace to start a new research session. Each workspace provides
                             an isolated environment for your research topics.
                         </p>
                         <button
                             onClick={() => setCreateOpen(true)}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white hover:bg-[#D4874A] transition-colors font-medium"
                         >
                             <FolderPlus className="w-4 h-4" />
                             Create Your First Workspace
@@ -196,7 +196,7 @@ export function WorkspaceListPage() {
                             <div
                                 key={ws.id}
                                 onClick={() => navigate(`/workspace/${ws.id}`)}
-                                className="group relative bg-card border border-border rounded-xl p-5 cursor-pointer hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200"
+                                className="group relative bg-surface border border-border rounded-xl p-5 cursor-pointer hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 transition-all duration-200"
                             >
                                 {/* Delete button */}
                                 <button
@@ -204,7 +204,7 @@ export function WorkspaceListPage() {
                                         e.stopPropagation();
                                         handleDelete(ws.id, ws.name);
                                     }}
-                                    className="absolute top-3 right-3 p-1.5 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                                    className="absolute top-3 right-3 p-1.5 rounded-md text-muted opacity-0 group-hover:opacity-100 hover:bg-error/10 hover:text-error transition-all"
                                     title="Archive workspace"
                                 >
                                     <Archive className="w-4 h-4" />
@@ -212,13 +212,13 @@ export function WorkspaceListPage() {
 
                                 {/* Icon & Name */}
                                 <div className="flex items-start gap-3 mb-3">
-                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                        <FolderOpen className="w-5 h-5 text-primary" />
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                                        <FolderOpen className="w-5 h-5 text-accent" />
                                     </div>
                                     <div className="min-w-0">
-                                        <h3 className="font-semibold text-base truncate">{ws.name}</h3>
+                                        <h3 className="font-semibold text-text text-base truncate">{ws.name}</h3>
                                         {ws.description && (
-                                            <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
+                                            <p className="text-sm text-muted line-clamp-2 mt-0.5">
                                                 {ws.description}
                                             </p>
                                         )}
@@ -226,7 +226,7 @@ export function WorkspaceListPage() {
                                 </div>
 
                                 {/* Metadata */}
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-4 pt-3 border-t border-border/50">
+                                <div className="flex items-center gap-4 text-xs text-muted mt-4 pt-3 border-t border-border/50">
                                     <span className="inline-flex items-center gap-1">
                                         <FileText className="w-3.5 h-3.5" />
                                         {ws.session_count || 0} sessions
@@ -242,12 +242,12 @@ export function WorkspaceListPage() {
                         {/* Create new card */}
                         <div
                             onClick={() => setCreateOpen(true)}
-                            className="flex flex-col items-center justify-center gap-3 bg-card/50 border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 min-h-[160px]"
+                            className="flex flex-col items-center justify-center gap-3 bg-surface/50 border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-accent/50 hover:bg-accent/5 transition-all duration-200 min-h-[160px]"
                         >
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Plus className="w-6 h-6 text-primary" />
+                            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+                                <Plus className="w-6 h-6 text-accent" />
                             </div>
-                            <span className="text-sm font-medium text-muted-foreground">New Workspace</span>
+                            <span className="text-sm font-medium text-muted">New Workspace</span>
                         </div>
                     </div>
                 )}

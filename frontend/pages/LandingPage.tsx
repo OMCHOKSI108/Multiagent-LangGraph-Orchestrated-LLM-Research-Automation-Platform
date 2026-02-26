@@ -101,17 +101,17 @@ export const LandingPage: React.FC = () => {
     }, [authError, authMode]);
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-primary-foreground">
+        <div className="min-h-screen bg-bg text-text font-sans selection:bg-accent selection:text-white">
             {/* Header */}
-            <header className="fixed top-0 w-full z-50 border-b bg-background/80 backdrop-blur-sm">
-                <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-                    <div className="flex items-center font-bold text-xl tracking-tight">
+            <header className="fixed top-0 w-full z-50 border-b border-border bg-bg/80 backdrop-blur-sm">
+                <div className="container flex h-16 items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
+                    <div className="flex items-center font-bold font-serif text-xl tracking-tight text-accent">
                         DeepResearch
                     </div>
                     <nav className="hidden md:flex gap-6 text-sm font-medium">
-                        <a href="#features" className="hover:text-primary transition-colors">Features</a>
-                        <a href="#about" className="hover:text-primary transition-colors">About</a>
-                        <a href="#pricing" className="hover:text-primary transition-colors">Pricing</a>
+                        <a href="#features" className="hover:text-accent transition-colors">Features</a>
+                        <a href="#about" className="hover:text-accent transition-colors">About</a>
+                        <a href="#pricing" className="hover:text-accent transition-colors">Pricing</a>
                     </nav>
                     <div className="flex items-center gap-4">
                         <ThemeSwitcher />
@@ -136,12 +136,12 @@ export const LandingPage: React.FC = () => {
                         v2.0 Now Available • Multi-Agent Research
                     </Badge>
 
-                    <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-tight animate-in fade-in slide-in-from-bottom-6 duration-700">
+                    <h1 className="text-5xl md:text-7xl font-bold font-serif tracking-tight leading-tight animate-in fade-in slide-in-from-bottom-6 duration-700">
                         The Operating System for <br className="hidden md:block" />
-                        <span className="text-primary">Deep Research</span>
+                        <span className="text-accent italic">Deep Research</span>
                     </h1>
 
-                    <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                    <p className="text-xl text-muted max-w-3xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000">
                         Autonomous agents that research, analyze, and report. Revolutionize your workflow with orchestrated AI intelligence.
                     </p>
 
@@ -219,8 +219,8 @@ export const LandingPage: React.FC = () => {
             </section>
 
             {/* Stats */}
-            <section className="border-y bg-muted/20 py-12">
-                <div className="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <section className="border-y border-border bg-surface py-12">
+                <div className="container mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                     {[
                         { label: "AI Agents", value: "29" },
                         { label: "Data Sources", value: "6" },
@@ -228,19 +228,19 @@ export const LandingPage: React.FC = () => {
                         { label: "Pipeline Stages", value: "7" },
                     ].map((stat, i) => (
                         <div key={i}>
-                            <div className="text-3xl font-bold mb-1">{stat.value}</div>
-                            <div className="text-sm text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</div>
+                            <div className="text-3xl font-bold font-serif text-accent mb-1">{stat.value}</div>
+                            <div className="text-sm text-muted font-medium uppercase tracking-wider">{stat.label}</div>
                         </div>
                     ))}
                 </div>
             </section>
 
             {/* Features */}
-            <section id="features" className="py-24 px-4 md:px-6 bg-background">
-                <div className="container mx-auto max-w-6xl">
+            <section id="features" className="py-24 px-4 md:px-6 bg-bg">
+                <div className="container mx-auto max-w-7xl border border-border p-8 rounded-2xl bg-surface/50">
                     <div className="text-center mb-16 space-y-4">
-                        <h2 className="text-3xl md:text-5xl font-bold">Powered by Intelligent Agents</h2>
-                        <p className="text-muted-foreground max-w-2xl mx-auto">
+                        <h2 className="text-3xl md:text-5xl font-bold font-serif text-text">Powered by Intelligent Agents</h2>
+                        <p className="text-muted max-w-2xl mx-auto">
                             Our architecture orchestrates specialized agents to deliver comprehensive analysis.
                         </p>
                     </div>
@@ -271,15 +271,15 @@ export const LandingPage: React.FC = () => {
             </section>
 
             {/* Footer */}
-            <footer className="border-t py-12 bg-muted/10">
-                <div className="container mx-auto px-4 text-center text-muted-foreground">
+            <footer className="border-t border-border py-12 bg-bg flex-auto">
+                <div className="container mx-auto px-4 text-center text-muted">
                     <p>&copy; 2026 DeepResearch. All rights reserved.</p>
                 </div>
             </footer>
 
             {/* Auth Modal */}
             {authMode && (
-                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className="fixed inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <button
                         type="button"
                         className="absolute inset-0"
@@ -293,12 +293,12 @@ export const LandingPage: React.FC = () => {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="auth-modal-title"
-                        className="w-full max-w-md relative animate-in zoom-in-95 duration-200"
+                        className="w-full max-w-md relative animate-in zoom-in-95 duration-200 border-border shadow-2xl bg-surface"
                     >
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-4 top-4"
+                            className="absolute right-4 top-4 hover:bg-bg hover:text-text"
                             onClick={() => setAuthMode(null)}
                             disabled={loading}
                         >
@@ -306,16 +306,16 @@ export const LandingPage: React.FC = () => {
                         </Button>
                         <CardContent className="p-8">
                             <div className="text-center mb-8">
-                                <h2 id="auth-modal-title" className="text-2xl font-bold">
+                                <h2 id="auth-modal-title" className="text-2xl font-bold font-serif text-text">
                                     {authMode === 'signin' ? 'Welcome back' : 'Create an account'}
                                 </h2>
-                                <p className="text-sm text-muted-foreground mt-2">
+                                <p className="text-sm text-muted mt-2">
                                     {authMode === 'signin' ? 'Enter your credentials to continue' : 'Start your free trial today'}
                                 </p>
                             </div>
 
                             {authError && (
-                                <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm" role="alert" aria-live="polite">
+                                <div className="mb-4 p-3 bg-error/10 border border-error/20 text-error rounded-md text-sm" role="alert" aria-live="polite">
                                     {authError}
                                 </div>
                             )}
@@ -323,24 +323,24 @@ export const LandingPage: React.FC = () => {
                             <form onSubmit={handleAuthSubmit} className="space-y-4">
                                 {authMode === 'signup' && (
                                     <div className="space-y-2">
-                                        <label htmlFor="name" className="text-sm font-medium">Full Name</label>
+                                        <label htmlFor="name" className="text-sm font-medium text-text">Full Name</label>
                                         <div className="relative">
-                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
                                             <Input id="name" ref={usernameInputRef} className="pl-9" placeholder="John Doe" value={username} onChange={e => setUsername(e.target.value)} required disabled={loading} />
                                         </div>
                                     </div>
                                 )}
                                 <div className="space-y-2">
-                                    <label htmlFor="email" className="text-sm font-medium">Email</label>
+                                    <label htmlFor="email" className="text-sm font-medium text-text">Email</label>
                                     <div className="relative">
-                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
                                         <Input id="email" ref={emailInputRef} className="pl-9" type="email" placeholder="name@example.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label htmlFor="password" className="text-sm font-medium">Password</label>
+                                    <label htmlFor="password" className="text-sm font-medium text-text">Password</label>
                                     <div className="relative">
-                                        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
                                         <Input
                                             id="password"
                                             ref={passwordInputRef}
@@ -352,13 +352,13 @@ export const LandingPage: React.FC = () => {
                                             required
                                             disabled={loading}
                                         />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground" disabled={loading}>
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-muted hover:text-text" disabled={loading}>
                                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </button>
                                     </div>
                                 </div>
 
-                                <Button className="w-full" disabled={loading}>
+                                <Button className="w-full mt-4" disabled={loading}>
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {authMode === 'signin' ? 'Sign In' : 'Create Account'}
                                 </Button>

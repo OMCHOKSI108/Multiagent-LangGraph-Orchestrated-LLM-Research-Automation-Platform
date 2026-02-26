@@ -18,6 +18,7 @@ import { LiveFeed } from '../components/LiveFeed';
 import { ResearchStatusBanner } from '../components/ResearchStatusBanner';
 import { ResourceTabs } from '../components/ResourceTabs';
 import { Skeleton, PanelSkeleton } from '../components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 
 export const Workspace = () => {
     const { id } = useParams();
@@ -70,6 +71,23 @@ export const Workspace = () => {
             toast.error('Failed to create share link');
         }
     }, [activeJob]);
+
+    // HITL Flow State
+    const [hitlInput, setHitlInput] = useState('');
+    const showHitlModal = activeJob?.status === JobStatus.WAITING_FOR_HUMAN || currentStage === 'waiting_for_human';
+
+    const handleHitlSubmit = async () => {
+        if (!activeJob || !hitlInput.trim()) return;
+        try {
+            await api.updateResearchState(activeJob.id, { user_response: hitlInput });
+            setHitlInput('');
+            toast.success('Response submitted to agents');
+            // Optimistically resume
+            setActiveJob(activeJob.id);
+        } catch (error) {
+            toast.error('Failed to submit response');
+        }
+    };
 
     const handleExport = React.useCallback(async (format: 'markdown' | 'pdf' | 'latex' | 'zip' | 'plots') => {
         if (!activeJob) return;
@@ -317,6 +335,35 @@ export const Workspace = () => {
                     </Group>
                 </Panel>
             </Group>
+
+            {/* Human-in-the-Loop Intercept Modal */}
+            <Dialog open={showHitlModal}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Agents Require Input</DialogTitle>
+                        <DialogDescription>
+                            The research pipeline has paused. An agent requires your clarification or decision to proceed with the research objective.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <textarea
+                            value={hitlInput}
+                            onChange={(e) => setHitlInput(e.target.value)}
+                            className="flex min-h-[120px] w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent custom-scrollbar"
+                            placeholder="Type your instruction or clarification here..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            onClick={handleHitlSubmit}
+                            disabled={!hitlInput.trim()}
+                            className="w-full bg-accent text-white hover:brightness-110"
+                        >
+                            Submit & Resume Process
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 };

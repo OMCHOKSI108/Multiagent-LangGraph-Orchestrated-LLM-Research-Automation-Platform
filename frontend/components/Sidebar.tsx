@@ -52,7 +52,7 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
     };
 
     return (
-        <div className={cn("w-64 h-full bg-card border-r border-border flex flex-col font-sans", className)}>
+        <div className={cn("w-[240px] h-full bg-surface border-r border-border flex flex-col font-sans", className)}>
             {/* Header */}
             <div className="h-14 flex items-center justify-between px-3 shrink-0">
                 <Button

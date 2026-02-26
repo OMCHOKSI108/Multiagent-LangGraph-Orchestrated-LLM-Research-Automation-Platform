@@ -129,21 +129,20 @@ export const Dashboard = () => {
       await deleteResearch(deleteTarget.id);
       setDeleteTarget(null);
     } finally {
-      setIsDeleting(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen bg-bg text-text font-sans">
       {/* Main Content */}
       <main className="relative min-h-screen flex flex-col items-center px-4 py-8 sm:px-6 md:px-10 lg:px-16">
         {/* Workspace Selection Interface */}
         <section className="h-full flex-grow flex flex-col items-center w-full max-w-6xl z-10">
           <div className="w-full text-center mb-10 md:mb-12">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-light mb-4 text-foreground">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold font-serif mb-4 text-text">
               Select Your Workspace
             </h1>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-lg text-muted max-w-3xl mx-auto">
               Open an existing workspace to continue research, or create a new workspace to start a fresh investigation.
             </p>
           </div>
@@ -159,18 +158,18 @@ export const Dashboard = () => {
               <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="group min-h-56 rounded-xl border-2 border-dashed border-border bg-card p-6 text-left transition-all hover:-translate-y-1 hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                  className="group min-h-56 rounded-xl border-border bg-surface border-2 border-dashed p-6 text-left transition-all hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                 >
                   <div className="h-full flex flex-col justify-between">
-                    <div className="w-12 h-12 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-                      <Plus className="w-6 h-6" />
+                    <div className="w-12 h-12 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
+                      <Plus className="w-6 h-6 text-accent" />
                     </div>
                     <div className="space-y-2">
-                      <h3 className="text-2xl font-semibold text-foreground">Create New Workspace</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <h3 className="text-2xl font-bold font-serif text-text">Create New Workspace</h3>
+                      <p className="text-sm text-muted">
                         Start a new research thread with your own topic and objectives.
                       </p>
-                      <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground/90">
+                      <span className="inline-flex items-center gap-2 text-sm font-medium text-accent">
                         Create workspace
                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                       </span>
@@ -189,12 +188,12 @@ export const Dashboard = () => {
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${getStatusBadgeClass(job.status)}`}>
                             {job.status}
                           </span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <span className="text-xs text-muted flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5" />
                             Updated {formatUpdatedAt(job)}
                           </span>
                         </div>
-                        <h3 className="text-xl font-semibold text-foreground leading-snug line-clamp-2">
+                        <h3 className="text-xl font-bold font-serif text-text leading-snug line-clamp-2">
                           {job.topic}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-3">
@@ -229,10 +228,10 @@ export const Dashboard = () => {
           )}
 
           {!loadingList && researches.length === 0 && (
-            <div className="w-full max-w-xl text-center mt-12 bg-card border border-border rounded-xl p-8">
-              <FolderOpen className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="text-xl font-medium text-foreground mb-2">No workspaces yet</h2>
-              <p className="text-muted-foreground mb-6">
+            <div className="w-full max-w-xl text-center mt-12 bg-surface border border-border rounded-xl p-8">
+              <FolderOpen className="w-10 h-10 mx-auto mb-4 text-muted" />
+              <h2 className="text-xl font-bold font-serif text-text mb-2">No workspaces yet</h2>
+              <p className="text-muted mb-6">
                 Create your first workspace to begin organizing research.
               </p>
               <Button
@@ -262,14 +261,14 @@ export const Dashboard = () => {
               aria-modal="true"
               aria-labelledby="create-workspace-title"
             >
-              <h2 id="create-workspace-title" className="text-2xl font-semibold text-foreground mb-2">Create New Workspace</h2>
-              <p className="text-sm text-muted-foreground mb-6">
+              <h2 id="create-workspace-title" className="text-2xl font-bold font-serif text-text mb-2">Create New Workspace</h2>
+              <p className="text-sm text-muted mb-6">
                 Give your workspace a clear name. You can start research right away after creation.
               </p>
 
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="workspaceName" className="text-sm font-medium text-foreground/90">
+                  <label htmlFor="workspaceName" className="text-sm font-medium text-text">
                     Workspace Name
                   </label>
                   <input
@@ -278,14 +277,14 @@ export const Dashboard = () => {
                     value={workspaceName}
                     onChange={(e) => setWorkspaceName(e.target.value)}
                     placeholder="E.g., AI in Healthcare 2026"
-                    className="h-10 w-full bg-background border border-border rounded-lg px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="h-10 w-full bg-bg border border-border rounded-lg px-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     maxLength={120}
                     autoFocus
                     disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="workspaceDescription" className="text-sm font-medium text-foreground/90">
+                  <label htmlFor="workspaceDescription" className="text-sm font-medium text-text">
                     Short Description (Optional)
                   </label>
                   <textarea
@@ -293,11 +292,11 @@ export const Dashboard = () => {
                     value={workspaceDescription}
                     onChange={(e) => setWorkspaceDescription(e.target.value)}
                     placeholder="Optional notes to describe this workspace"
-                    className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none min-h-24"
+                    className="w-full bg-bg border border-border rounded-lg p-3 text-sm text-text outline-none focus-visible:ring-2 focus-visible:ring-accent resize-none min-h-24"
                     maxLength={240}
                     disabled={isSubmitting}
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted">
                     Description is currently local to this form and helps team clarity during setup.
                   </p>
                 </div>
@@ -352,4 +351,4 @@ export const Dashboard = () => {
       </main>
     </div>
   );
-};
+}

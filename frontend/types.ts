@@ -3,6 +3,7 @@ export enum JobStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
+  WAITING_FOR_HUMAN = 'waiting_for_human',
 }
 
 export interface LogEntry {
