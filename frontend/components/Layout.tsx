@@ -51,8 +51,8 @@ export const Layout = ({ children }: LayoutProps) => {
     const firstLetter = user?.name?.trim()?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U';
 
     return (
-        <div className="flex h-screen w-full bg-background font-sans overflow-hidden">
-            <header className="fixed inset-x-0 top-0 z-40 h-14 border-b border-border bg-surface">
+        <div className="flex h-screen w-full bg-bg font-sans overflow-hidden">
+            <header className="sticky top-0 z-50 h-16 border-b border-[var(--color-border)] bg-[var(--color-bg-sec)] backdrop-blur-sm">
                 <div className="flex h-full w-full items-center justify-between px-3 sm:px-4 lg:px-6">
                     <div className="flex items-center gap-2 sm:gap-3">
                         {!isWorkspace && (
@@ -79,8 +79,9 @@ export const Layout = ({ children }: LayoutProps) => {
                             </>
                         )}
 
-                        <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-md px-2 py-1 hover:bg-accent">
-                            <span className="font-semibold tracking-tight">DeepResearch</span>
+                        <Link to="/dashboard" className="inline-flex items-center gap-0.5 rounded-md px-2 py-1 hover:bg-surface2">
+                            <span className="font-display font-bold tracking-tight text-text-c">Deep</span>
+                            <span className="font-display font-bold tracking-tight text-accent">Research</span>
                         </Link>
 
                     </div>
@@ -136,7 +137,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
             {/* Persistent Desktop Sidebar (non-workspace screens) */}
             {!isWorkspace && isDesktopSidebarOpen && (
-                <aside className="hidden md:block w-72 shrink-0 border-r border-border bg-surface pt-14">
+                <aside className="hidden md:block w-[260px] shrink-0 border-r border-[var(--color-border)] bg-[var(--color-bg-sec)]">
                     <Sidebar className="w-full h-full border-r-0" />
                 </aside>
             )}
@@ -155,7 +156,7 @@ export const Layout = ({ children }: LayoutProps) => {
                             className="w-full border-r border-border shadow-2xl"
                         />
                         <button
-                            className="absolute top-3 right-3 h-8 w-8 rounded-md bg-background/90 text-foreground flex items-center justify-center"
+                            className="absolute top-3 right-3 h-8 w-8 rounded-md bg-[var(--color-surface)] text-[var(--color-text)] flex items-center justify-center"
                             onClick={() => setIsDrawerOpen(false)}
                             aria-label="Close drawer"
                         >
@@ -166,7 +167,7 @@ export const Layout = ({ children }: LayoutProps) => {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative pt-14">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <div className="flex-1 overflow-y-auto scroll-smooth">
                     {children || <Outlet />}
                 </div>

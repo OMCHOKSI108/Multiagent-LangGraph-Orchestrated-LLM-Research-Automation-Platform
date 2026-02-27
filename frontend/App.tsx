@@ -36,7 +36,7 @@ export default function App() {
   if (!authReady) {
     return (
       <ThemeProvider>
-        <div className="min-h-screen bg-background text-foreground" />
+        <div className="min-h-screen bg-bg text-text-c" />
       </ThemeProvider>
     );
   }
@@ -53,14 +53,14 @@ export default function App() {
           theme="system"
           toastOptions={{
             style: {
-              background: 'hsl(var(--background))',
-              color: 'hsl(var(--foreground))',
-              border: '1px solid hsl(var(--border))',
+              background: 'var(--color-surface-2)',
+              color: 'var(--color-text)',
+              border: '1px solid var(--color-border)',
             },
             classNames: {
-              toast: 'border-border',
-              success: 'bg-primary text-primary-foreground border-primary',
-              error: 'bg-destructive text-destructive-foreground border-destructive',
+              toast: 'border border-[var(--color-border)]',
+              success: 'border border-teal-500/30 bg-teal-500/10 text-teal-400',
+              error: 'border border-red-500/30 bg-red-500/10 text-red-400',
             },
           }}
         />

@@ -1,277 +1,67 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --color-bg: #FAF9F6;
-    --color-surface: #F2EFE9;
-    --color-border: #DDDAD5;
-    --color-text: #1A1A1A;
-    --color-text-muted: #888580;
-    --color-accent: #C97D4E;
-    --color-code: #5B9BD5;
-    --color-success: #7EC8A4;
-    --color-warning: #D4A017;
-    --color-error: #C0444A;
+:root {
+  --color-bg:            #F4F6FB;
+  --color-bg-sec:        #EAEFF8;
+  --color-surface:       #FFFFFF;
+  --color-surface-2:     #F0F4FC;
+  --color-surface-3:     #E2E9F5;
+  --color-border:        #D1D9EE;
+  --color-border-strong: #9DAFD4;
+  --color-text:          #0F172A;
+  --color-text-sec:      #3D4F6E;
+  --color-muted:         #7B8FAD;
+  --color-accent:        #6C63FF;
+  --color-accent-hover:  #5A52E0;
+  --color-teal:          #0D9488;
+  --color-amber:         #D97706;
+}
 
-    /* Legacy vars mapped roughly for shadcn */
-    --background: 0 0% 100%;
-    --foreground: 220 14% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 14% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 14% 10%;
-    --primary: 220 14% 10%;
-    --primary-foreground: 0 0% 98%;
-    --brand: 220 14% 20%;
-    --brand-foreground: 0 0% 98%;
-    --secondary: 220 10% 96%;
-    --secondary-foreground: 220 14% 10%;
-    --muted: 220 10% 96%;
-    --muted-foreground: 220 8% 40%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 10% 90%;
-    --input: 220 10% 96%;
-    --ring: 220 14% 10%;
-    --radius: 0.5rem;
-    --status-success: 152 60% 40%;
-    --status-warning: 38 92% 50%;
-    --status-error: 0 84% 60%;
-    --status-info: 215 100% 50%;
+.dark {
+  --color-bg:            #080B14;
+  --color-bg-sec:        #0D1117;
+  --color-surface:       #141B2D;
+  --color-surface-2:     #1C2540;
+  --color-surface-3:     #232E4A;
+  --color-border:        #1E2D45;
+  --color-border-strong: #2A3F5F;
+  --color-text:          #E8E6F0;
+  --color-text-sec:      #A0AABF;
+  --color-muted:         #5A6478;
+  --color-accent:        #6C63FF;
+  --color-accent-hover:  #5A52E0;
+  --color-teal:          #2DD4BF;
+  --color-amber:         #F59E0B;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { 
+  background: var(--color-border); 
+  border-radius: 3px; 
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: var(--color-border-strong); 
+}
+
+::selection { 
+  background: rgba(108,99,255,0.25); 
+  color: var(--color-text); 
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
-
-  .dark {
-    --color-bg: #0D0D0D;
-    --color-surface: #1A1A1A;
-    --color-border: #2A2A2A;
-    --color-text: #E8E4DC;
-    --color-text-muted: #888580;
-    --color-accent: #C97D4E;
-    --color-code: #5B9BD5;
-    --color-success: #7EC8A4;
-    --color-warning: #D4A017;
-    --color-error: #C0444A;
-
-    /* Legacy vars mapped roughly for shadcn dark mode */
-    --background: 220 16% 7%;
-    --foreground: 220 10% 93%;
-    --card: 220 14% 10%;
-    --card-foreground: 220 10% 93%;
-    --popover: 220 14% 12%;
-    --popover-foreground: 220 10% 93%;
-    --primary: 220 10% 93%;
-    --primary-foreground: 220 16% 7%;
-    --brand: 220 10% 80%;
-    --brand-foreground: 220 16% 7%;
-    --secondary: 220 14% 14%;
-    --secondary-foreground: 220 10% 85%;
-    --muted: 220 14% 14%;
-    --muted-foreground: 220 10% 68%;
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 12% 24%;
-    --input: 220 14% 14%;
-    --ring: 220 10% 70%;
-    --status-success: 152 55% 45%;
-    --status-warning: 38 90% 55%;
-    --status-error: 0 75% 55%;
-    --status-info: 215 90% 55%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-bg text-text antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: 'Playfair Display', serif;
-  }
-}
-
-@layer utilities {
-  .prose-research {
-    @apply prose prose-zinc dark:prose-invert max-w-none;
-    @apply prose-headings:font-display prose-headings:tracking-tight;
-    @apply prose-a:text-primary prose-a:no-underline hover:prose-a:underline;
-    @apply prose-pre:bg-secondary prose-pre:border prose-pre:border-border;
-  }
-}
-
-/* ═══════ PDF Viewer Styles (Chrome-like) ═══════ */
-.pdf-viewer-bg {
-  background-color: #525659;
-  background-image:
-    linear-gradient(45deg, #4a4d50 25%, transparent 25%),
-    linear-gradient(-45deg, #4a4d50 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #4a4d50 75%),
-    linear-gradient(-45deg, transparent 75%, #4a4d50 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-  /* Simplified: just dark gray like Chrome */
-  background: #525659;
-}
-
-.dark .pdf-viewer-bg {
-  background: #333639;
-}
-
-.pdf-page {
-  background: white;
-  box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(0, 0, 0, 0.1);
-  padding: 72px 72px 96px 72px;
-  /* ~1 inch margins */
-  border-radius: 2px;
-  position: relative;
-  max-width: 100%;
-  transition: transform 0.15s ease;
-}
-
-.dark .pdf-page {
-  background: #1a1a2e;
-  box-shadow:
-    0 2px 16px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-/* Typography overrides within the PDF page for academic feel */
-.pdf-page .prose h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-top: 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.dark .pdf-page .prose h1 {
-  border-bottom-color: #374151;
-}
-
-.pdf-page .prose h2 {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin-top: 1.75rem;
-}
-
-.pdf-page .prose h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.pdf-page .prose p {
-  font-size: 0.9rem;
-  line-height: 1.7;
-  text-align: justify;
-  hyphens: auto;
-}
-
-.pdf-page .prose li {
-  font-size: 0.9rem;
-  line-height: 1.65;
-}
-
-.pdf-page .prose table {
-  font-size: 0.8rem;
-  border-collapse: collapse;
-  width: 100%;
-}
-
-.pdf-page .prose table th {
-  background: #f9fafb;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.7rem;
-}
-
-.dark .pdf-page .prose table th {
-  background: #1e293b;
-}
-
-.pdf-page .prose blockquote {
-  border-left: 3px solid #6366f1;
-  background: #f5f3ff;
-  padding: 0.75rem 1rem;
-  border-radius: 0 0.375rem 0.375rem 0;
-  font-style: italic;
-}
-
-.dark .pdf-page .prose blockquote {
-  background: #1e1b4b;
-  border-left-color: #818cf8;
-}
-
-/* Print Styles */
-@media print {
-  .pdf-viewer-bg {
-    background: white !important;
-  }
-
-  .pdf-page {
-    box-shadow: none !important;
-    padding: 0 !important;
-    width: 100% !important;
-    transform: none !important;
-  }
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.25);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.45);
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out both;
 }

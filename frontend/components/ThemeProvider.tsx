@@ -24,7 +24,7 @@ function getInitialTheme(): Theme {
     return 'dark';
   }
 
-  return 'light';
+  return 'dark';
 }
 
 function applyTheme(theme: Theme): void {

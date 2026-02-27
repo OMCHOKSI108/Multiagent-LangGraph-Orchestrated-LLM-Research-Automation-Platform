@@ -3,21 +3,21 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-    "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium font-sans transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+    "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-mono font-medium border",
     {
         variants: {
             variant: {
-                default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-                secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-                destructive: "border-transparent bg-error text-white hover:bg-error/80",
-                outline: "text-foreground",
-                running: "border-transparent bg-[#1A2438] text-[#93C5FD]",
-                queued: "border-transparent bg-[#2A2010] text-[#FCD34D]",
-                complete: "border-transparent bg-[#0A2018] text-[#6EE7B7]",
-                failed: "border-transparent bg-[#2A1012] text-[#FCA5A5]",
-                paused: "border-transparent bg-[#1A1A1A] text-[#9CA3AF]",
-                warning: "border-transparent bg-[#2A1F0A] text-[#FCD34D]",
-                error: "border-transparent bg-[#2A1012] text-[#FCA5A5]"
+                default: "bg-[var(--color-surface-2)] text-[var(--color-text-sec)] border-[var(--color-border)]",
+                secondary: "bg-[var(--color-surface-2)] text-[var(--color-text-sec)] border-[var(--color-border)]",
+                destructive: "bg-red-500/10 text-red-400 border border-red-500/30",
+                outline: "bg-transparent text-[var(--color-text)] border-[var(--color-border)]",
+
+                running: "bg-blue-500/10 text-blue-400 border border-blue-500/30",
+                queued: "bg-amber-500/10 text-amber-400 border border-amber-500/30",
+                complete: "bg-teal-500/10 text-teal-400 border border-teal-500/30",
+                failed: "bg-red-500/10 text-red-400 border border-red-500/30",
+                paused: "bg-[var(--color-surface-2)] text-[var(--color-text-sec)] border-[var(--color-border)]",
+                waiting: "bg-accent/10 text-accent border border-accent/30",
             },
         },
         defaultVariants: {
@@ -35,13 +35,12 @@ export interface BadgeProps
 function Badge({ className, variant, showDot = true, children, ...props }: BadgeProps) {
 
     const dotColors: Record<string, string> = {
-        running: "bg-[#3B82F6] animate-pulse",
-        queued: "bg-[#D4A017]",
-        complete: "bg-[#7EC8A4]",
-        failed: "bg-[#C0444A]",
-        paused: "bg-[#888580]",
-        warning: "bg-[#D4A017]",
-        error: "bg-[#C0444A]"
+        running: "bg-blue-500 animate-pulse",
+        queued: "bg-amber-500",
+        complete: "bg-teal-400",
+        failed: "bg-red-500",
+        paused: "bg-slate-400",
+        waiting: "bg-accent animate-pulse",
     };
 
     const dotClass = variant && dotColors[variant] ? dotColors[variant] : null;
@@ -49,7 +48,7 @@ function Badge({ className, variant, showDot = true, children, ...props }: Badge
     return (
         <div className={cn(badgeVariants({ variant }), className)} {...props}>
             {showDot && dotClass && (
-                <span className={cn("mr-1.5 h-1.5 w-1.5 rounded-full inline-block", dotClass)} aria-hidden="true"></span>
+                <span className={cn("h-1.5 w-1.5 rounded-full inline-block", dotClass)} aria-hidden="true"></span>
             )}
             {children}
         </div>

@@ -47,7 +47,7 @@ export const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#080B14] text-white p-4">
+        <div className="min-h-screen bg-[#080B14] flex items-center justify-center p-4">
             <div className="w-full max-w-md space-y-8">
                 <div className="flex flex-col items-center text-center">
                     <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center mb-4">

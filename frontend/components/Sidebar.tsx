@@ -52,12 +52,12 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
     };
 
     return (
-        <div className={cn("w-[240px] h-full bg-surface border-r border-border flex flex-col font-sans", className)}>
+        <div className={cn("w-[260px] h-full bg-[var(--color-bg-sec)] border-r border-[var(--color-border)] flex flex-col font-sans", className)}>
             {/* Header */}
             <div className="h-14 flex items-center justify-between px-3 shrink-0">
                 <Button
                     variant="ghost"
-                    className="flex-1 justify-start gap-2 px-2 hover:bg-accent text-foreground h-10 rounded-lg transition-colors border border-border"
+                    className="flex-1 justify-start gap-2 px-2 hover:bg-surface2 hover:text-text-c text-text-sec h-10 rounded-lg transition-colors border border-[var(--color-border)]"
                     onClick={() => handleNavigate('/workspaces')}
                 >
                     <div className="flex items-center gap-2 text-sm font-medium">
@@ -68,7 +68,7 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10 ml-2 text-muted-foreground hover:text-foreground hover:bg-accent"
+                    className="h-10 w-10 ml-2 text-text-sec hover:text-text-c hover:bg-surface2"
                     onClick={() => handleNavigate('/workspaces')}
                     title="Workspaces"
                 >
@@ -94,7 +94,9 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
                                 variant="ghost"
                                 className={cn(
                                     "w-full justify-start text-sm font-normal h-9 px-3 truncate relative rounded-lg transition-all",
-                                    isActive ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                    isActive
+                                        ? "bg-surface2 text-accent font-medium border border-border-s"
+                                        : "text-text-sec hover:bg-surface hover:text-text-c"
                                 )}
                                 onClick={() => handleNavigate(`/research/${job.id}`)}
                             >
@@ -121,14 +123,14 @@ export const Sidebar = ({ onClose, className }: SidebarProps) => {
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-border">
-                <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-accent cursor-pointer transition-colors group">
-                    <div className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center border border-border transition-colors">
+            <div className="p-3 border-t border-[var(--color-border)]">
+                <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface2 cursor-pointer transition-colors group">
+                    <div className="w-8 h-8 rounded-full bg-surface2 text-text-c flex items-center justify-center border border-[var(--color-border)] transition-colors">
                         <Bot className="w-4 h-4" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-sm font-medium text-foreground transition-colors">DeepResearch</span>
-                        <span className="text-[11px] text-muted-foreground">Pro Plan</span>
+                        <span className="text-sm font-medium text-text-c transition-colors">DeepResearch</span>
+                        <span className="text-[11px] font-mono text-teal">Pro Plan</span>
                     </div>
                 </div>
             </div>

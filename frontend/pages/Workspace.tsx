@@ -194,7 +194,7 @@ export const Workspace = () => {
                     collapsible
                     collapsedSize={0}
                     onResize={(panelSize: any) => setIsSidebarCollapsed(panelSize <= 5)}
-                    className="bg-surface"
+                    className="bg-[var(--color-bg-sec)] border-r border-[var(--color-border)] w-[340px] shrink-0 flex flex-col h-[calc(100vh-64px)] overflow-y-auto"
                 />
 
                 <Separator className="w-1 bg-border/40 hover:bg-primary/50 transition-colors flex items-center justify-center group focus:outline-none">

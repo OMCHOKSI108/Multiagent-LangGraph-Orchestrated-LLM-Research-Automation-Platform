@@ -29,17 +29,17 @@ export class AppErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+        <div className="min-h-screen flex items-center justify-center bg-bg text-text-c p-6">
           <div className="max-w-md text-center">
             <h1 className="text-xl font-semibold mb-2">Something went wrong</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-text-sec">
               The UI hit an unexpected error. Refresh the page to continue.
             </p>
             <details className="mt-4 text-left">
-              <summary className="cursor-pointer text-xs text-muted-foreground">
+              <summary className="cursor-pointer text-xs text-muted-c">
                 Error Details
               </summary>
-              <pre className="mt-2 text-xs bg-card p-2 rounded border overflow-auto max-h-32">
+              <pre className="mt-2 text-xs bg-surface p-2 rounded border border-border-c overflow-auto max-h-32">
                 {this.state.error instanceof Error 
                   ? this.state.error.message 
                   : String(this.state.error)}

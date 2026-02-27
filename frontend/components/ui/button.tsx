@@ -5,24 +5,27 @@ import { cn } from "@/lib/utils"
 import { Loader2 } from "lucide-react"
 
 const buttonVariants = cva(
-    "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium font-sans ring-offset-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/15 focus-visible:border-accent disabled:pointer-events-none disabled:opacity-50",
+    "inline-flex items-center justify-center gap-2 rounded-lg font-sans font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:opacity-40 disabled:cursor-not-allowed",
     {
         variants: {
             variant: {
-                default: "bg-accent text-white hover:bg-[#D4874A] transition-colors",
-                destructive: "bg-error text-white hover:opacity-90 transition-opacity",
-                outline: "bg-surface text-text border border-border hover:border-accent transition-colors",
-                secondary: "bg-surface text-text border border-border hover:border-accent transition-colors",
-                ghost: "bg-transparent text-muted hover:text-text transition-colors",
+                primary: "bg-accent text-white hover:bg-accent-h active:scale-[0.97] shadow-sm",
+                secondary: "bg-surface2 text-text-c border border-border-c hover:bg-surface3 hover:border-border-s active:scale-[0.97]",
+                ghost: "bg-transparent text-text-sec hover:bg-surface hover:text-text-c active:scale-[0.97]",
+                teal: "bg-teal text-bg font-semibold hover:opacity-90 active:scale-[0.97]",
+                danger: "bg-red-600 text-white hover:bg-red-700 active:scale-[0.97]",
+                outline_accent: "bg-transparent border border-accent text-accent hover:bg-accent hover:text-white active:scale-[0.97]",
+
+                default: "bg-accent text-white hover:bg-accent-h active:scale-[0.97] shadow-sm",
+                destructive: "bg-red-600 text-white hover:bg-red-700 active:scale-[0.97]",
+                outline: "bg-transparent border border-accent text-accent hover:bg-accent hover:text-white active:scale-[0.97]",
                 link: "text-accent underline-offset-4 hover:underline",
-                primary: "bg-accent text-white hover:bg-[#D4874A] transition-colors",
-                danger: "bg-error text-white hover:opacity-90 transition-opacity",
             },
             size: {
-                default: "h-10 px-4",
+                default: "h-10 px-5 text-sm",
                 sm: "h-8 px-3 text-xs",
-                lg: "h-12 px-8",
-                icon: "h-10 w-10 px-0",
+                lg: "h-12 px-7 text-base",
+                icon: "h-9 w-9",
             },
         },
         defaultVariants: {
