@@ -12,8 +12,11 @@
  *           (loaded from .env automatically)
  */
 
+const path = require('path');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({
+  path: process.env.ROOT_ENV_PATH || path.resolve(__dirname, '..', '..', '.env')
+});
 
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');

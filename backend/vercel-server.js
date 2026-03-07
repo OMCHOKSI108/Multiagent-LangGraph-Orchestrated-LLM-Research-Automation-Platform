@@ -5,9 +5,12 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 // Load env vars
-dotenv.config();
+dotenv.config({
+    path: process.env.ROOT_ENV_PATH || path.resolve(__dirname, '..', '.env')
+});
 
 const app = express();
 

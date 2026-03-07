@@ -295,6 +295,8 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
       try {
         const data = await api.getResearches();
         set({ researches: data });
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to load workspaces.');
       } finally {
         set({ loadingList: false });
       }
@@ -308,7 +310,13 @@ export const useResearchStore = create<ResearchStore>((set, get) => {
 
     setActiveJob: async (id) => {
       set({ activeJob: null, chatHistory: [], chatSessionId: null });
-      const job = await api.getResearch(id);
+      let job;
+      try {
+        job = await api.getResearch(id);
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to load workspace. Please try again.');
+        return;
+      }
 
       // Extraction Logic – visualization, report, and sources are independent
       const visResponse = job.result_json?.final_state?.findings?.visualization?.response;

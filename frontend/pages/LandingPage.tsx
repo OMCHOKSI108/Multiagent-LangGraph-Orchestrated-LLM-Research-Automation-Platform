@@ -110,8 +110,8 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <nav className="hidden md:flex gap-6 text-sm font-medium">
                         <a href="#features" className="hover:text-accent transition-colors">Features</a>
-                        <a href="#about" className="hover:text-accent transition-colors">About</a>
-                        <a href="#pricing" className="hover:text-accent transition-colors">Pricing</a>
+                        <Link to="/pricing" className="hover:text-accent transition-colors">Pricing</Link>
+                        <Link to="/docs" className="hover:text-accent transition-colors">Docs</Link>
                     </nav>
                     <div className="flex items-center gap-4">
                         <ThemeSwitcher />
@@ -149,67 +149,69 @@ export const LandingPage: React.FC = () => {
                         <Button size="lg" className="h-12 px-8 text-base" onClick={() => setAuthMode('signup')}>
                             Start Researching <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
-                        <Button size="lg" variant="outline" className="h-12 px-8 text-base">
-                            View Documentation
-                        </Button>
+                        <Link to="/docs">
+                            <Button size="lg" variant="outline" className="h-12 px-8 text-base">
+                                View Documentation
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* Product Preview */}
-                    <div className="mt-16 rounded-xl border bg-muted/50 p-2 shadow-2xl">
-                        <div className="rounded-lg bg-background border overflow-hidden">
-                            <div className="h-10 border-b bg-muted/20 flex items-center px-4 gap-2">
+                    <div className="mt-16 rounded-xl border border-border-c bg-surface2/50 p-2 shadow-2xl">
+                        <div className="rounded-lg bg-bg border border-border-c overflow-hidden">
+                            <div className="h-10 border-b border-border-c bg-surface2/30 flex items-center px-4 gap-2">
                                 <div className="h-3 w-3 rounded-full bg-red-400/40" />
                                 <div className="h-3 w-3 rounded-full bg-yellow-400/40" />
                                 <div className="h-3 w-3 rounded-full bg-green-400/40" />
-                                <span className="ml-3 text-xs text-muted-foreground font-mono">deepresearch / workspace</span>
+                                <span className="ml-3 text-xs text-text-sec font-mono">deepresearch / workspace</span>
                             </div>
-                            <div className="grid grid-cols-12 divide-x divide-border" style={{ minHeight: '280px' }}>
+                            <div className="grid grid-cols-12 divide-x divide-border-c" style={{ minHeight: '280px' }}>
                                 {/* Sidebar mock */}
-                                <div className="col-span-2 p-3 space-y-2 bg-muted/5">
-                                    <div className="h-3 w-16 bg-muted rounded" />
-                                    <div className="h-3 w-20 bg-primary/20 rounded" />
-                                    <div className="h-3 w-14 bg-muted rounded" />
-                                    <div className="h-3 w-18 bg-muted rounded" />
+                                <div className="col-span-2 p-3 space-y-2 bg-surface2/20">
+                                    <div className="h-3 w-16 bg-surface2 rounded" />
+                                    <div className="h-3 w-20 bg-accent/20 rounded" />
+                                    <div className="h-3 w-14 bg-surface2 rounded" />
+                                    <div className="h-3 w-16 bg-surface2 rounded" />
                                 </div>
                                 {/* Chat mock */}
                                 <div className="col-span-3 p-3 space-y-3">
-                                    <div className="h-3 w-24 bg-muted rounded" />
-                                    <div className="rounded-lg bg-primary/10 p-2 space-y-1">
-                                        <div className="h-2 w-full bg-primary/20 rounded" />
-                                        <div className="h-2 w-3/4 bg-primary/20 rounded" />
+                                    <div className="h-3 w-24 bg-surface2 rounded" />
+                                    <div className="rounded-lg bg-accent/10 p-2 space-y-1">
+                                        <div className="h-2 w-full bg-accent/20 rounded" />
+                                        <div className="h-2 w-3/4 bg-accent/20 rounded" />
                                     </div>
-                                    <div className="rounded-lg bg-muted/30 p-2 space-y-1 ml-auto max-w-[80%]">
-                                        <div className="h-2 w-full bg-muted rounded" />
-                                        <div className="h-2 w-1/2 bg-muted rounded" />
+                                    <div className="rounded-lg bg-surface2/60 p-2 space-y-1 ml-auto max-w-[80%]">
+                                        <div className="h-2 w-full bg-surface3 rounded" />
+                                        <div className="h-2 w-1/2 bg-surface3 rounded" />
                                     </div>
                                 </div>
                                 {/* Report mock */}
                                 <div className="col-span-5 p-3 space-y-2">
                                     <div className="flex gap-2 mb-3">
-                                        <div className="h-5 w-20 bg-primary/15 rounded text-[9px] flex items-center justify-center text-primary font-medium">Preview</div>
-                                        <div className="h-5 w-16 bg-muted rounded text-[9px] flex items-center justify-center text-muted-foreground">LaTeX</div>
+                                        <div className="h-5 w-20 bg-accent/15 rounded text-[9px] flex items-center justify-center text-accent font-medium">Preview</div>
+                                        <div className="h-5 w-16 bg-surface2 rounded text-[9px] flex items-center justify-center text-text-sec">LaTeX</div>
                                     </div>
-                                    <div className="h-3 w-3/4 bg-foreground/10 rounded" />
-                                    <div className="h-2 w-full bg-muted rounded" />
-                                    <div className="h-2 w-full bg-muted rounded" />
-                                    <div className="h-2 w-5/6 bg-muted rounded" />
-                                    <div className="h-2 w-full bg-muted rounded" />
-                                    <div className="h-2 w-2/3 bg-muted rounded" />
+                                    <div className="h-3 w-3/4 bg-surface3 rounded" />
+                                    <div className="h-2 w-full bg-surface2 rounded" />
+                                    <div className="h-2 w-full bg-surface2 rounded" />
+                                    <div className="h-2 w-5/6 bg-surface2 rounded" />
+                                    <div className="h-2 w-full bg-surface2 rounded" />
+                                    <div className="h-2 w-2/3 bg-surface2 rounded" />
                                 </div>
                                 {/* Activity mock */}
-                                <div className="col-span-2 p-3 space-y-2 bg-muted/5">
-                                    <div className="h-3 w-16 bg-muted rounded" />
+                                <div className="col-span-2 p-3 space-y-2 bg-surface2/20">
+                                    <div className="h-3 w-16 bg-surface2 rounded" />
                                     <div className="flex items-center gap-1">
                                         <div className="h-2 w-2 rounded-full bg-green-400" />
-                                        <div className="h-2 w-14 bg-muted rounded" />
+                                        <div className="h-2 w-14 bg-surface2 rounded" />
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <div className="h-2 w-2 rounded-full bg-green-400" />
-                                        <div className="h-2 w-12 bg-muted rounded" />
+                                        <div className="h-2 w-12 bg-surface2 rounded" />
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <div className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
-                                        <div className="h-2 w-16 bg-muted rounded" />
+                                        <div className="h-2 w-16 bg-surface2 rounded" />
                                     </div>
                                 </div>
                             </div>
@@ -219,7 +221,7 @@ export const LandingPage: React.FC = () => {
             </section>
 
             {/* Stats */}
-            <section className="border-y border-border bg-surface py-12">
+            <section className="border-y border-border-c bg-surface py-12">
                 <div className="container mx-auto max-w-7xl grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                     {[
                         { label: "AI Agents", value: "29" },
@@ -229,7 +231,7 @@ export const LandingPage: React.FC = () => {
                     ].map((stat, i) => (
                         <div key={i}>
                             <div className="text-3xl font-bold font-serif text-accent mb-1">{stat.value}</div>
-                            <div className="text-sm text-muted font-medium uppercase tracking-wider">{stat.label}</div>
+                            <div className="text-sm text-muted-c font-medium uppercase tracking-wider">{stat.label}</div>
                         </div>
                     ))}
                 </div>
@@ -237,10 +239,10 @@ export const LandingPage: React.FC = () => {
 
             {/* Features */}
             <section id="features" className="py-24 px-4 md:px-6 bg-bg">
-                <div className="container mx-auto max-w-7xl border border-border p-8 rounded-2xl bg-surface/50">
+                <div className="container mx-auto max-w-7xl border border-border-c p-8 rounded-2xl bg-surface/50">
                     <div className="text-center mb-16 space-y-4">
-                        <h2 className="text-3xl md:text-5xl font-bold font-serif text-text">Powered by Intelligent Agents</h2>
-                        <p className="text-muted max-w-2xl mx-auto">
+                        <h2 className="text-3xl md:text-5xl font-bold font-serif text-text-c">Powered by Intelligent Agents</h2>
+                        <p className="text-muted-c max-w-2xl mx-auto">
                             Our architecture orchestrates specialized agents to deliver comprehensive analysis.
                         </p>
                     </div>
@@ -254,13 +256,13 @@ export const LandingPage: React.FC = () => {
                             { icon: Zap, title: "Real-time", desc: "Live streaming of research progress." },
                             { icon: Mail, title: "Export", desc: "One-click report generation and sharing." },
                         ].map((feature, i) => (
-                            <Card key={i} className="bg-muted/10 border-muted/20 hover:border-primary/20 transition-colors">
+                            <Card key={i} className="bg-surface2/10 border-border-c hover:border-accent/20 transition-colors">
                                 <CardContent className="p-6 space-y-4">
-                                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                                    <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
                                         <feature.icon className="h-6 w-6" />
                                     </div>
-                                    <h3 className="text-xl font-bold">{feature.title}</h3>
-                                    <p className="text-muted-foreground leading-relaxed">
+                                    <h3 className="text-xl font-bold text-text-c">{feature.title}</h3>
+                                    <p className="text-text-sec leading-relaxed">
                                         {feature.desc}
                                     </p>
                                 </CardContent>
@@ -271,9 +273,39 @@ export const LandingPage: React.FC = () => {
             </section>
 
             {/* Footer */}
-            <footer className="border-t border-border py-12 bg-bg flex-auto">
-                <div className="container mx-auto px-4 text-center text-muted">
-                    <p>&copy; 2026 DeepResearch. All rights reserved.</p>
+            <footer className="border-t border-border-c py-12 bg-bg flex-auto">
+                <div className="container mx-auto px-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+                        <div>
+                            <div className="font-bold font-serif text-lg text-accent mb-3">DeepResearch</div>
+                            <p className="text-xs text-text-sec leading-relaxed">AI-powered multi-agent research platform for academics and professionals.</p>
+                        </div>
+                        <div>
+                            <div className="text-xs font-semibold text-text-c uppercase tracking-wider mb-3">Product</div>
+                            <ul className="space-y-2 text-sm text-text-sec">
+                                <li><a href="#features" className="hover:text-accent transition-colors">Features</a></li>
+                                <li><Link to="/pricing" className="hover:text-accent transition-colors">Pricing</Link></li>
+                                <li><Link to="/docs" className="hover:text-accent transition-colors">Documentation</Link></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div className="text-xs font-semibold text-text-c uppercase tracking-wider mb-3">Account</div>
+                            <ul className="space-y-2 text-sm text-text-sec">
+                                <li><button onClick={() => setAuthMode('signin')} className="hover:text-accent transition-colors text-left">Sign In</button></li>
+                                <li><button onClick={() => setAuthMode('signup')} className="hover:text-accent transition-colors text-left">Create Account</button></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <div className="text-xs font-semibold text-text-c uppercase tracking-wider mb-3">Support</div>
+                            <ul className="space-y-2 text-sm text-text-sec">
+                                <li><Link to="/docs" className="hover:text-accent transition-colors">Help Center</Link></li>
+                                <li><a href="mailto:support@deepresearch.ai" className="hover:text-accent transition-colors">Contact Us</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="border-t border-border-c pt-6 text-center text-xs text-text-sec">
+                        &copy; {new Date().getFullYear()} DeepResearch. All rights reserved.
+                    </div>
                 </div>
             </footer>
 
@@ -315,7 +347,7 @@ export const LandingPage: React.FC = () => {
                             </div>
 
                             {authError && (
-                                <div className="mb-4 p-3 bg-error/10 border border-error/20 text-error rounded-md text-sm" role="alert" aria-live="polite">
+                                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-md text-sm" role="alert" aria-live="polite">
                                     {authError}
                                 </div>
                             )}
@@ -366,10 +398,10 @@ export const LandingPage: React.FC = () => {
 
                             <div className="relative my-6">
                                 <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t" />
+                                    <span className="w-full border-t border-border-c" />
                                 </div>
                                 <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-surface px-2 text-muted-foreground">
+                                    <span className="bg-surface px-2 text-text-sec">
                                         Or continue with
                                     </span>
                                 </div>

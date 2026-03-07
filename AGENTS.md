@@ -127,7 +127,7 @@ python run.py --off
 
 ## Environment Configuration
 
-Each service has its own `.env` file (`ai_engine/.env`, `backend/.env`, `frontend/.env`). See `.env.example` at the project root for all variables.
+Use a single centralized root `.env` file for all services. See `.env.example` at the project root for all variables.
 
 Key variables:
 - `LLM_STATUS` — `OFFLINE` (Ollama) or `ONLINE` (cloud APIs)

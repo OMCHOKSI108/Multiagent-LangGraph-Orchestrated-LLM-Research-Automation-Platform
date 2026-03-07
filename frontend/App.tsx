@@ -10,6 +10,9 @@ import { WorkspaceDetailPage } from './pages/WorkspaceDetailPage';
 import { Login } from './pages/LoginPage';
 import { Signup } from './pages/SignupPage';
 import { LandingPage } from './pages/LandingPage';
+import { FeaturesPage } from './pages/FeaturesPage';
+import { PricingPage } from './pages/PricingPage';
+import { DocsPage } from './pages/DocsPage';
 import { SharedView } from './pages/SharedView';
 import { ProfilePage } from './pages/ProfilePage';
 import { OAuthCallback } from './pages/OAuthCallback';
@@ -71,6 +74,9 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/features" element={<FeaturesPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/docs" element={<DocsPage />} />
             <Route path="/shared/:token" element={<SharedView />} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
 

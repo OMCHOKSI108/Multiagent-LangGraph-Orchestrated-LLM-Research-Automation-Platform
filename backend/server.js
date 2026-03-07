@@ -2,9 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 // Load env vars
-dotenv.config();
+dotenv.config({
+    path: process.env.ROOT_ENV_PATH || path.resolve(__dirname, '..', '.env')
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -54,7 +57,7 @@ require('./config/passport');
 app.use(passport.initialize());
 
 app.use('/generated_images', express.static('generated_images'));
-app.use('/research_images', express.static(require('path').join(__dirname, '..', 'frontend', 'public', 'research_images')));
+app.use('/research_images', express.static(path.join(__dirname, '..', 'frontend', 'public', 'research_images')));
 app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
 

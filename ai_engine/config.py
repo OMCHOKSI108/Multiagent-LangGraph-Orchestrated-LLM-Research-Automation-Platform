@@ -12,7 +12,8 @@ os.makedirs(hf_cache_dir, exist_ok=True)
 os.environ["HF_HOME"] = hf_cache_dir
 print(f"[Config] HF_HOME set to: {hf_cache_dir}")
 
-load_dotenv()
+root_env_path = os.path.join(project_root, ".env")
+load_dotenv(dotenv_path=root_env_path)
 
 # ============================
 # LLM Mode (Dual-Mode Switching)

@@ -9,7 +9,7 @@
    - Database: PostgreSQL running with all migrations applied
 
 2. **Environment Setup:**
-   - `.env` files configured in both `backend/` and `ai_engine/`
+   - Root `.env` file configured with required variables
    - LLM provider available (Ollama running or API keys set)
    - Required dependencies installed
 
