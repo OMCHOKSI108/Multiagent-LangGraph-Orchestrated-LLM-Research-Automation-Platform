@@ -50,11 +50,11 @@ export const Login = () => {
         <div className="min-h-screen bg-bg flex items-center justify-center p-4">
             <div className="w-full max-w-md space-y-8">
                 <div className="flex flex-col items-center text-center">
-                    <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center mb-4">
-                        <Terminal className="h-5 w-5 text-primary-foreground" />
+                    <div className="h-10 w-10 bg-accent rounded-lg flex items-center justify-center mb-4">
+                        <Terminal className="h-5 w-5 text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
-                    <p className="text-sm text-muted-foreground mt-2">
+                    <h2 className="text-2xl font-bold tracking-tight text-text-c">Welcome back</h2>
+                    <p className="text-sm text-text-sec mt-2">
                         Enter your credentials to access the workspace
                     </p>
                 </div>
@@ -68,14 +68,14 @@ export const Login = () => {
                     </CardHeader>
                     <CardContent>
                         {authError && (
-                            <div className="mb-4 p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-2" role="alert" aria-live="polite">
-                                <AlertCircle className="h-4 w-4" />
+                            <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2" role="alert" aria-live="polite">
+                                <AlertCircle className="h-4 w-4 flex-shrink-0" />
                                 <span>{authError}</span>
                             </div>
                         )}
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
+                                <label className="text-sm font-medium leading-none text-text-c" htmlFor="email">
                                     Email
                                 </label>
                                 <Input
@@ -91,12 +91,12 @@ export const Login = () => {
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
+                                    <label className="text-sm font-medium leading-none text-text-c" htmlFor="password">
                                         Password
                                     </label>
                                     <Link
                                         to="#"
-                                        className="text-sm font-medium text-primary hover:underline"
+                                        className="text-sm font-medium text-accent hover:underline"
                                         onClick={(e) => e.preventDefault()}
                                     >
                                         Forgot password?
@@ -119,10 +119,10 @@ export const Login = () => {
 
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t" />
+                                <span className="w-full border-t border-border-c" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-2 text-muted-foreground">
+                                <span className="bg-surface px-2 text-text-sec">
                                     Or continue with
                                 </span>
                             </div>
@@ -137,10 +137,10 @@ export const Login = () => {
                             </Button>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex justify-center border-t p-4">
-                        <p className="text-sm text-muted-foreground">
+                    <CardFooter className="flex justify-center border-t border-border-c p-4">
+                        <p className="text-sm text-text-sec">
                             Don't have an account?{' '}
-                            <Link to="/signup" className="font-medium text-primary hover:underline">
+                            <Link to="/signup" className="font-medium text-accent hover:underline">
                                 Sign up
                             </Link>
                         </p>

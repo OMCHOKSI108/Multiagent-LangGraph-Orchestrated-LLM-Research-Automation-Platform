@@ -54,11 +54,11 @@ export const Signup = () => {
         <div className="min-h-screen flex items-center justify-center bg-bg p-4">
             <div className="w-full max-w-md space-y-8">
                 <div className="flex flex-col items-center text-center">
-                    <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center mb-4">
-                        <Terminal className="h-5 w-5 text-primary-foreground" />
+                    <div className="h-10 w-10 bg-accent rounded-lg flex items-center justify-center mb-4">
+                        <Terminal className="h-5 w-5 text-white" />
                     </div>
-                    <h2 className="text-2xl font-bold tracking-tight">Create an account</h2>
-                    <p className="text-sm text-muted-foreground mt-2">
+                    <h2 className="text-2xl font-bold tracking-tight text-text-c">Create an account</h2>
+                    <p className="text-sm text-text-sec mt-2">
                         Start your research journey today
                     </p>
                 </div>
@@ -72,8 +72,8 @@ export const Signup = () => {
                     </CardHeader>
                     <CardContent>
                         {authError && (
-                            <div className="mb-4 p-3 rounded-md bg-destructive/15 text-destructive text-sm flex items-center gap-2" role="alert" aria-live="polite">
-                                <AlertCircle className="h-4 w-4" />
+                            <div className="mb-4 p-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2" role="alert" aria-live="polite">
+                                <AlertCircle className="h-4 w-4 flex-shrink-0" />
                                 <span>{authError}</span>
                             </div>
                         )}
@@ -121,7 +121,7 @@ export const Signup = () => {
                                     disabled={loading}
                                     minLength={6}
                                 />
-                                <p className="text-[10px] text-muted-foreground">
+                                <p className="text-[10px] text-text-sec">
                                     Must be at least 6 characters
                                 </p>
                             </div>
@@ -132,10 +132,10 @@ export const Signup = () => {
 
                         <div className="relative my-6">
                             <div className="absolute inset-0 flex items-center">
-                                <span className="w-full border-t" />
+                                <span className="w-full border-t border-border-c" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                                <span className="bg-card px-2 text-muted-foreground">
+                                <span className="bg-surface px-2 text-text-sec">
                                     Or continue with
                                 </span>
                             </div>
@@ -150,10 +150,10 @@ export const Signup = () => {
                             </Button>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex justify-center border-t p-4">
-                        <p className="text-sm text-muted-foreground">
+                    <CardFooter className="flex justify-center border-t border-border-c p-4">
+                        <p className="text-sm text-text-sec">
                             Already have an account?{' '}
-                            <Link to="/login" className="font-medium text-primary hover:underline">
+                            <Link to="/login" className="font-medium text-accent hover:underline">
                                 Log in
                             </Link>
                         </p>
