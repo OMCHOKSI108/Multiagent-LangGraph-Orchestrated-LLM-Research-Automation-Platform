@@ -271,15 +271,15 @@ export const LiveFeed: React.FC<LiveFeedProps> = ({ className }) => {
             <div className="text-center">
               {isProcessing ? (
                 <>
-                  <Loader2 className="h-8 w-8 mx-auto mb-3 text-blue-500/50 animate-spin" />
-                  <p className="text-sm font-medium text-foreground/70">Agents starting up...</p>
-                  <p className="text-xs text-muted-foreground mt-1">Activity will appear here as agents begin processing</p>
+                  <Loader2 className="h-8 w-8 mx-auto mb-3 text-[var(--accent)] animate-spin" />
+                  <p className="text-sm font-medium text-[var(--text-1)]">Agents starting up...</p>
+                  <p className="text-xs text-[var(--text-3)] mt-1">Activity will appear here as agents begin processing</p>
                 </>
               ) : (
                 <>
-                  <Activity className="h-8 w-8 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm font-medium text-foreground/70">No activity yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Start a research to see agent activity</p>
+                  <Activity className="h-8 w-8 mx-auto mb-3 text-[var(--text-3)]" />
+                  <p className="text-sm font-medium text-[var(--text-1)]">No activity yet</p>
+                  <p className="text-xs text-[var(--text-3)] mt-1">Start a research to see agent activity</p>
                 </>
               )}
             </div>
@@ -340,10 +340,10 @@ export const LiveFeed: React.FC<LiveFeedProps> = ({ className }) => {
                             )} />
 
                             <div className={cn(
-                              'rounded-md px-2.5 py-1.5 transition-colors',
+                              'rounded-lg px-3 py-3 mb-2 border-l-2 bg-white shadow-sm transition-colors border border-[var(--border)] border-l-[var(--border)]',
                               isActive
-                                ? 'bg-blue-500/5 border border-blue-500/15'
-                                : 'hover:bg-accent/30'
+                                ? 'border-l-[var(--accent)] border-[var(--accent)]/20'
+                                : 'hover:border-l-[var(--accent)]'
                             )}>
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">

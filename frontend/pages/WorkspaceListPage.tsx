@@ -77,19 +77,19 @@ export function WorkspaceListPage() {
             <div className="max-w-5xl mx-auto">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold font-sans text-text-c">
-                            <FolderOpen className="inline-block w-6 h-6 mr-3 text-accent" />
+                        <h1 className="text-3xl font-bold text-[var(--text-1)]">
+                            <FolderOpen className="inline-block w-7 h-7 mr-3 text-[var(--accent)]" />
                             Workspaces
                         </h1>
-                        <p className="text-text-sec mt-1 text-sm">
+                        <p className="text-[var(--text-2)] mt-1.5 text-sm">
                             Each workspace is an isolated research environment with its own topics, sources, and chat history.
                         </p>
                     </div>
                     <Button
                         onClick={() => setCreateOpen(true)}
-                        variant="primary"
+                        className="bg-[var(--accent)] text-white border-none rounded-lg hover:bg-[var(--accent-dk)] transition-colors shadow-none"
                     >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 mr-2" />
                         New Workspace
                     </Button>
                 </div>
@@ -169,10 +169,10 @@ export function WorkspaceListPage() {
                 {!loading && workspaces.length > 0 && (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {workspaces.map((ws) => (
-                            <Card
+                            <div
                                 key={ws.id}
                                 onClick={() => navigate(`/workspace/${ws.id}`)}
-                                className="group relative cursor-pointer hover:bg-surface2 hover:border-border-s hover:shadow-md"
+                                className="group relative cursor-pointer bg-[var(--surface)] border border-[var(--border)] rounded-[12px] p-6 hover:border-[var(--text-3)] hover:-translate-y-0.5 transition-all duration-150 shadow-none"
                             >
                                 {/* Delete button */}
                                 <button
@@ -180,21 +180,21 @@ export function WorkspaceListPage() {
                                         e.stopPropagation();
                                         handleDelete(ws.id, ws.name);
                                     }}
-                                    className="absolute top-3 right-3 p-1.5 rounded-md text-muted-c opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                                    className="absolute top-4 right-4 p-1.5 rounded-md text-[var(--text-3)] opacity-0 group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 transition-all"
                                     title="Archive workspace"
                                 >
                                     <Archive className="w-4 h-4" />
                                 </button>
 
                                 {/* Icon & Name */}
-                                <div className="flex items-start gap-3 mb-3">
-                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                                        <FolderOpen className="w-5 h-5 text-accent" />
+                                <div className="flex items-start gap-3 mb-4">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-[var(--accent-lt)] flex items-center justify-center">
+                                        <FolderOpen className="w-5 h-5 text-[var(--accent)]" />
                                     </div>
-                                    <div className="min-w-0">
-                                        <h3 className="font-semibold text-text-c text-base truncate group-hover:text-accent transition-colors">{ws.name}</h3>
+                                    <div className="min-w-0 pt-0.5">
+                                        <h3 className="font-semibold text-[var(--text-1)] text-lg truncate">{ws.name}</h3>
                                         {ws.description && (
-                                            <p className="text-sm text-text-sec line-clamp-2 mt-0.5">
+                                            <p className="text-sm text-[var(--text-2)] line-clamp-2 mt-1">
                                                 {ws.description}
                                             </p>
                                         )}
@@ -202,7 +202,7 @@ export function WorkspaceListPage() {
                                 </div>
 
                                 {/* Metadata */}
-                                <div className="flex items-center gap-4 text-xs text-muted-c mt-4 pt-3 border-t border-border-c/50">
+                                <div className="flex items-center gap-4 text-[13px] text-[var(--text-3)] mt-6">
                                     <span className="inline-flex items-center gap-1">
                                         <FileText className="w-3.5 h-3.5" />
                                         {ws.session_count || 0} sessions
@@ -212,18 +212,18 @@ export function WorkspaceListPage() {
                                         {formatDate(ws.last_activity || ws.updated_at)}
                                     </span>
                                 </div>
-                            </Card>
+                            </div>
                         ))}
 
                         {/* Create new card */}
                         <div
                             onClick={() => setCreateOpen(true)}
-                            className="flex flex-col items-center justify-center gap-3 bg-surface/50 border-2 border-dashed border-border-c rounded-xl p-8 cursor-pointer hover:border-border-s hover:bg-surface2 transition-all duration-200 min-h-[160px]"
+                            className="flex flex-col items-center justify-center gap-3 bg-[var(--surface-2)] border-2 border-dashed border-[var(--border)] rounded-[12px] pl-6 pr-6 pt-8 pb-8 cursor-pointer hover:bg-[var(--accent-lt)] hover:border-[var(--accent)] transition-all duration-150 min-h-[160px]"
                         >
-                            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                                <Plus className="w-6 h-6 text-accent" />
+                            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                <Plus className="w-6 h-6 text-[var(--text-1)]" />
                             </div>
-                            <span className="text-sm font-medium text-text-sec">New Workspace</span>
+                            <span className="text-sm font-medium text-[var(--text-2)]">New Workspace</span>
                         </div>
                     </div>
                 )}

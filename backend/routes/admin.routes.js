@@ -321,7 +321,7 @@ router.delete('/memories/:id', async (req, res) => {
 router.get('/api-keys', async (req, res) => {
     try {
         const result = await db.query(`
-            SELECT ak.id, ak.key_name, ak.key_value, ak.is_active, ak.created_at, ak.last_used_at,
+            SELECT ak.id, ak.key_name, ak.key_value, ak.is_active, ak.created_at,
                    u.email as user_email, u.id as user_id
             FROM api_keys ak
             LEFT JOIN users u ON ak.user_id = u.id

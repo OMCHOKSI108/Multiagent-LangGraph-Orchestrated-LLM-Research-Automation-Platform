@@ -1,47 +1,53 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-bg:            #F4F6FB;
-  --color-bg-sec:        #EAEFF8;
-  --color-surface:       #FFFFFF;
-  --color-surface-2:     #F0F4FC;
-  --color-surface-3:     #E2E9F5;
-  --color-border:        #D1D9EE;
-  --color-border-strong: #9DAFD4;
-  --color-text:          #0F172A;
-  --color-text-sec:      #3D4F6E;
-  --color-muted:         #04090f;
-  --color-accent:        #b8b7c4;
-  --color-accent-hover:  #030210;
-  --color-teal:          #0D9488;
-  --color-amber:         #D97706;
+  --bg:         #FAF9F6;
+  --surface:    #FFFFFF;
+  --surface-2:  #F5F3EF;
+  --border:     #E8E4DC;
+  --text-1:     #1A1915;
+  --text-2:     #6B6860;
+  --text-3:     #A09C95;
+  --accent:     #D97757;
+  --accent-lt:  #FBF0EB;
+  --accent-dk:  #B5593A;
+
+  /* Legacy mappings */
+  --color-bg: var(--bg);
+  --color-bg-sec: var(--surface-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--border);
+  --color-border: var(--border);
+  --color-text: var(--text-1);
+  --color-text-sec: var(--text-2);
+  --color-muted: var(--text-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-dk);
+  --color-border-strong: var(--text-3);
 }
 
 .dark {
-  --color-bg:            #080B14;
-  --color-bg-sec:        #0D1117;
-  --color-surface:       #141B2D;
-  --color-surface-2:     #1C2540;
-  --color-surface-3:     #232E4A;
-  --color-border:        #1E2D45;
-  --color-border-strong: #2A3F5F;
-  --color-text:          #E8E6F0;
-  --color-text-sec:      #A0AABF;
-  --color-muted:         #5A6478;
-  --color-accent:        #9f9dc3;
-  --color-accent-hover:  #5A52E0;
-  --color-teal:          #2DD4BF;
-  --color-amber:         #F59E0B;
+  /* Disabled default dark mode overrides to force light theme across all pages per request */
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-family: Inter, system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--text-1);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: all 0.15s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Lora', serif;
+}
+
+code, pre, .font-mono {
+  font-family: 'DM Mono', monospace;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }

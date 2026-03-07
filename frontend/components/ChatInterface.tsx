@@ -212,9 +212,9 @@ const ChatInterfaceInner = () => {
     const isAwaitingTopicSelection = (topicSuggestions?.length || 0) > 0;
 
     return (
-        <div className="flex flex-col h-full bg-card border-r border-border relative">
+        <div className="flex flex-col h-full bg-[var(--surface)] border-r border-[var(--border)] relative">
             {/* Header */}
-            <div className="h-16 shrink-0 border-b border-border flex items-center px-4 bg-card">
+            <div className="h-16 shrink-0 border-b border-[var(--border)] flex items-center px-4 bg-[var(--surface)]">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
                         <div className={cn(
@@ -320,10 +320,10 @@ const ChatInterfaceInner = () => {
                         <div key={msg.id} className="flex flex-col">
                             <div
                                 className={cn(
-                                    "rounded-xl p-4 max-w-[85%] text-sm leading-relaxed shadow-sm transition-all",
+                                    "p-4 max-w-[85%] text-sm leading-relaxed shadow-sm transition-all",
                                     msg.role === 'user'
-                                        ? "ml-auto max-w-[80%] bg-card border border-primary/30 text-foreground dark:bg-card dark:border-primary/50 dark:text-white"
-                                        : "mr-auto bg-card border border-border/60 text-foreground dark:bg-card dark:text-white"
+                                        ? "ml-auto max-w-[80%] bg-[var(--accent)] text-white !rounded-[12px_12px_2px_12px]"
+                                        : "mr-auto bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text-1)] !rounded-[12px_12px_12px_2px]"
                                 )}
                             >
                                 {msg.content ? (
@@ -380,7 +380,7 @@ const ChatInterfaceInner = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-card border-t border-border space-y-3">
+            <div className="p-4 bg-[var(--surface)] border-t border-[var(--border)] space-y-3">
                 {/* Processing Info Banner — chat is still enabled */}
                 {isProcessing && (
                     <div className="relative overflow-hidden rounded-xl border border-blue-500/20 bg-gradient-to-r from-blue-600/5 via-indigo-600/5 to-purple-600/5">
@@ -400,8 +400,8 @@ const ChatInterfaceInner = () => {
                                 </div>
                                 <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                                     {currentStage === 'queued' ? 'Queued — waiting for agents...' :
-                                     currentStage === 'connecting...' ? 'Connecting to AI Engine...' :
-                                     `Stage: ${currentStage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`}
+                                        currentStage === 'connecting...' ? 'Connecting to AI Engine...' :
+                                            `Stage: ${currentStage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`}
                                     {executionEvents.length > 0 && (
                                         <span className="ml-2 text-blue-400/70">• {executionEvents.length} events</span>
                                     )}
@@ -450,9 +450,9 @@ const ChatInterfaceInner = () => {
                                         const cmd = "/research ";
                                         setInput(cmd);
                                     }}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-xs font-semibold text-primary transition-colors border border-primary/20"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[var(--accent)] hover:bg-[var(--accent-dk)] text-sm font-semibold text-white transition-colors"
                                 >
-                                    <Bot className="w-3 h-3" />
+                                    <Bot className="w-3.5 h-3.5" />
                                     Start Research
                                 </button>
 
@@ -464,7 +464,7 @@ const ChatInterfaceInner = () => {
                                     <button
                                         key={i}
                                         onClick={() => setInput(action.cmd)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 hover:bg-secondary text-xs font-medium text-secondary-foreground transition-colors border border-transparent hover:border-border"
+                                        className="flex items-center gap-1px-4 py-1.5 rounded-full bg-[var(--surface-2)] border border-[var(--border)] hover:bg-[var(--border)] text-[12px] font-medium text-[var(--text-2)] transition-colors"
                                     >
                                         <span className="opacity-70">/</span>
                                         {action.label}
@@ -481,15 +481,15 @@ const ChatInterfaceInner = () => {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={
                             isAwaitingTopicSelection ? "Select a suggested topic or type your own topic title..." :
-                            isStreaming ? "AI is thinking..." :
-                            isCompleted ? "Ask about your research — e.g. 'What were the key findings?'" :
-                            isProcessing ? "Chat while agents work — or type /research <topic>" :
-                            "Type a message or /research <topic>..."
+                                isStreaming ? "AI is thinking..." :
+                                    isCompleted ? "Ask about your research — e.g. 'What were the key findings?'" :
+                                        isProcessing ? "Chat while agents work — or type /research <topic>" :
+                                            "Type a message or /research <topic>..."
                         }
                         className={cn(
-                            "pr-20 h-11 rounded-xl",
-                            isStreaming ? "bg-background/95 border-border ring-2 ring-amber-400/20 opacity-95 cursor-not-allowed" :
-                            "bg-background border-border"
+                            "pr-20 h-12 rounded-[10px] text-[14px]",
+                            isStreaming ? "bg-[var(--surface-2)] border-[var(--border)] opacity-80 cursor-not-allowed" :
+                                "bg-[var(--surface)] border-[var(--border)] focus:border-[var(--accent)]"
                         )}
                         disabled={isStreaming}
                     />

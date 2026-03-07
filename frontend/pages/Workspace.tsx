@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/shallow';
 import { useResearchStore } from '../store';
 import { JobStatus } from '../types';
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Share } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Share, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { EditableTitle } from '../components/EditableTitle';
 import { ExportDropdown } from '../components/ExportDropdown';
@@ -89,6 +89,9 @@ export const Workspace = () => {
         }
     };
 
+    // AI Engine Connection Error State
+    const [engineError, setEngineError] = useState(false);
+
     const handleExport = React.useCallback(async (format: 'markdown' | 'pdf' | 'latex' | 'zip' | 'plots') => {
         if (!activeJob) return;
         try {
@@ -108,6 +111,15 @@ export const Workspace = () => {
 
         const initializeWorkspace = async () => {
             if (!id) return;
+
+            // 1. Health check pre-flight
+            try {
+                await api.healthCheck();
+            } catch (error) {
+                if (!cancelled) setEngineError(true);
+            }
+
+            // 2. Load workspace job
             await setActiveJob(id);
             if (!cancelled) {
                 subscribeToLiveEvents(id);
@@ -206,14 +218,14 @@ export const Workspace = () => {
                     <Group orientation="horizontal">
 
                         {/* 2. CENTER PANEL: Chat Interface */}
-                        <Panel defaultSize={50} minSize={20} className="flex flex-col bg-background relative z-0">
+                        <Panel defaultSize={50} minSize={20} className="flex flex-col bg-[var(--surface)] relative z-0">
                             {/* Center Header */}
-                            <div className="h-14 shrink-0 border-b border-border flex items-center justify-between px-4 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                            <div className="h-14 shrink-0 border-b border-[var(--border)] flex items-center justify-between px-4 bg-[var(--surface)]/80 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/60">
                                 <div className="flex items-center gap-3 w-full min-w-0">
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-muted-foreground mr-1"
+                                        className="h-8 w-8 text-[var(--text-2)] hover:bg-[var(--surface-2)] mr-1"
                                         onClick={toggleSidebar}
                                         title={isSidebarCollapsed ? "Open Sidebar" : "Close Sidebar"}
                                     >
@@ -224,9 +236,11 @@ export const Workspace = () => {
                                         onSave={(newTitle) => renameResearch(activeJob.id, newTitle)}
                                         className="text-sm font-medium text-foreground truncate flex-1 min-w-0"
                                     />
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap hidden sm:inline-block ${isProcessing
-                                        ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
-                                        : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide border whitespace-nowrap hidden sm:inline-block ${isProcessing
+                                        ? 'bg-[#DCFCE7] text-[#166534] border-[#166534]/20'
+                                        : activeJob.status === JobStatus.QUEUED
+                                            ? 'bg-[#FEF3C7] text-[#92400E] border-[#92400E]/20'
+                                            : 'bg-[var(--accent-lt)] text-[var(--accent)] border-[var(--accent)]/20'
                                         }`}>
                                         {activeJob.status}
                                     </span>
@@ -270,7 +284,7 @@ export const Workspace = () => {
                             collapsible
                             collapsedSize={0}
                             onResize={(panelSize: any) => setIsRightPanelCollapsed(panelSize <= 5)}
-                            className={isRightPanelCollapsed ? "" : "border-l border-border bg-card"}
+                            className={isRightPanelCollapsed ? "" : "border-l border-[var(--border)] bg-[var(--bg)]"}
                         >
                             <div className="flex flex-col h-full overflow-hidden">
                                 {/* Research Status Banner */}
@@ -283,8 +297,8 @@ export const Workspace = () => {
                                 />
 
                                 {/* Main Tabs: Paper / Resources / Live */}
-                                <div className="shrink-0 border-b border-border bg-card/80 backdrop-blur-sm">
-                                    <div className="flex items-center p-1 gap-0.5">
+                                <div className="shrink-0 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-sm px-2">
+                                    <div className="flex items-center gap-4">
                                         {[
                                             { key: 'paper', label: 'Paper' },
                                             { key: 'resources', label: 'Resources' },
@@ -293,20 +307,20 @@ export const Workspace = () => {
                                             <button
                                                 key={tab.key}
                                                 onClick={() => setActiveRightTab(tab.key as any)}
-                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium rounded-md transition-all ${activeRightTab === tab.key
-                                                    ? 'bg-background text-foreground shadow-sm border border-border/50'
-                                                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                                                className={`flex items-center justify-center gap-1.5 py-3 text-[13px] font-medium transition-all border-b-2 ${activeRightTab === tab.key
+                                                    ? 'border-[var(--accent)] text-[var(--text-1)]'
+                                                    : 'border-transparent text-[var(--text-3)] hover:text-[var(--text-1)]'
                                                     }`}
                                             >
                                                 {tab.label}
-                                                {tab.pulse && <span className="ml-1 h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse" />}
+                                                {tab.pulse && <span className="ml-1 h-1.5 w-1.5 bg-[var(--accent)] rounded-full animate-pulse" />}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Tab Content */}
-                                <div className="flex-1 overflow-hidden relative bg-card/30">
+                                <div className="flex-1 overflow-hidden relative bg-[var(--bg)]">
                                     {activeRightTab === 'paper' && (
                                         <DocumentPreview
                                             markdown={activeJob.reportMarkdown}
@@ -361,6 +375,30 @@ export const Workspace = () => {
                             className="w-full bg-accent text-white hover:brightness-110"
                         >
                             Submit & Resume Process
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* AI Engine Connection Error Modal */}
+            <Dialog open={engineError} onOpenChange={setEngineError}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600 flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5" /> Cannot Reach AI Engine
+                        </DialogTitle>
+                        <DialogDescription>
+                            The frontend is unable to connect to the backend AI Engine.
+                            Please check that the backend is online and the `VITE_AI_ENGINE_URL` is configured correctly.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            onClick={() => setEngineError(false)}
+                            variant="secondary"
+                            className="w-full"
+                        >
+                            Dismiss
                         </Button>
                     </DialogFooter>
                 </DialogContent>

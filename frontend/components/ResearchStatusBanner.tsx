@@ -82,9 +82,9 @@ export const ResearchStatusBanner: React.FC<ResearchStatusBannerProps> = ({ stat
   return (
     <div className={cn(
       'relative overflow-hidden',
-      isProcessing && 'bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10',
-      isCompleted && 'bg-emerald-600/10',
-      isFailed && 'bg-red-600/10',
+      isProcessing && 'bg-[var(--accent-lt)] border-b border-[#F0C4B0]',
+      isCompleted && 'bg-emerald-50',
+      isFailed && 'bg-red-50',
     )}>
       {/* Animated scanning line for processing state */}
       {isProcessing && (
@@ -98,11 +98,11 @@ export const ResearchStatusBanner: React.FC<ResearchStatusBannerProps> = ({ stat
           {/* Status Icon */}
           <div className={cn(
             'flex items-center justify-center w-8 h-8 rounded-lg shrink-0',
-            isProcessing && 'bg-blue-500/15',
-            isCompleted && 'bg-emerald-500/15',
-            isFailed && 'bg-red-500/15',
+            isProcessing && 'bg-white',
+            isCompleted && 'bg-emerald-100',
+            isFailed && 'bg-red-100',
           )}>
-            {isProcessing && <Cpu className="w-4 h-4 text-blue-500 animate-pulse" />}
+            {isProcessing && <Cpu className="w-4 h-4 text-[var(--accent)] animate-pulse" />}
             {isCompleted && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
             {isFailed && <AlertCircle className="w-4 h-4 text-red-500" />}
           </div>
@@ -111,22 +111,22 @@ export const ResearchStatusBanner: React.FC<ResearchStatusBannerProps> = ({ stat
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className={cn(
-                'text-xs font-semibold uppercase tracking-wider',
-                isProcessing && 'text-blue-500',
-                isCompleted && 'text-emerald-500',
-                isFailed && 'text-red-500',
+                'text-[12px] font-bold tracking-wider',
+                isProcessing && 'text-[var(--accent)]',
+                isCompleted && 'text-emerald-700',
+                isFailed && 'text-red-700',
               )}>
                 {isProcessing ? 'AI Engine Running' : isCompleted ? 'Completed' : 'Failed'}
               </span>
               {isProcessing && (
                 <span className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse [animation-delay:0.2s]" />
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse [animation-delay:0.4s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse [animation-delay:0.2s]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] animate-pulse [animation-delay:0.4s]" />
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+            <p className="text-[12px] text-gray-700 font-medium mt-0.5 truncate">
               {getStageLabel(currentStage)}
             </p>
           </div>
@@ -134,10 +134,10 @@ export const ResearchStatusBanner: React.FC<ResearchStatusBannerProps> = ({ stat
           {/* Elapsed Timer Badge */}
           {startedAt && (
             <div className={cn(
-              'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold shrink-0',
-              isProcessing && 'bg-blue-500/15 text-blue-400',
-              isCompleted && 'bg-emerald-500/15 text-emerald-400',
-              isFailed && 'bg-red-500/15 text-red-400',
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold shrink-0 bg-white border border-[#F0C4B0]',
+              isProcessing && 'text-[var(--accent)]',
+              isCompleted && 'text-emerald-600 border-emerald-200',
+              isFailed && 'text-red-600 border-red-200',
             )}>
               <Timer className="w-3.5 h-3.5" />
               {formatElapsed(elapsed)}
@@ -146,14 +146,14 @@ export const ResearchStatusBanner: React.FC<ResearchStatusBannerProps> = ({ stat
 
           {/* Spinner for processing */}
           {isProcessing && (
-            <Loader2 className="w-4 h-4 text-blue-500/60 animate-spin shrink-0" />
+            <Loader2 className="w-4 h-4 text-[var(--accent)] animate-spin shrink-0" />
           )}
         </div>
 
         {/* Progress bar animation */}
         {isProcessing && (
-          <div className="mt-2 h-1 bg-border/50 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full animate-progress-indeterminate" />
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#F0C4B0]/40 overflow-hidden">
+            <div className="h-full bg-[var(--accent)] rounded-full animate-progress-indeterminate" />
           </div>
         )}
       </div>

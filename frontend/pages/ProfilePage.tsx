@@ -147,14 +147,14 @@ export const ProfilePage = () => {
             {[{
               label: 'Research Credits',
               icon: Zap,
-              used: usageStats?.total_tokens ?? 0,
-              total: Math.max(usageStats?.total_tokens ?? 0, 100000),
+              used: usageStats?.totalTokens ?? 0,
+              total: Math.max(usageStats?.totalTokens ?? 0, 100000),
               fillClass: 'bg-accent',
             }, {
               label: 'API Calls',
               icon: Activity,
-              used: usageStats?.total_requests ?? 0,
-              total: Math.max(usageStats?.total_requests ?? 0, 1000),
+              used: usageStats?.history?.length ?? 0,
+              total: Math.max(usageStats?.history?.length ?? 0, 1000),
               fillClass: 'bg-teal',
             }, {
               label: 'Storage Used',

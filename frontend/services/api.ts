@@ -146,14 +146,30 @@ class ApiService {
   async createResearch(topic: string, depth: 'quick' | 'deep'): Promise<ResearchJob> {
     const apiKey = await this.getOrCreateApiKey();
 
-    const data = await this.request<{ job_id: number }>('/research/start', {
-      method: 'POST',
-      body: JSON.stringify({
-        task: topic,
-        depth,
-        api_key: apiKey,
-      }),
-    });
+    const doRequest = async (retries = 3): Promise<{ job_id: number }> => {
+      let lastError = new Error('Request failed');
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await this.request<{ job_id: number }>('/research/start', {
+            method: 'POST',
+            body: JSON.stringify({
+              task: topic,
+              depth,
+              api_key: apiKey,
+            }),
+          });
+        } catch (e) {
+          lastError = e as Error;
+          console.warn(`Research start attempt ${i + 1} failed, retrying in 3s...`, e);
+          if (i < retries - 1) {
+            await new Promise(res => setTimeout(res, 3000));
+          }
+        }
+      }
+      throw lastError;
+    };
+
+    const data = await doRequest();
 
     return {
       id: String(data.job_id),
