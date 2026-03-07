@@ -51,7 +51,7 @@ export const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4">
+        <div className="min-h-screen flex items-center justify-center bg-bg p-4">
             <div className="w-full max-w-md space-y-8">
                 <div className="flex flex-col items-center text-center">
                     <div className="h-10 w-10 bg-primary rounded-lg flex items-center justify-center mb-4">

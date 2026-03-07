@@ -1,0 +1,26 @@
+.git
+**/.git
+
+# Node
+**/node_modules
+**/dist
+**/.npm
+
+# Python
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+**/venv
+
+# Env & secrets
+**/.env
+**/.env.*
+
+# Local output/artifacts
+output
+ai_engine/cache
+ai_engine/logs
+frontend/.vite

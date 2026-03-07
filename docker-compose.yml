@@ -1,0 +1,160 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-research_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-research}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-research_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app_net
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app_net
+
+  ai_engine:
+    build:
+      context: ./ai_engine
+      dockerfile: Dockerfile
+    environment:
+      PORT: 8000
+      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
+      LLM_STATUS: ${LLM_STATUS:-OFFLINE}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://multiagent-lang-graph-orchestrated.vercel.app,http://localhost:3000,http://localhost:5173}
+      OPENROUTER_API_1: ${OPENROUTER_API_1:-}
+      OPENROUTER_API_2: ${OPENROUTER_API_2:-}
+      OPENROUTER_API_3: ${OPENROUTER_API_3:-}
+      GROQ_API_1: ${GROQ_API_1:-}
+      GROQ_API_2: ${GROQ_API_2:-}
+      GROQ_API_3: ${GROQ_API_3:-}
+      GEMINI_API_1: ${GEMINI_API_1:-}
+      GEMINI_API_2: ${GEMINI_API_2:-}
+      GEMINI_API_3: ${GEMINI_API_3:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      MODEL_REASONING: ${MODEL_REASONING:-phi3:mini}
+      MODEL_WRITING: ${MODEL_WRITING:-gemma2:2b}
+      MODEL_CODING: ${MODEL_CODING:-qwen2.5-coder:1.5b}
+      MODEL_CRITICAL: ${MODEL_CRITICAL:-phi3:mini}
+      MAX_TOKENS: ${MAX_TOKENS:-4096}
+      AI_ENGINE_MAX_WORKERS: ${AI_ENGINE_MAX_WORKERS:-4}
+      GOOGLE_SEARCH_API_KEY: ${GOOGLE_SEARCH_API_KEY:-}
+      GOOGLE_SEARCH_CX: ${GOOGLE_SEARCH_CX:-}
+    volumes:
+      - ai_output:/output
+      - ai_logs:/app/logs
+      - ai_cache:/app/cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      AI_ENGINE_URL: http://ai_engine:8000
+      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
+      FRONTEND_URL: ${FRONTEND_URL:-https://multiagent-lang-graph-orchestrated.vercel.app}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:5000}
+      JWT_SECRET: ${JWT_SECRET:-change_me}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SESSION_SECRET: ${SESSION_SECRET:-change_me_too}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://multiagent-lang-graph-orchestrated.vercel.app}
+      RATE_LIMIT_REQUESTS_PER_MIN: ${RATE_LIMIT_REQUESTS_PER_MIN:-60}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-2}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-1800000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-research_platform}
+      DB_USER: ${POSTGRES_USER:-research}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-research_password}
+      REDIS_URL: redis://redis:6379/0
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai_engine:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - app_net
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    environment:
+      NODE_ENV: production
+      AI_ENGINE_URL: http://ai_engine:8000
+      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-1800000}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-research_platform}
+      DB_USER: ${POSTGRES_USER:-research}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-research_password}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai_engine:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app_net
+
+volumes:
+  postgres_data:
+  redis_data:
+  ai_output:
+  ai_logs:
+  ai_cache:
+
+networks:
+  app_net:
+    driver: bridge

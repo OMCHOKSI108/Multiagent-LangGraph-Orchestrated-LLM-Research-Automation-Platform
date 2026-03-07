@@ -1,0 +1,133 @@
+PROJECT GUIDE
+Multi-Agent LLM Research Automation Platform
+
+1) What this website is
+This platform helps users run AI-powered research from one place.
+It uses multiple specialized AI agents to:
+- understand a topic,
+- collect sources,
+- review literature,
+- verify claims,
+- generate visualizations,
+- write a structured report,
+- and answer follow-up questions in chat.
+
+The system has:
+- Frontend web app (React/Vite),
+- Backend API (Node/Express),
+- AI Engine (FastAPI + LangGraph),
+- Background worker for queued research jobs,
+- PostgreSQL for data,
+- optional Redis for state/events.
+
+
+2) Main features available to users
+
+Authentication and Profile
+- Sign up and sign in with email/password.
+- OAuth login with Google/GitHub (if configured).
+- Profile update and password change.
+
+Workspace and Research Management
+- Create and manage workspaces.
+- Start a research session in a workspace.
+- Rename or delete research entries.
+- Archive workspaces.
+
+Topic Discovery and Lock
+- For broad queries, system can suggest research topics.
+- User must select/lock a final topic before full pipeline proceeds.
+
+Multi-Agent Research Pipeline
+- Orchestrator decides strategy.
+- Domain research flow and paper-analysis flow are both supported.
+- Parallel agent execution for key stages.
+- Final report generation includes markdown and LaTeX output.
+
+Live Progress and Transparency
+- Real-time event stream (SSE) for stage updates.
+- Live activity feed while agents are running.
+- Data source tracking for transparency.
+
+Interactive Chat
+- Ask questions about completed research.
+- Streaming chat responses are supported.
+- Context-aware chat uses report findings and retrieved sources.
+
+Memories
+- Save, list, search, and delete user memories.
+- Memories can support future research interactions.
+
+Export and Sharing
+- Export research as Markdown, PDF, LaTeX, ZIP, and plots bundle.
+- Public share links for completed research.
+
+Provider and LLM Visibility
+- View LLM mode/status (OFFLINE/ONLINE).
+- Provider listing and provider test routes available.
+
+
+3) How user "Om" can use the platform (step-by-step)
+
+Step 1: Open the website
+- Visit the frontend URL (usually http://localhost:3000 in local setup).
+
+Step 2: Create account or log in
+- Use Sign Up (or Google/GitHub if enabled).
+- After login, Om is routed to dashboard/workspace area.
+
+Step 3: Create a workspace
+- Click "Create New Workspace".
+- Give it a clear name, for example:
+  "AI in Healthcare - March Study".
+
+Step 4: Start research
+- Enter topic/task and start research.
+- If topic is broad, Om may get topic suggestions.
+- Select the best topic so the system locks it and continues.
+
+Step 5: Track live progress
+- Watch the Live Feed and status banner.
+- Monitor stages and source collection in real time.
+
+Step 6: Read outputs
+- Open the Paper tab for generated report content.
+- Open Resources tab for diagrams/images/sources.
+- Review conclusions, gaps, and recommendations.
+
+Step 7: Ask follow-up questions in chat
+- Use chat panel to ask:
+  - "Summarize key findings"
+  - "Which papers support claim X?"
+  - "Give limitations and future scope"
+
+Step 8: Save/share/export
+- Export report in needed format (PDF/Markdown/LaTeX/ZIP).
+- Generate a share link for collaborators.
+
+Step 9: Continue iteration
+- Add memories/notes.
+- Start another session in same workspace.
+- Compare multiple research runs over time.
+
+
+4) Typical use cases for Om
+- Literature review for college project.
+- Paper decomposition and understanding.
+- Claim verification before writing final report.
+- Quick research summary for presentation prep.
+- Building long-form report with references and visuals.
+
+
+5) Notes for best results
+- Give specific topics for better quality outputs.
+- If using ONLINE mode, configure provider API keys.
+- If using OFFLINE mode, ensure local model service is reachable.
+- Review generated results critically before final submission.
+
+
+6) Quick capability summary
+- End-to-end AI research automation.
+- Human-in-the-loop topic selection.
+- Real-time progress and source transparency.
+- Chat + memory + export + sharing in one workflow.

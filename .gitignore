@@ -262,7 +262,6 @@ Thumbs.db
 *.db
 
 # Docker
-.dockerignore
 
 # Temporary files
 *.tmp

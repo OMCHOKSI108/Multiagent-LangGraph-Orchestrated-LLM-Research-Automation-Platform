@@ -220,31 +220,41 @@ class ApiService {
     const url = `${BASE_URL}/events/stream/${researchId}${token ? `?token=${token}` : ''}`;
     const eventSource = new EventSource(url);
 
-    const safeParse = (data: string) => {
-      try { return JSON.parse(data); } catch { return {}; }
+    const safeParse = (raw: string) => {
+      try { return JSON.parse(raw); } catch { return {}; }
     };
 
-    eventSource.addEventListener('agent_log', (e: any) => {
+    // Named SSE event types matching the backend implementation exactly
+    eventSource.addEventListener('connected', (e: any) => {
+      onEvent({ type: 'connected', ...safeParse(e.data) });
+    });
+
+    eventSource.addEventListener('event', (e: any) => {
       onEvent({ type: 'event', ...safeParse(e.data) });
     });
 
-    eventSource.addEventListener('agent_change', (e: any) => {
+    eventSource.addEventListener('status', (e: any) => {
       onEvent({ type: 'status', ...safeParse(e.data) });
     });
 
-    eventSource.addEventListener('complete', (e: any) => {
-      onEvent({ type: 'status', status: 'completed', current_stage: 'completed', ...safeParse(e.data) });
+    eventSource.addEventListener('sources', (e: any) => {
+      const parsed = safeParse(e.data);
+      onEvent({ type: 'sources', sources: parsed.sources ?? (Array.isArray(parsed) ? parsed : []) });
     });
 
-    eventSource.addEventListener('error', (e: any) => {
-      console.error('SSE event error:', e);
-      onError?.(e);
+    eventSource.addEventListener('done', (e: any) => {
+      onEvent({ type: 'done', ...safeParse(e.data) });
     });
 
-    // Fallback for legacy events
+    // Fallback for un-named default messages such as legacy backends
     eventSource.onmessage = (e) => {
       const data = safeParse(e.data);
-      if (Object.keys(data).length > 0) onEvent(data);
+      if (data && typeof data === 'object' && Object.keys(data).length > 0) onEvent(data);
+    };
+
+    // Transport-level errors (connection drop, CORS, etc.)
+    eventSource.onerror = (e) => {
+      onError?.(e);
     };
 
     return eventSource;

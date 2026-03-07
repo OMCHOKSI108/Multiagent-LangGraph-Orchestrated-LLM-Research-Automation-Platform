@@ -14,9 +14,9 @@
   --color-border-strong: #9DAFD4;
   --color-text:          #0F172A;
   --color-text-sec:      #3D4F6E;
-  --color-muted:         #7B8FAD;
-  --color-accent:        #6C63FF;
-  --color-accent-hover:  #5A52E0;
+  --color-muted:         #04090f;
+  --color-accent:        #b8b7c4;
+  --color-accent-hover:  #030210;
   --color-teal:          #0D9488;
   --color-amber:         #D97706;
 }
@@ -32,7 +32,7 @@
   --color-text:          #E8E6F0;
   --color-text-sec:      #A0AABF;
   --color-muted:         #5A6478;
-  --color-accent:        #6C63FF;
+  --color-accent:        #9f9dc3;
   --color-accent-hover:  #5A52E0;
   --color-teal:          #2DD4BF;
   --color-amber:         #F59E0B;
