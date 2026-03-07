@@ -24,7 +24,6 @@ import { useResearchStore } from './store';
 /* ---- Admin Components ---- */
 import { AdminGuard } from './components/admin/AdminGuard';
 import { AdminLayout } from './components/admin/AdminLayout';
-import { AdminLogin } from './pages/admin/AdminLogin';
 import { Dashboard as AdminDashboard } from './pages/admin/Dashboard';
 import { UsersPanel as AdminUsersPanel } from './pages/admin/UsersPanel';
 import { ResearchPanel as AdminResearchPanel } from './pages/admin/ResearchPanel';
@@ -96,7 +95,6 @@ export default function App() {
             <Route path="/oauth/callback" element={<OAuthCallback />} />
 
             {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
             <Route element={<AdminGuard />}>
               <Route element={<AdminLayout />}>
                 <Route path="/admin" element={<AdminDashboard />} />

@@ -37,6 +37,16 @@ export const Login = () => {
         if (!email || !password) return;
 
         setLoading(true);
+
+        // Admin Login Interception
+        if (email === 'omchoksiadmin@gmail.com' && password === 'OMchoksi@108') {
+            setTimeout(() => {
+                localStorage.setItem('dr_admin_auth', 'true');
+                navigate('/admin');
+            }, 500);
+            return;
+        }
+
         try {
             await login(email, password);
         } catch (e) {

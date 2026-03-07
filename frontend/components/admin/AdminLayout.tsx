@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
     LayoutDashboard,
     Users,
@@ -33,7 +34,8 @@ export const AdminLayout = () => {
 
     const handleLogout = () => {
         localStorage.removeItem('dr_admin_auth');
-        navigate('/admin/login');
+        toast.success('Admin session terminated');
+        navigate('/login');
     };
 
     // Find the exact name of the current path to show in the header
@@ -70,8 +72,8 @@ export const AdminLayout = () => {
                                 key={link.path}
                                 to={link.path}
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-all relative ${isActive
-                                        ? 'text-[#D97757] bg-[#D97757]/10 font-medium'
-                                        : 'text-[#FAF9F6]/60 hover:text-[#FAF9F6] hover:bg-[#FAF9F6]/5'
+                                    ? 'text-[#D97757] bg-[#D97757]/10 font-medium'
+                                    : 'text-[#FAF9F6]/60 hover:text-[#FAF9F6] hover:bg-[#FAF9F6]/5'
                                     }`}
                             >
                                 {isActive && (

@@ -6,7 +6,7 @@ export const AdminGuard = () => {
     const isAuthenticated = localStorage.getItem('dr_admin_auth') === 'true';
 
     if (!isAuthenticated) {
-        return <Navigate to="/admin/login" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     // Render the nested admin components (AdminLayout)
