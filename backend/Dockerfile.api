@@ -15,4 +15,4 @@ ENV PORT=5000
 EXPOSE $PORT
 
 # Start the API server
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "node scripts/init-all.js && node server.js"]
