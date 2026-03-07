@@ -20,6 +20,20 @@ import { SettingsModal } from './components/SettingsModal';
 import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { useResearchStore } from './store';
 
+/* ---- Admin Components ---- */
+import { AdminGuard } from './components/admin/AdminGuard';
+import { AdminLayout } from './components/admin/AdminLayout';
+import { AdminLogin } from './pages/admin/AdminLogin';
+import { Dashboard as AdminDashboard } from './pages/admin/Dashboard';
+import { UsersPanel as AdminUsersPanel } from './pages/admin/UsersPanel';
+import { ResearchPanel as AdminResearchPanel } from './pages/admin/ResearchPanel';
+import { AgentsPanel as AdminAgentsPanel } from './pages/admin/AgentsPanel';
+import { AnalyticsPanel as AdminAnalyticsPanel } from './pages/admin/AnalyticsPanel';
+import { WorkspacesPanel as AdminWorkspacesPanel } from './pages/admin/WorkspacesPanel';
+import { ChatPanel as AdminChatPanel } from './pages/admin/ChatPanel';
+import { VectorStorePanel as AdminVectorStorePanel } from './pages/admin/VectorStorePanel';
+import { SecurityPanel as AdminSecurityPanel } from './pages/admin/SecurityPanel';
+
 /* ------------------ Private Route Wrapper ------------------ */
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useResearchStore((state) => state.isAuthenticated);
@@ -79,6 +93,23 @@ export default function App() {
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/shared/:token" element={<SharedView />} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
+
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route element={<AdminGuard />}>
+              <Route element={<AdminLayout />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsersPanel />} />
+                <Route path="/admin/research" element={<AdminResearchPanel />} />
+                <Route path="/admin/agents" element={<AdminAgentsPanel />} />
+                <Route path="/admin/analytics" element={<AdminAnalyticsPanel />} />
+                <Route path="/admin/workspaces" element={<AdminWorkspacesPanel />} />
+                <Route path="/admin/chat" element={<AdminChatPanel />} />
+                <Route path="/admin/vectorstore" element={<AdminVectorStorePanel />} />
+                <Route path="/admin/security" element={<AdminSecurityPanel />} />
+                {/* End generic placeholder sections */}
+              </Route>
+            </Route>
 
             {/* Protected Routes */}
             <Route

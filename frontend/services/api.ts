@@ -598,6 +598,242 @@ class ApiService {
   }
 
   // =====================
+  // ADMIN ENDPOINTS
+  // =====================
+
+  async getAdminStatsOverview(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/stats/overview`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to load admin stats');
+    return res.json();
+  }
+
+  async getAdminUsers(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/users`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to load admin users');
+    return res.json();
+  }
+
+  async setAdminUserStatus(userId: number | string, action: 'disable' | 'enable'): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/users/${userId}/disable`, {
+      method: 'POST',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey },
+      body: JSON.stringify({ action })
+    });
+    if (!res.ok) throw new Error(`Failed to ${action} user`);
+    return res.json();
+  }
+
+  async getAdminResearch(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/research`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to load admin research records');
+    return res.json();
+  }
+
+  // --- Agents & Providers API ---
+  async getAdminAgents(): Promise<any> {
+    const res = await fetch(`${BASE_URL}/agents`, { headers: this.getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch agents');
+    return res.json();
+  }
+
+  async testAdminAgent(agentSlug: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/agents/${agentSlug}/test`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ task: "admin_test" })
+    });
+    if (!res.ok) throw new Error('Failed to test agent');
+    return res.json();
+  }
+
+  async getAdminProviders(): Promise<any> {
+    const res = await fetch(`${BASE_URL}/agents/providers`, { headers: this.getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch providers');
+    return res.json();
+  }
+
+  async testAdminProvider(provider: string): Promise<any> {
+    const res = await fetch(`${BASE_URL}/agents/providers/test`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ provider, query: "admin_test_query" })
+    });
+    if (!res.ok) throw new Error(`Provider test failed for ${provider}`);
+    return res.json();
+  }
+
+  // --- Analytics API ---
+  async getAdminAIEngineStats(): Promise<any> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const res = await fetch(`${aiEngineUrl}/usage/stats`);
+    if (!res.ok) throw new Error('Failed to fetch AI Engine stats');
+    return res.json();
+  }
+
+  async getAdminMetrics(): Promise<any> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const res = await fetch(`${aiEngineUrl}/metrics`);
+    if (!res.ok) throw new Error('Failed to fetch AI Engine metrics');
+    return res.json();
+  }
+
+  // --- Workspace API ---
+  async getAdminWorkspaces(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/workspaces`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to fetch admin workspaces');
+    return res.json();
+  }
+
+  async deleteAdminWorkspace(wid: string): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/workspaces/${wid}`, {
+      method: 'DELETE',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to delete workspace');
+    return res.json();
+  }
+
+  async updateAdminWorkspace(wid: string, updates: any): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/workspaces/${wid}`, {
+      method: 'PATCH',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey },
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) throw new Error('Failed to update workspace');
+    return res.json();
+  }
+
+  // --- Chat & Memory API (Admin) ---
+  async getAdminChatSessions(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/chat/sessions`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to fetch chat sessions');
+    return res.json();
+  }
+
+  async getAdminChatTranscript(sessionId: string): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/chat/history/${sessionId}`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to fetch chat transcript');
+    return res.json();
+  }
+
+  async getAdminMemories(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/memories`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to fetch memories');
+    return res.json();
+  }
+
+  async searchAdminMemories(query: string): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/memories/search`, {
+      method: 'POST',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey },
+      body: JSON.stringify({ query })
+    });
+    if (!res.ok) throw new Error('Failed to search memories');
+    return res.json();
+  }
+
+  async deleteAdminMemory(id: string | number): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/memories/${id}`, {
+      method: 'DELETE',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to delete memory');
+    return res.json();
+  }
+
+  // --- Vector Store API (Admin) ---
+  async getAdminVectorStats(workspaceId: string): Promise<any> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const aiEngineKey = import.meta.env.VITE_AI_ENGINE_API_KEY || '';
+    const res = await fetch(`${aiEngineUrl}/vectorstore/${workspaceId}/stats`, {
+      headers: { 'X-API-Key': aiEngineKey }
+    });
+    if (!res.ok) throw new Error('Failed to fetch vector stats');
+    return res.json();
+  }
+
+  async adminVectorSearch(workspaceId: string, query: string): Promise<any> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const aiEngineKey = import.meta.env.VITE_AI_ENGINE_API_KEY || '';
+    const res = await fetch(`${aiEngineUrl}/vectorstore/search`, {
+      method: 'POST',
+      headers: { 'X-API-Key': aiEngineKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspace_id: workspaceId, query, top_k: 5 })
+    });
+    if (!res.ok) throw new Error('Vector search failed');
+    return res.json();
+  }
+
+  async adminVectorIngest(workspaceId: string, text: string): Promise<any> {
+    const aiEngineUrl = import.meta.env.VITE_AI_ENGINE_URL || 'http://127.0.0.1:8000';
+    const aiEngineKey = import.meta.env.VITE_AI_ENGINE_API_KEY || '';
+    const res = await fetch(`${aiEngineUrl}/vectorstore/ingest`, {
+      method: 'POST',
+      headers: { 'X-API-Key': aiEngineKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workspace_id: workspaceId, text, source_type: 'admin_manual', source_url: 'admin://ingest' })
+    });
+    if (!res.ok) throw new Error('Vector ingest failed');
+    return res.json();
+  }
+
+  // --- Security API (Admin) ---
+  async getAdminApiKeys(): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/api-keys`, {
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to fetch api keys');
+    return res.json();
+  }
+
+  async generateAdminApiKey(userEmail: string, keyName: string): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/api-keys/generate`, {
+      method: 'POST',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey },
+      body: JSON.stringify({ user_email: userEmail, key_name: keyName })
+    });
+    if (!res.ok) throw new Error('Failed to create api key');
+    return res.json();
+  }
+
+  async revokeAdminApiKey(id: string | number): Promise<any> {
+    const adminKey = localStorage.getItem('dr_admin_auth') === 'true' ? 'dr_admin_super_secret_108' : '';
+    const res = await fetch(`${BASE_URL}/admin/api-keys/${id}`, {
+      method: 'DELETE',
+      headers: { ...this.getHeaders(), 'x-admin-key': adminKey }
+    });
+    if (!res.ok) throw new Error('Failed to revoke api key');
+    return res.json();
+  }
+
+  // =====================
   // DATA MAPPING
   // =====================
 

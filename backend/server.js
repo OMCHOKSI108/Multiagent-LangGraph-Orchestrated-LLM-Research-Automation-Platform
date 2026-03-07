@@ -73,6 +73,7 @@ app.use('/agents', require('./routes/agents.routes'));
 app.use('/memories', auth, require('./routes/memory.routes'));
 app.use('/export', auth, require('./routes/export.routes'));
 app.use('/usage', auth, require('./routes/usage.routes'));
+app.use('/admin', require('./routes/admin.routes'));
 
 // Initialize Redis client if REDIS_URL is provided
 if (process.env.REDIS_URL) {
