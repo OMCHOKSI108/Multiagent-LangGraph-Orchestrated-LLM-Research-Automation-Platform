@@ -18,7 +18,7 @@ type Plan = {
 const PLANS: Plan[] = [
     {
         name: 'Free',
-        price: '$0',
+        price: '₹0',
         period: '/month',
         description: 'Perfect for getting started and exploring the platform.',
         cta: 'Get Started Free',
@@ -38,7 +38,7 @@ const PLANS: Plan[] = [
     },
     {
         name: 'Pro',
-        price: '$29',
+        price: '₹2,499',
         period: '/month',
         description: 'For researchers and professionals who need depth and speed.',
         cta: 'Start 7-Day Trial',
@@ -140,8 +140,8 @@ export const PricingPage: React.FC = () => {
                         <div
                             key={plan.name}
                             className={`rounded-2xl border p-8 flex flex-col gap-6 ${plan.featured
-                                    ? 'border-accent bg-accent/5 ring-1 ring-accent/20'
-                                    : 'border-border-c bg-surface'}`}
+                                ? 'border-accent bg-accent/5 ring-1 ring-accent/20'
+                                : 'border-border-c bg-surface'}`}
                         >
                             {plan.featured && (
                                 <div className="text-center">
