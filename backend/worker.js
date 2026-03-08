@@ -163,10 +163,11 @@ async function processQueue() {
                 `UPDATE ${table}
                  SET status = 'completed',
                      result_json = $1,
+                     report_markdown = $2,
                      completed_at = NOW(),
                      updated_at = NOW()
-                 WHERE id = $2`,
-                [finalResult, job.id]
+                 WHERE id = $3`,
+                [finalResult, finalResult.report_markdown || "", job.id]
             );
 
             logger.info(`[Worker] Job #${job.id} Completed Successfully.`);
