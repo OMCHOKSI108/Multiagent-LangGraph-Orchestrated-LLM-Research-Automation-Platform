@@ -13,4 +13,4 @@ WHERE share_token IS NOT NULL;
 
 -- Optional: Add created_at for share tracking (when share was first created)
 ALTER TABLE research_logs 
-ADD COLUMN shared_at TIMESTAMP;
+ADD COLUMN IF NOT EXISTS shared_at TIMESTAMP;
