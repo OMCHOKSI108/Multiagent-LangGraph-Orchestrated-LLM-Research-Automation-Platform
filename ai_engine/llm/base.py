@@ -28,11 +28,15 @@ class LLMProvider(ABC):
         - provider_name       → human-readable name
     """
 
+    def __init__(self, provider_name: str = "unknown", model_name: str = "", temperature: float = 0.7):
+        self._provider_name = provider_name
+        self.model_name = model_name
+        self.temperature = temperature
+
     @property
-    @abstractmethod
     def provider_name(self) -> str:
         """Human-readable name of the provider (e.g., 'ollama', 'groq')."""
-        ...
+        return self._provider_name
 
     @abstractmethod
     def get_langchain_llm(self) -> Any:
