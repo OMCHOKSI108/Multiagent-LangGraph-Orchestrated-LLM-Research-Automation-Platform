@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -20,11 +20,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 10
@@ -39,7 +39,7 @@ services:
     environment:
       PORT: 8000
       AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
-      LLM_STATUS: ${LLM_STATUS:-OFFLINE}
+      LLM_STATUS: ${LLM_STATUS:-ONLINE}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       REDIS_URL: redis://redis:6379/0
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://multiagent-lang-graph-orchestrated.vercel.app,http://localhost:3000,http://localhost:5173}
@@ -66,7 +66,7 @@ services:
       - ai_logs:/app/logs
       - ai_cache:/app/cache
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()" ]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -113,7 +113,7 @@ services:
     ports:
       - "5000:5000"
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" ]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -154,6 +154,7 @@ volumes:
   ai_output:
   ai_logs:
   ai_cache:
+
 
 networks:
   app_net:

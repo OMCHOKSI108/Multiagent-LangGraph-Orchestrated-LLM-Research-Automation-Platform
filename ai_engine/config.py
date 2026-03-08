@@ -23,7 +23,7 @@ load_dotenv(dotenv_path=root_env_path)
 #   ONLINE  → Groq (cloud API with key rotation)
 #
 # Backward compatibility: falls back to LLM_MODE if LLM_STATUS is not set.
-_raw_status = os.getenv("LLM_STATUS", os.getenv("LLM_MODE", "OFFLINE"))
+_raw_status = os.getenv("LLM_STATUS", os.getenv("LLM_MODE", "ONLINE"))
 LLM_STATUS = _raw_status.upper().strip()
 
 # Backward compat: map old values to new

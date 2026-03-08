@@ -60,12 +60,31 @@ router.post('/message', async (req, res) => {
         if (keyCheck.rows.length === 0) return res.status(403).json({ error: "Invalid API Key" });
         const user_id = keyCheck.rows[0].user_id;
 
-        // 2. Fetch Research Context
-        const research = await db.query("SELECT result_json, user_id FROM research_logs WHERE id = $1", [research_id]);
-        if (research.rows.length === 0) return res.status(404).json({ error: "Research not found" });
-        if (research.rows[0].user_id !== user_id) return res.status(403).json({ error: "Unauthorized access to this research" });
+        // 2. Fetch Research Context — try research_logs first, fallback to research_sessions
+        let researchRow = null;
+        const legacyResult = await db.query(
+            "SELECT result_json, user_id FROM research_logs WHERE id = $1",
+            [research_id]
+        );
+        if (legacyResult.rows.length > 0) {
+            researchRow = legacyResult.rows[0];
+        } else {
+            try {
+                const sessResult = await db.query(
+                    `SELECT rs.result_json, rs.user_id
+                     FROM research_sessions rs
+                     JOIN workspaces w ON rs.workspace_id = w.id
+                     WHERE rs.id = $1 AND w.user_id = $2`,
+                    [research_id, user_id]
+                );
+                if (sessResult.rows.length > 0) researchRow = sessResult.rows[0];
+            } catch (e) { /* table may not exist */ }
+        }
 
-        const context = research.rows[0].result_json || {};
+        if (!researchRow) return res.status(404).json({ error: "Research not found" });
+        if (researchRow.user_id !== user_id) return res.status(403).json({ error: "Unauthorized access to this research" });
+
+        const context = researchRow.result_json || {};
 
         // 2b. Fetch workspace RAG context from vector store
         const workspaceId = req.body.workspace_id || await resolveWorkspaceId(research_id);

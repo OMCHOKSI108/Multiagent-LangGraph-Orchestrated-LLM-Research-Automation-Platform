@@ -16,7 +16,8 @@ router.get('/users', async (req, res) => {
             SELECT 
                 u.id, 
                 u.username, 
-                u.email, 
+                u.email,
+                u.is_active,
                 u.created_at,
                 (SELECT COUNT(*) FROM workspaces w WHERE w.user_id = u.id) as workspace_count,
                 (SELECT COUNT(*) FROM research_logs rl WHERE rl.user_id = u.id) as research_count,
@@ -26,11 +27,9 @@ router.get('/users', async (req, res) => {
         `;
         const result = await db.query(query);
 
-        // Mock a status field since there isn't an explicit "is_disabled" in the schema right now,
-        // but we will add logic for disabled users.
         const users = result.rows.map(user => ({
             ...user,
-            status: user.email.startsWith('disabled_') ? 'disabled' : 'active'
+            status: user.is_active ? 'active' : 'disabled'
         }));
 
         res.json({ users });
@@ -42,34 +41,32 @@ router.get('/users', async (req, res) => {
 
 /**
  * 2. POST /admin/users/:id/disable
- * Disable a user. Since we lack an 'is_active' column currently on users, 
- * a simple patch is renaming their password_hash or email to prevent login.
- * Ideally, add 'is_active' to the table in a future migration.
+ * Disable or re-enable a user via the is_active flag.
  */
 router.post('/users/:id/disable', async (req, res) => {
     try {
         const userId = parseInt(req.params.id);
+        if (isNaN(userId) || userId <= 0) {
+            return res.status(400).json({ error: 'Invalid user id' });
+        }
         const { action } = req.body; // 'disable' or 'enable'
 
-        // If we want to safely disable without dropping schema, we could prefix the email.
-        const userCheck = await db.query('SELECT email FROM users WHERE id = $1', [userId]);
-        if (userCheck.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-
-        const email = userCheck.rows[0].email;
-        let newEmail = email;
-
-        if (action === 'disable' && !email.startsWith('disabled_')) {
-            newEmail = `disabled_${email}`;
-        } else if (action === 'enable' && email.startsWith('disabled_')) {
-            newEmail = email.replace('disabled_', '');
+        if (action !== 'disable' && action !== 'enable') {
+            return res.status(400).json({ error: "action must be 'disable' or 'enable'" });
         }
 
-        await db.query('UPDATE users SET email = $1 WHERE id = $2', [newEmail, userId]);
+        const isActive = action === 'enable';
+        const result = await db.query(
+            'UPDATE users SET is_active = $1 WHERE id = $2 RETURNING id, username, email, is_active',
+            [isActive, userId]
+        );
 
-        res.json({ message: `User ${action}d successfully`, newEmail });
+        if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+        res.json({ message: `User ${action}d successfully`, user: result.rows[0] });
     } catch (err) {
         console.error('[Admin] Error disabling user:', err);
-        res.status(500).json({ error: 'Failed to to update user status' });
+        res.status(500).json({ error: 'Failed to update user status' });
     }
 });
 

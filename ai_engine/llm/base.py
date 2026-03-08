@@ -58,10 +58,56 @@ class LLMProvider(ABC):
     def get_status(self) -> Dict[str, Any]:
         """
         Returns status metadata for the /llm/status endpoint.
-
-        Must include at minimum:
-            - provider: str
-            - model: str
-            - available: bool
         """
         ...
+        
+    def rotate_key(self) -> str:
+        """
+        Moves to the next API key. Providers that support rotation should override this.
+        Returns the new active key, or empty string if unsupported.
+        """
+        return ""
+
+    def invoke_with_retry(self, messages: list) -> Any:
+        """
+        Generic invoke method with built-in retry and key rotation logic.
+        Catches 429/RateLimit errors, rotates the key, and retries with exponential backoff.
+        """
+        import time
+        max_retries = 3
+        backoff = 1.0
+        
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                # get_langchain_llm() should construct/return the LLM with the *currently active* key
+                llm = self.get_langchain_llm()
+                return llm.invoke(messages)
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = (
+                    "429" in error_str
+                    or "rate_limit" in error_str
+                    or "rate limit" in error_str
+                    or "too many requests" in error_str
+                    or "quota" in error_str
+                )
+                
+                if is_rate_limit:
+                    logger.warning(
+                        f"[{self.provider_name}] Rate limit/Quota hit. "
+                        f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s."
+                    )
+                    self.rotate_key() # Attempt to rotate key automatically
+                    time.sleep(backoff)
+                    backoff *= 2.0
+                    last_exception = e
+                    continue
+                else:
+                    # Not a rate limit error, fail immediately
+                    raise e
+                    
+        logger.error(f"[{self.provider_name}] All {max_retries} retry attempts exhausted.")
+        raise last_exception or RuntimeError(f"All {self.provider_name} API retries exhausted")
+

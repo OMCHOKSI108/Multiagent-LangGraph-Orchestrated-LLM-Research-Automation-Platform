@@ -48,6 +48,36 @@ class BaseAgent:
         self.max_context_tokens = self.TOKEN_LIMITS.get(self.model_name, self.TOKEN_LIMITS["default"])
         self.llm = self._get_llm()
 
+class RetryLLMWrapper:
+    """Proxies LangChain calls but overrides invoke() to add multi-key rotation."""
+    def __init__(self, provider):
+        self._provider = provider
+    
+    def invoke(self, messages, *args, **kwargs):
+        try:
+            return self._provider.invoke_with_retry(messages)
+        except Exception as e:
+            logger.error(f"[RetryLLMWrapper] Primary provider ({self._provider.provider_name}) exhausted/failed: {e}")
+            logger.warning("[RetryLLMWrapper] Falling back to OFFLINE Ollama provider as last resort.")
+            try:
+                from llm.factory import get_llm_provider
+                import os
+                
+                # Temporarily spoof LLM_STATUS for the factory request
+                _old_status = getattr(config, "LLM_STATUS", "OFFLINE")
+                config.LLM_STATUS = "OFFLINE"
+                fallback_provider = get_llm_provider("phi3:mini") # Known local model
+                config.LLM_STATUS = _old_status
+                
+                return fallback_provider.invoke_with_retry(messages)
+            except Exception as fallback_e:
+                logger.error(f"[RetryLLMWrapper] Complete Failure. Ollama fallback also failed: {fallback_e}")
+                raise e # Throw original online error if local also fails
+        
+    def __getattr__(self, name):
+        # Delegate all other Langchain model methods (like bind_tools) to the underlying model
+        return getattr(self._provider.get_langchain_llm(), name)
+
     def _get_llm(self):
         """
         Returns the configured LLM client via the provider factory.
@@ -58,7 +88,7 @@ class BaseAgent:
         """
         provider = get_llm_provider(self.model_name)
         logger.info(f"[{self.name}] Using {provider.provider_name}: {self.model_name}")
-        return provider.get_langchain_llm()
+        return RetryLLMWrapper(provider)
 
 
     def _estimate_tokens(self, text: str) -> int:

@@ -2,6 +2,10 @@ from ..base import BaseAgent
 from utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, PDFReaderProvider, ArxivProvider, HtmlScraperProvider
 from utils.event_emitter import emit_source
 from langchain_core.messages import SystemMessage, HumanMessage
+import logging
+import json
+
+logger = logging.getLogger("ai_engine.agents.scraper")
 
 class DataScraperAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -47,7 +51,7 @@ class DataScraperAgent(BaseAgent):
         self.html_provider = HtmlScraperProvider()
 
     def run(self, state: dict) -> dict:
-        print(f"[{self.name}] Initiating Scraping Sequence...")
+        logger.info(f"[{self.name}] Initiating Scraping Sequence...")
         task = state.get("task", "")
         url = state.get("paper_url") or state.get("url", "")
         
@@ -57,14 +61,14 @@ class DataScraperAgent(BaseAgent):
         # Strategy A: Direct URL extraction
         if url:
             if url.endswith(".pdf") or "arxiv.org/abs" in url:
-                print(f"[{self.name}] Mode: PDF Extraction")
+                logger.info(f"[{self.name}] Mode: PDF Extraction")
                 # Fix Arxiv URL if needed
                 if "arxiv.org/abs" in url: url = url.replace("abs", "pdf") + ".pdf"
                 
                 extracted_text = self.pdf_provider.read_pdf(url)
                 source_type = "pdf"
             else:
-                print(f"[{self.name}] Mode: Deep Web Page Extraction")
+                logger.info(f"[{self.name}] Mode: Deep Web Page Extraction")
                 # Use the new HTML Scraper to get the ACTUAL page content
                 extracted_text = self.html_provider.scrape_url(url)
                 if len(extracted_text) < 100:
@@ -72,7 +76,7 @@ class DataScraperAgent(BaseAgent):
                 source_type = "web_html"
         # Strategy B: Topic Search
         else:
-            print(f"[{self.name}] Mode: Deep Web Search")
+            logger.info(f"[{self.name}] Mode: Deep Web Search")
             source_type = "multi_source_search"
             
             # 1. Wiki
@@ -92,11 +96,11 @@ class DataScraperAgent(BaseAgent):
                     # Fetch full content for the very first result
                     if fetch_full and i == 0 and r.get('url'):
                         try:
-                            print(f"   - Deep scraping {source_name} top result: {r['url']}")
+                            logger.info(f"   - Deep scraping {source_name} top result: {r['url']}")
                             full_text = self.html_provider.scrape_url(r['url'])
                             content += f"   DETAILS: {full_text[:4000]}...\n"
                         except Exception as e:
-                            print(f"   - Deep scrape failed: {e}")
+                            logger.error(f"   - Deep scrape failed: {e}")
                 return content
 
             extracted_text += add_content("Wikipedia", wiki_res, fetch_full=False)
@@ -106,7 +110,7 @@ class DataScraperAgent(BaseAgent):
         # ── Dataset / Survey Discovery ──
         # Search for datasets, GitHub repos, and Kaggle datasets related to the topic
         try:
-            print(f"[{self.name}] Searching for datasets and surveys...")
+            logger.info(f"[{self.name}] Searching for datasets and surveys...")
             dataset_queries = [
                 f"{task} dataset site:kaggle.com",
                 f"{task} dataset OR benchmark site:github.com",
@@ -140,7 +144,7 @@ class DataScraperAgent(BaseAgent):
                         status="success",
                     )
         except Exception as ds_err:
-            print(f"[{self.name}] Dataset search error (non-fatal): {ds_err}")
+            logger.warning(f"[{self.name}] Dataset search error (non-fatal): {ds_err}")
             
         # Call LLM to structure the extracted mess
         enhanced_prompt = f"{self.system_prompt}\n\nRAW SCRAPED DATA:\n{extracted_text[:20000]}" # Limit context
@@ -158,5 +162,5 @@ class DataScraperAgent(BaseAgent):
                 "agent": self.name
             }
         except Exception as e:
-            print(f"[{self.name}] Error: {e}")
+            logger.error(f"[{self.name}] Error: {e}")
             return {"error": str(e)}

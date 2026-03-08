@@ -15,10 +15,10 @@ async function findResearch(id, userId) {
     // Try workspace-scoped sessions first
     try {
         const sessResult = await db.query(
-            `SELECT rs.id, rs.result_json, rs.task, rs.title, rs.workspace_id
+            `SELECT rs.id, rs.result_json, rs.topic AS task, rs.title, rs.workspace_id
              FROM research_sessions rs
              JOIN workspaces w ON rs.workspace_id = w.id
-             WHERE rs.id = $1 AND w.owner_id = $2`,
+             WHERE rs.id = $1 AND w.user_id = $2`,
             [id, userId]
         );
         if (sessResult.rows.length > 0) return sessResult.rows[0];

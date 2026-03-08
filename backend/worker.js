@@ -4,7 +4,6 @@ const logger = require('./utils/logger');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 const AI_ENGINE_SECRET = process.env.AI_ENGINE_SECRET || "";
-const POLLING_INTERVAL = 5000; // 5 seconds
 const STALE_JOB_TIMEOUT_MINUTES = 30;
 const MAX_RETRIES = 3;
 const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.AI_REQUEST_TIMEOUT_MS || "1800000", 10);

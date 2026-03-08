@@ -75,6 +75,11 @@ router.post('/login', async (req, res) => {
 
         const user = result.rows[0];
 
+        // Reject disabled accounts
+        if (user.is_active === false) {
+            return res.status(403).json({ error: "Account has been disabled" });
+        }
+
         // Check Password
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) {
