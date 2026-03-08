@@ -798,11 +798,20 @@ async def run_research(request: ResearchRequest):
         if research_id:
             emit_stage_change("completed")
         
+        # Extract the markdown report if available
+        findings = result.get("findings", {})
+        msr = findings.get("multi_stage_report", {})
+        report_markdown = msr.get("markdown_report") or msr.get("response") or ""
+        if not report_markdown:
+            sw = findings.get("scientific_writing", {})
+            report_markdown = sw.get("markdown_report") or sw.get("response") or ""
+            
         return {
             "status": "completed",
             "task": request.task,
             "result": result.get("results"),
-            "final_state": result
+            "final_state": result,
+            "report_markdown": report_markdown
         }
     except Exception as e:
         logger.error(f"[Job #{job_id}] Research failed: {str(e)}")
