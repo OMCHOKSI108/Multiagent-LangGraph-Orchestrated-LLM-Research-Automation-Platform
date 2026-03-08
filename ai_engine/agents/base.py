@@ -32,22 +32,6 @@ logger = logging.getLogger("ai_engine.agents")
 
 
 
-class BaseAgent:
-    # Token limits per model (approximate)
-    TOKEN_LIMITS = {
-        "phi3:mini": 4096,
-        "gemma2:2b": 8192,
-        "qwen2.5-coder:1.5b": 4096,
-        "default": 4096
-    }
-    
-    def __init__(self, name: str, system_prompt: str, model_name: Optional[str] = None):
-        self.name = name
-        self.system_prompt = system_prompt
-        self.model_name = model_name or config.MODEL_REASONING
-        self.max_context_tokens = self.TOKEN_LIMITS.get(self.model_name, self.TOKEN_LIMITS["default"])
-        self.llm = self._get_llm()
-
 class RetryLLMWrapper:
     """Proxies LangChain calls but overrides invoke() to add multi-key rotation."""
     def __init__(self, provider):
@@ -77,6 +61,22 @@ class RetryLLMWrapper:
     def __getattr__(self, name):
         # Delegate all other Langchain model methods (like bind_tools) to the underlying model
         return getattr(self._provider.get_langchain_llm(), name)
+
+class BaseAgent:
+    # Token limits per model (approximate)
+    TOKEN_LIMITS = {
+        "phi3:mini": 4096,
+        "gemma2:2b": 8192,
+        "qwen2.5-coder:1.5b": 4096,
+        "default": 4096
+    }
+    
+    def __init__(self, name: str, system_prompt: str, model_name: Optional[str] = None):
+        self.name = name
+        self.system_prompt = system_prompt
+        self.model_name = model_name or config.MODEL_REASONING
+        self.max_context_tokens = self.TOKEN_LIMITS.get(self.model_name, self.TOKEN_LIMITS["default"])
+        self.llm = self._get_llm()
 
     def _get_llm(self):
         """
