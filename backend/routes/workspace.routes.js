@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger');
+const { detectIntent } = require('../utils/intentDetector');
 
 // ============================================
 // GET /workspaces — List all workspaces for user
@@ -214,6 +215,23 @@ router.post('/:wid/research/start', auth, async (req, res) => {
 
         const trimmedTopic = topic.trim();
         const researchDepth = depth || 'deep';
+
+        // ── Smart Intent Detection ──────────────────────────────────────────
+        // Fetch user's name for personalised replies
+        const userRow = await db.query('SELECT username FROM users WHERE id = $1', [userId]);
+        const userName = userRow.rows[0]?.username || 'there';
+
+        const { intent, reply: instantReply, isResearch } = detectIntent(trimmedTopic, userName);
+
+        if (!isResearch) {
+            logger.info(`[Workspace] Intent "${intent}" detected for user #${userId} — returning instant reply`);
+            return res.status(200).json({
+                intent,
+                instant_reply: instantReply,
+                session_id: null,
+            });
+        }
+        // ───────────────────────────────────────────────────────────────────
 
         // Insert new research session with explicit user trigger
         const result = await db.query(
