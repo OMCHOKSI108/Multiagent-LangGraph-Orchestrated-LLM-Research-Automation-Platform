@@ -62,7 +62,10 @@ export const auth = {
 
   me: () => req<{ user: User }>('GET', '/auth/me'),
 
-  generateApiKey: () => req<{ api_key: string }>('POST', '/auth/generate-api-key'),
+  generateApiKey: async () => {
+    const data = await req<{ api_key?: string; key?: { key_value?: string } }>('POST', '/user/apikey/generate');
+    return { api_key: data.api_key || data.key?.key_value || '' };
+  },
 };
 
 // ─── User ─────────────────────────────────────────────────────────────────────
@@ -79,7 +82,10 @@ export interface ResearchHistoryItem {
 
 export const user = {
   history: () => req<ResearchHistoryItem[]>('GET', '/user/history'),
-  updateProfile: (data: { username?: string }) => req<User>('PATCH', '/auth/me', data),
+  updateProfile: async (data: { username?: string }) => {
+    const result = await req<{ user: User }>('PATCH', '/auth/me', data);
+    return result.user;
+  },
   changePassword: (currentPassword: string, newPassword: string) =>
     req<{ message: string }>('POST', '/auth/password', { currentPassword, newPassword }),
 };
@@ -180,7 +186,7 @@ export const events = {
     req<ResearchEvent[]>('GET', `/events/${researchId}`),
 
   getSSEToken: (researchId: number) =>
-    req<{ token: string }>('POST', '/events/token', { research_id: researchId }),
+    req<{ token: string }>('GET', `/events/token/${researchId}`),
 };
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -199,8 +205,8 @@ export const chat = {
       message,
     }),
 
-  history: (research_id: number) =>
-    req<{ messages: ChatMessage[] }>('GET', `/chat/history/${research_id}`),
+  history: (session_id: number) =>
+    req<{ messages: ChatMessage[] }>('GET', `/chat/history/${session_id}`),
 };
 
 // ─── Export ──────────────────────────────────────────────────────────────────
@@ -208,7 +214,8 @@ export const chat = {
 export const exportApi = {
   download: async (id: number, format: 'markdown' | 'json') => {
     const token = getToken();
-    const res = await fetch(`${API_BASE}/export/${id}?format=${format}`, {
+    const endpoint = format === 'markdown' ? `${API_BASE}/export/${id}/markdown` : `${API_BASE}/export/${id}/json`;
+    const res = await fetch(endpoint, {
       headers: { 'x-auth-token': token },
     });
     if (!res.ok) throw new Error('Export failed');
@@ -232,11 +239,11 @@ export interface Memory {
 export const memories = {
   list: () => req<{ memories: Memory[] }>('GET', '/memories'),
   create: (title: string, content: string, tags?: string[]) =>
-    req<{ memory: Memory }>('POST', '/memories', { 
+    req<Memory>('POST', '/memories', {
       content, 
       metadata: { title, tags } 
     }),
-  delete: (id: number) => req<{ message: string }>('DELETE', `/memories/${id}`),
+  delete: (id: number) => req<{ success: boolean; id: number }>('DELETE', `/memories/${id}`),
 };
 
 // ─── Agents ──────────────────────────────────────────────────────────────────

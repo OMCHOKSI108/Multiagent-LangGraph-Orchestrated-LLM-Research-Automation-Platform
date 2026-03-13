@@ -3,6 +3,30 @@ const router = express.Router();
 const db = require('../config/db');
 const logger = require('../utils/logger');
 
+let memoriesSchemaReady = false;
+
+async function ensureMemoriesSchema() {
+    if (memoriesSchemaReady) return;
+
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS user_memories (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            source VARCHAR(50) DEFAULT 'manual',
+            source_id INTEGER,
+            metadata JSONB DEFAULT '{}',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    await db.query('CREATE INDEX IF NOT EXISTS idx_memories_user ON user_memories(user_id)');
+    await db.query('CREATE INDEX IF NOT EXISTS idx_memories_source ON user_memories(user_id, source)');
+
+    memoriesSchemaReady = true;
+}
+
 /**
  * List user memories (paginated).
  *
@@ -10,6 +34,8 @@ const logger = require('../utils/logger');
  */
 router.get('/', async (req, res) => {
     try {
+        await ensureMemoriesSchema();
+
         const user_id = req.user.id;
         const page = parseInt(req.query.page) || 1;
         const limit = Math.min(parseInt(req.query.limit) || 20, 100);
@@ -25,9 +51,14 @@ router.get('/', async (req, res) => {
             params.push(source);
         }
 
-        // Get total count
-        const countQuery = query.replace(/SELECT .+ FROM/, 'SELECT COUNT(*) FROM');
-        const countResult = await db.query(countQuery, params);
+        // Get total count (build explicitly to avoid brittle regex replacement)
+        let countQuery = `SELECT COUNT(*) FROM user_memories WHERE user_id = $1`;
+        const countParams = [user_id];
+        if (source) {
+            countQuery += ` AND source = $2`;
+            countParams.push(source);
+        }
+        const countResult = await db.query(countQuery, countParams);
         const total = parseInt(countResult.rows[0].count);
 
         // Get page of results
@@ -56,6 +87,8 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
     try {
+        await ensureMemoriesSchema();
+
         const user_id = req.user.id;
         const { content, source, source_id, metadata } = req.body;
 
@@ -84,6 +117,8 @@ router.post('/', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
     try {
+        await ensureMemoriesSchema();
+
         const user_id = req.user.id;
         const { id } = req.params;
 
@@ -111,6 +146,8 @@ router.delete('/:id', async (req, res) => {
  */
 router.post('/search', async (req, res) => {
     try {
+        await ensureMemoriesSchema();
+
         const user_id = req.user.id;
         const { query } = req.body;
         const limit = Math.min(parseInt(req.body.limit) || 20, 100);

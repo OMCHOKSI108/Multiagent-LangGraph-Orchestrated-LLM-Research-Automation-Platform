@@ -5,6 +5,7 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
 const auth = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 
@@ -45,41 +46,98 @@ async function resolveWorkspaceId(researchId) {
     return null;
 }
 
+function getAuthTokenFromRequest(req) {
+    let token = req.header('x-auth-token');
+    if (!token) {
+        const authHeader = req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+        }
+    }
+    return token;
+}
+
+async function resolveRequesterUserId(req) {
+    const { api_key } = req.body || {};
+
+    if (api_key) {
+        const keyCheck = await db.query("SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE", [api_key]);
+        if (keyCheck.rows.length === 0) {
+            const err = new Error('Invalid API Key');
+            err.statusCode = 403;
+            throw err;
+        }
+        return keyCheck.rows[0].user_id;
+    }
+
+    const token = getAuthTokenFromRequest(req);
+    if (!token) {
+        const err = new Error('API Key or auth token required');
+        err.statusCode = 401;
+        throw err;
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+        const err = new Error('Authentication is not configured');
+        err.statusCode = 500;
+        throw err;
+    }
+
+    try {
+        const decoded = jwt.verify(token, jwtSecret);
+        if (!decoded || !decoded.id) {
+            const err = new Error('Token is not valid');
+            err.statusCode = 401;
+            throw err;
+        }
+        return decoded.id;
+    } catch (e) {
+        const err = new Error('Token is not valid');
+        err.statusCode = 401;
+        throw err;
+    }
+}
+
+async function getResearchContextForUser(researchId, userId) {
+    // Try research_logs first
+    const legacyResult = await db.query(
+        "SELECT result_json, user_id FROM research_logs WHERE id = $1",
+        [researchId]
+    );
+    if (legacyResult.rows.length > 0) {
+        return legacyResult.rows[0];
+    }
+
+    // Fallback to research_sessions (workspace flow)
+    try {
+        const sessResult = await db.query(
+            `SELECT rs.result_json, rs.user_id
+             FROM research_sessions rs
+             JOIN workspaces w ON rs.workspace_id = w.id
+             WHERE rs.id = $1 AND w.user_id = $2`,
+            [researchId, userId]
+        );
+        if (sessResult.rows.length > 0) return sessResult.rows[0];
+    } catch (e) { /* table may not exist */ }
+
+    return null;
+}
+
 // Send Message to Chatbot
 // Input: { research_id, message, api_key, session_id (optional) }
 router.post('/message', async (req, res) => {
     try {
-        const { research_id, message, api_key } = req.body;
+        const { research_id, message } = req.body;
         let { session_id } = req.body;
 
-        if (!api_key) return res.status(401).json({ error: "API Key Required" });
         if (!research_id || !message) return res.status(400).json({ error: "Research ID and Message required" });
 
-        // 1. Validate User
-        const keyCheck = await db.query("SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE", [api_key]);
-        if (keyCheck.rows.length === 0) return res.status(403).json({ error: "Invalid API Key" });
-        const user_id = keyCheck.rows[0].user_id;
+        // 1. Resolve requester from API key OR JWT token
+        const user_id = await resolveRequesterUserId(req);
 
-        // 2. Fetch Research Context — try research_logs first, fallback to research_sessions
-        let researchRow = null;
-        const legacyResult = await db.query(
-            "SELECT result_json, user_id FROM research_logs WHERE id = $1",
-            [research_id]
-        );
-        if (legacyResult.rows.length > 0) {
-            researchRow = legacyResult.rows[0];
-        } else {
-            try {
-                const sessResult = await db.query(
-                    `SELECT rs.result_json, rs.user_id
-                     FROM research_sessions rs
-                     JOIN workspaces w ON rs.workspace_id = w.id
-                     WHERE rs.id = $1 AND w.user_id = $2`,
-                    [research_id, user_id]
-                );
-                if (sessResult.rows.length > 0) researchRow = sessResult.rows[0];
-            } catch (e) { /* table may not exist */ }
-        }
+        // 2. Fetch Research Context — supports both legacy and workspace flow
+        const researchRow = await getResearchContextForUser(research_id, user_id);
 
         if (!researchRow) return res.status(404).json({ error: "Research not found" });
         if (researchRow.user_id !== user_id) return res.status(403).json({ error: "Unauthorized access to this research" });
@@ -154,23 +212,20 @@ router.post('/message', async (req, res) => {
 // Input: { research_id, message, api_key, session_id (optional) }
 router.post('/stream', async (req, res) => {
     try {
-        const { research_id, message, api_key } = req.body;
+        const { research_id, message } = req.body;
         let { session_id } = req.body;
 
-        if (!api_key) return res.status(401).json({ error: "API Key Required" });
         if (!research_id || !message) return res.status(400).json({ error: "Research ID and Message required" });
 
-        // 1. Validate User
-        const keyCheck = await db.query("SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE", [api_key]);
-        if (keyCheck.rows.length === 0) return res.status(403).json({ error: "Invalid API Key" });
-        const user_id = keyCheck.rows[0].user_id;
+        // 1. Resolve requester from API key OR JWT token
+        const user_id = await resolveRequesterUserId(req);
 
-        // 2. Fetch Research Context
-        const research = await db.query("SELECT result_json, user_id FROM research_logs WHERE id = $1", [research_id]);
-        if (research.rows.length === 0) return res.status(404).json({ error: "Research not found" });
-        if (research.rows[0].user_id !== user_id) return res.status(403).json({ error: "Unauthorized access" });
+        // 2. Fetch Research Context — supports both legacy and workspace flow
+        const researchRow = await getResearchContextForUser(research_id, user_id);
+        if (!researchRow) return res.status(404).json({ error: "Research not found" });
+        if (researchRow.user_id !== user_id) return res.status(403).json({ error: "Unauthorized access" });
 
-        const context = research.rows[0].result_json || {};
+        const context = researchRow.result_json || {};
 
         // 2b. Fetch workspace RAG context from vector store
         const workspaceId = req.body.workspace_id || await resolveWorkspaceId(research_id);
@@ -288,13 +343,21 @@ router.get('/history/:session_id', auth, async (req, res) => {
         const { session_id } = req.params;
         const userId = req.user?.id;
         const result = await db.query(
-            `SELECT role, message, created_at
+            `SELECT id, role, message, created_at
              FROM chat_history
              WHERE session_id = $1 AND user_id = $2
              ORDER BY created_at ASC`,
             [session_id, userId]
         );
-        res.json(result.rows);
+
+        const messages = result.rows.map((row) => ({
+            id: row.id,
+            role: row.role,
+            content: row.message,
+            created_at: row.created_at
+        }));
+
+        res.json({ messages });
     } catch (err) {
         logger.error(err);
         res.status(500).json({ error: "Server error" });

@@ -443,9 +443,9 @@ router.post('/api-keys/generate', async (req, res) => {
         const finalKey = `dr_live_${rawKey}`;
 
         const result = await db.query(
-            `INSERT INTO api_keys (user_id, key_name, key_value, is_active)
+            `INSERT INTO api_keys (user_id, name, key_value, is_active)
              VALUES ($1, $2, $3, TRUE)
-             RETURNING id, key_name, key_value, created_at, is_active`,
+             RETURNING id, name as key_name, key_value, created_at, is_active`,
             [user_id, key_name || 'Admin Generated Key', finalKey]
         );
         res.json({ key: result.rows[0] });

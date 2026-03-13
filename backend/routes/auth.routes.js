@@ -109,7 +109,9 @@ router.post('/login', async (req, res) => {
                 id: user.id, 
                 username: user.username, 
                 email: user.email,
-                role: user.role
+                role: user.role,
+                is_active: user.is_active,
+                created_at: user.created_at
             } 
         });
 
@@ -123,7 +125,16 @@ router.post('/login', async (req, res) => {
 router.get('/me', require('../middleware/auth'), async (req, res) => {
     try {
         const result = await db.query(
-            "SELECT id, username, email, role FROM users WHERE id = $1",
+            `SELECT u.id, u.username, u.email, u.role, u.is_active, u.created_at,
+                    (
+                        SELECT ak.key_value
+                        FROM api_keys ak
+                        WHERE ak.user_id = u.id AND ak.is_active = TRUE
+                        ORDER BY ak.created_at DESC
+                        LIMIT 1
+                    ) AS api_key
+             FROM users u
+             WHERE u.id = $1`,
             [req.user.id]
         );
         if (result.rows.length === 0) {

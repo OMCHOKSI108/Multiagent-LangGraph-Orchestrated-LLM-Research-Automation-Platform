@@ -27,13 +27,35 @@ router.post('/apikey/generate', auth, async (req, res) => {
 router.get('/history', auth, async (req, res) => {
     try {
         const result = await db.query(
-            "SELECT id, title, task, status, created_at FROM research_logs WHERE user_id = $1 ORDER BY created_at DESC",
+            `SELECT id, title, task, status, created_at, workspace_name
+             FROM (
+                SELECT rl.id, rl.title, rl.task, rl.status, rl.created_at, NULL::text AS workspace_name
+                FROM research_logs rl
+                WHERE rl.user_id = $1
+
+                UNION ALL
+
+                SELECT rs.id, rs.title, rs.topic AS task, rs.status, rs.created_at, w.name AS workspace_name
+                FROM research_sessions rs
+                LEFT JOIN workspaces w ON rs.workspace_id = w.id
+                WHERE rs.user_id = $1
+             ) combined
+             ORDER BY created_at DESC`,
             [req.user.id]
         );
         res.json(result.rows);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Server error" });
+        // Fallback for environments that have not run workspace migrations yet.
+        try {
+            const fallback = await db.query(
+                "SELECT id, title, task, status, created_at, NULL::text AS workspace_name FROM research_logs WHERE user_id = $1 ORDER BY created_at DESC",
+                [req.user.id]
+            );
+            return res.json(fallback.rows);
+        } catch (fallbackErr) {
+            console.error(fallbackErr);
+            return res.status(500).json({ error: "Server error" });
+        }
     }
 });
 

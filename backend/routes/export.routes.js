@@ -188,6 +188,35 @@ router.get('/:id/markdown', auth, async (req, res) => {
 });
 
 /**
+ * Export raw research result as JSON.
+ *
+ * GET /export/:id/json
+ */
+router.get('/:id/json', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const row = await findResearch(id, req.user.id);
+
+        if (!row) {
+            return res.status(404).json({ error: 'Research not found' });
+        }
+
+        const { result_json } = row;
+        if (!result_json) {
+            return res.status(400).json({ error: 'Research not yet completed' });
+        }
+
+        const filename = `research_${id}.json`;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(JSON.stringify(result_json, null, 2));
+    } catch (err) {
+        logger.error(`[Export] JSON error: ${err.message}`);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
  * Export research result as PDF.
  *
  * GET /export/:id/pdf
