@@ -91,6 +91,7 @@ services:
       DB_USER: ${POSTGRES_USER:-avnadmin}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-AVNS_kitWuvmp7Q-98DTnqOh}
       REDIS_URL: redis://redis:6379/0
+      CORS_ORIGIN: http://localhost:3000,http://127.0.0.1:3000,https://multiagent-lang-graph-orchestrated-gules.vercel.app
     ports:
       - "5000:5000"
     depends_on:
