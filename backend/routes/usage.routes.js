@@ -3,47 +3,62 @@ const router = express.Router();
 const axios = require('axios');
 const logger = require('../utils/logger');
 
+const db = require('../config/db');
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 
 /**
- * Proxy usage stats from AI Engine.
+ * Proxy usage stats from AI Engine + DB counts.
  *
  * GET /usage/stats?hours=24
  */
 router.get('/stats', async (req, res) => {
     try {
+        const user_id = req.user.id;
         const hours = parseInt(req.query.hours) || 24;
-        const aiResponse = await axios.get(`${AI_ENGINE_URL}/usage/stats`, {
-            params: { hours },
-            timeout: 10000
-        });
 
-        // Transform ai_engine format to frontend-expected format
-        const data = aiResponse.data;
-        const history = (data.by_provider || []).map((p, i) => ({
+        // 1. Get research counts from DB
+        const researchStats = await db.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE status = 'completed') as completed,
+                COUNT(*) FILTER (WHERE status = 'failed') as failed
+            FROM research_logs 
+            WHERE user_id = $1
+        `, [user_id]);
+
+        const r = researchStats.rows[0];
+
+        // 2. Fetch from AI Engine
+        let aiData = { total_tokens: 0, estimated_cost: 0, by_provider: [] };
+        try {
+            const aiResponse = await axios.get(`${AI_ENGINE_URL}/usage/stats`, {
+                params: { hours },
+                timeout: 5000
+            });
+            aiData = aiResponse.data;
+        } catch (e) {
+            logger.warn(`[Usage] AI Engine stats unreachable: ${e.message}`);
+        }
+
+        // Transform results
+        const history = (aiData.by_provider || []).map((p, i) => ({
             date: new Date(Date.now() - (6 - i) * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             tokens: p.total_tokens || 0,
             provider: p.provider || 'unknown'
         }));
 
         res.json({
-            totalTokens: data.total_tokens || 0,
-            cost: data.estimated_cost || 0,
-            history,
-            raw: data
+            total_research: parseInt(r.total) || 0,
+            completed: parseInt(r.completed) || 0,
+            failed: parseInt(r.failed) || 0,
+            api_calls: aiData.total_requests || 0,
+            totalTokens: aiData.total_tokens || 0,
+            cost: aiData.estimated_cost || 0,
+            history
         });
     } catch (err) {
-        if (err.code === 'ECONNREFUSED') {
-            // AI engine not running - return empty stats
-            return res.json({
-                totalTokens: 0,
-                cost: 0,
-                history: [],
-                raw: null
-            });
-        }
         logger.error(`[Usage] Stats error: ${err.message}`);
-        res.status(502).json({ error: 'Could not fetch usage stats from AI engine' });
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

@@ -256,6 +256,9 @@ export interface UsageStats {
   total_research: number;
   completed: number;
   failed: number;
+  api_calls: number;
+  totalTokens?: number;
+  cost?: number;
 }
 
 export const usage = {
