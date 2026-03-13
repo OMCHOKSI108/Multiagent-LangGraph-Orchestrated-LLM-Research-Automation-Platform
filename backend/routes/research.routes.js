@@ -57,41 +57,41 @@ router.post('/start', async (req, res) => {
   }
 });
 
-// Check Status
+// Check Status (Legacy & New Workspace Flow)
 router.get('/status/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // Try research_logs first (legacy)
-    let result = await db.query(
-      `SELECT id, task, title, status, result_json, user_id,
-              report_markdown, latex_source, current_stage,
-              started_at, completed_at,
-              created_at, updated_at
-       FROM research_logs WHERE id = $1 AND user_id = $2`,
-      [id, userId]
-    );
+    // Unified query to check both legacy research_logs and new research_sessions
+    const query = `
+      SELECT id, task, title, status, result_json, user_id,
+             report_markdown, latex_source, current_stage,
+             started_at, completed_at, created_at, updated_at
+      FROM (
+        SELECT id, task, title, status, result_json, user_id,
+               report_markdown, latex_source, current_stage,
+               started_at, completed_at, created_at, updated_at
+        FROM research_logs
+        UNION ALL
+        SELECT id, topic AS task, title, status, result_json, user_id,
+               report_markdown, latex_source, current_stage,
+               started_at, completed_at, created_at, updated_at
+        FROM research_sessions
+      ) combined
+      WHERE id = $1 AND user_id = $2
+      LIMIT 1
+    `;
 
-    // Fallback to research_sessions (workspace flow)
+    const result = await db.query(query, [id, userId]);
+
     if (result.rows.length === 0) {
-      try {
-        result = await db.query(
-          `SELECT id, topic AS task, title, status, result_json, user_id,
-                  report_markdown, latex_source, current_stage,
-                  started_at, completed_at,
-                  created_at, updated_at
-           FROM research_sessions WHERE id = $1 AND user_id = $2`,
-          [id, userId]
-        );
-      } catch (e) { /* table may not exist */ }
+      return res.status(404).json({ error: "Job not found" });
     }
-
-    if (result.rows.length === 0) return res.status(404).json({ error: "Job not found" });
 
     res.json(result.rows[0]);
   } catch (err) {
-    logger.error(err);
+    logger.error(`[Status Check Error] ${err.message}`);
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -72,11 +72,11 @@ class LLMProvider(ABC):
         """
         return ""
 
-    def invoke_with_retry(self, messages: list) -> Any:
+    async def ainvoke_with_retry(self, messages: list) -> Any:
         """
-        Generic invoke method with built-in retry and key rotation logic.
-        Catches 429/RateLimit errors, rotates the key, and retries with exponential backoff.
+        Asynchronous version of invoke_with_retry.
         """
+        import asyncio
         import time
         max_retries = 3
         backoff = 1.0
@@ -85,9 +85,8 @@ class LLMProvider(ABC):
         
         for attempt in range(max_retries):
             try:
-                # get_langchain_llm() should construct/return the LLM with the *currently active* key
                 llm = self.get_langchain_llm()
-                return llm.invoke(messages)
+                return await llm.ainvoke(messages)
             except Exception as e:
                 error_str = str(e).lower()
                 is_rate_limit = (
@@ -100,18 +99,17 @@ class LLMProvider(ABC):
                 
                 if is_rate_limit:
                     logger.warning(
-                        f"[{self.provider_name}] Rate limit/Quota hit. "
+                        f"[{self.provider_name}] Rate limit hit. "
                         f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s."
                     )
-                    self.rotate_key() # Attempt to rotate key automatically
-                    time.sleep(backoff)
+                    self.rotate_key()
+                    await asyncio.sleep(backoff)
                     backoff *= 2.0
                     last_exception = e
                     continue
                 else:
-                    # Not a rate limit error, fail immediately
                     raise e
                     
-        logger.error(f"[{self.provider_name}] All {max_retries} retry attempts exhausted.")
-        raise last_exception or RuntimeError(f"All {self.provider_name} API retries exhausted")
+        logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
+        raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
 

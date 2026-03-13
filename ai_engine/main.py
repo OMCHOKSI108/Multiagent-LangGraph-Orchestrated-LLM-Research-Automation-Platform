@@ -586,12 +586,8 @@ async def test_agent(agent_slug: str, request: AgentTestRequest):
             "findings": {}
         }
         
-        # Run agent in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            executor,
-            lambda: agent.run(state)
-        )
+        # Run agent asynchronously
+        result = await agent.arun(state)
         
         return {
             "agent": agent_slug,
@@ -726,12 +722,8 @@ async def run_research(request: ResearchRequest):
     }
     
     try:
-        # Run blocking pipeline in thread pool to not block async loop
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            executor,
-            lambda: pipeline.invoke(initial_state)
-        )
+        # RUN NATIVELY ASYNC PIPELINE
+        result = await pipeline.ainvoke(initial_state)
         
         logger.info(f"[Job #{job_id}] Research completed successfully")
         

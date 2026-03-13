@@ -50,30 +50,46 @@ def _init_redis():
 # ============================
 # In-Memory Fallback
 # ============================
+import time
+
+# ============================
+# In-Memory Fallback with Cleanup
+# ============================
 _MEMORY_STORE: Dict[str, Dict[str, Any]] = {}
+_MEMORY_EXPIRY: Dict[str, float] = {}  # Tracks when each key should expire
 
-
-# ============================
-# Public API
-# ============================
-def _key(session_id: int) -> str:
-    return f"research:{session_id}:state"
-
+def _cleanup_memory():
+    """Removes expired items from memory store."""
+    now = time.time()
+    expired_keys = [k for k, expiry in _MEMORY_EXPIRY.items() if now > expiry]
+    for k in expired_keys:
+        _MEMORY_STORE.pop(k, None)
+        _MEMORY_EXPIRY.pop(k, None)
+    
+    # Cap total size if still too many
+    if len(_MEMORY_STORE) > 1000:
+        # Sort by expiry (earliest first) and remove 20%
+        sorted_keys = sorted(_MEMORY_EXPIRY.keys(), key=lambda k: _MEMORY_EXPIRY[k])
+        for k in sorted_keys[:200]:
+            _MEMORY_STORE.pop(k, None)
+            _MEMORY_EXPIRY.pop(k, None)
 
 def get_state(session_id: int) -> Dict[str, Any]:
     """Get the current state for a research session."""
     _init_redis()
+    key = _key(session_id)
 
     if _redis_available and _redis_client:
         try:
-            raw = _redis_client.get(_key(session_id))
+            raw = _redis_client.get(key)
             if raw:
                 return json.loads(raw)
         except Exception as e:
             logger.error(f"[StateStore] Redis GET failed: {e}")
 
     # Fallback to in-memory
-    return _MEMORY_STORE.get(_key(session_id), {})
+    _cleanup_memory() # Regular cleanup
+    return _MEMORY_STORE.get(key, {})
 
 
 def set_state(session_id: int, state: Dict[str, Any]) -> None:
@@ -89,7 +105,9 @@ def set_state(session_id: int, state: Dict[str, Any]) -> None:
             logger.error(f"[StateStore] Redis SET failed: {e}")
 
     # Fallback to in-memory
+    _cleanup_memory()
     _MEMORY_STORE[key] = state
+    _MEMORY_EXPIRY[key] = time.time() + STATE_TTL_SECONDS
 
 
 def update_state(session_id: int, updates: Dict[str, Any]) -> Dict[str, Any]:
@@ -112,6 +130,7 @@ def delete_state(session_id: int) -> None:
             logger.error(f"[StateStore] Redis DELETE failed: {e}")
 
     _MEMORY_STORE.pop(key, None)
+    _MEMORY_EXPIRY.pop(key, None)
 
 
 # ============================

@@ -1,11 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-
-// Load env vars
-dotenv.config({
+require('dotenv').config({
     path: process.env.ROOT_ENV_PATH || path.resolve(__dirname, '..', '.env')
 });
 
@@ -79,10 +76,19 @@ app.use('/sources', require('./routes/sources.routes'));
 // Initialize Redis client if REDIS_URL is provided
 if (process.env.REDIS_URL) {
     const { createClient } = require('redis');
-    const redisClient = createClient({ url: process.env.REDIS_URL });
+    const redisUrl = process.env.REDIS_URL;
+    
+    // Auto-detect TLS for Upstash or rediss:// protocol
+    const useTls = redisUrl.startsWith('rediss://') || redisUrl.includes('upstash.io');
+    
+    const redisClient = createClient({ 
+        url: redisUrl,
+        socket: useTls ? { tls: true, rejectUnauthorized: false } : {}
+    });
+    
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
     redisClient.connect().then(() => {
-        console.log('[Node] Connected to Redis');
+        console.log('[Node] Connected to Redis' + (useTls ? ' (TLS enabled)' : ''));
         app.locals.redis = redisClient;
     }).catch(err => {
         console.error('[Node] Failed to connect to Redis', err);

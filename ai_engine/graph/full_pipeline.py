@@ -60,19 +60,19 @@ from agents.registry import AGENTS
 # ============================
 # Node Functions
 # ============================
-def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
+# ============================
+# Node Functions (Async)
+# ============================
+async def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Helper to run an agent and update state.
-    Includes error handling and logging.
+    Helper to run an agent and update state asynchronously.
     """
     agent = AGENTS.get(agent_key)
     job_id = state.get("_job_id", "?")
     
-    # Import event emitter
     from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_stage_change, emit_error
 
     if not agent:
-        # Try to emit error if possible
         try:
             emit_error(f"Agent not found: {agent_key}", research_id=int(job_id) if str(job_id).isdigit() else None)
         except:
@@ -83,38 +83,31 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     research_id = int(job_id) if str(job_id).isdigit() else None
     
     try:
-        logger.info(f"[Job #{job_id}] Running agent: {agent_key}")
+        logger.info(f"[Job #{job_id}] Running agent: {agent_key} (Async)")
         
-        # EMIT START EVENT
         emit_agent_start(agent.name, research_id=research_id)
         
         start_time = __import__("time").time()
-        result = agent.run(state)
+        # USE ASYNC RUN
+        result = await agent.arun(state)
         elapsed = __import__("time").time() - start_time
         elapsed_ms = int(elapsed * 1000)
         
-        # Check if agent reported error in result
         if isinstance(result, dict) and "error" in result:
              emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
              emit_error(f"Agent {agent.name} reported error: {result['error']}", research_id=research_id)
         else:
-             # EMIT COMPLETE EVENT
              emit_agent_complete(agent.name, elapsed_ms, success=True, research_id=research_id)
         
-        # Store result in findings
-        # For parallel execution, we just return the new findings for this key
-        # The reducer will merge them
         findings_update = {}
         if isinstance(result, dict) and "response" in result:
             findings_update[agent_key] = result.get("response")
         else:
              findings_update[agent_key] = result
         
-        # Update history
         exec_time = result.get("execution_time", 0) if isinstance(result, dict) else elapsed
         history_update = [f"{agent.name}: Completed ({exec_time:.1f}s)"]
         
-        # Return updates merged with original result (to preserve control flags like topic_locked)
         if isinstance(result, dict):
              return {**result, "findings": findings_update, "history": history_update}
         else:
@@ -122,19 +115,15 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"[Job #{job_id}] Agent {agent_key} failed: {e}")
-        
-        # EMIT FAILURE EVENT
-        elapsed_ms = 0 # Approximate
+        elapsed_ms = 0 
         emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
         
-        # Sanitize error for AI context to prevent "hallucinated" debugging
         error_msg = str(e)
         if "ECONNREFUSED" in error_msg:
              safe_error = "Connection failed to internal service. Retrying..."
         else:
              safe_error = f"Internal Error: {type(e).__name__}"
 
-        # We log the real error for devs, but give safe error to history
         emit_error(error_msg, research_id=research_id)
         
         history_update = [f"{agent.name}: FAILED - {safe_error}"]
@@ -142,71 +131,54 @@ def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ============================
-# PHASE 0: Topic Discovery Gate
+# PHASE 0: Topic Discovery Node (Async)
 # ============================
-def topic_discovery_node(state: ResearchState) -> ResearchState:
-    """
-    PHASE 0 Entry Point.
-    Generates 5-10 professional research titles for user selection.
-    """
-    result = run_agent("topic_discovery", state)
+async def topic_discovery_node(state: ResearchState) -> ResearchState:
+    result = await run_agent("topic_discovery", state)
     return {
         "topic_suggestions": result.get("topic_suggestions", []),
         "topic_locked": result.get("topic_locked", False),
         **result
     }
 
-def topic_lock_node(state: ResearchState) -> ResearchState:
-    """
-    PHASE 0 Gate.
-    Locks the selected topic. NO agent proceeds without this.
-    """
-    result = run_agent("topic_lock", state)
+async def topic_lock_node(state: ResearchState) -> ResearchState:
+    result = await run_agent("topic_lock", state)
     return {
         "topic_locked": result.get("topic_locked", False),
         "selected_topic": result.get("selected_topic"),
         **result
     }
 
-# Orchestrator
-def orchestrator_node(state: ResearchState) -> ResearchState:
-    result = AGENTS["orchestrator"].run(state)
-    # Extract next_step from orchestrator response
+# Orchestrator (Async)
+async def orchestrator_node(state: ResearchState) -> ResearchState:
+    result = await AGENTS["orchestrator"].arun(state)
     response = result.get("response", {})
     next_step = response.get("next_step") if isinstance(response, dict) else None
-    # No history/findings update needed here strictly, but good practice
     return {"next_step": next_step}
 
-# Pipeline A Nodes
-def domain_node(state): return run_agent("domain_intelligence", state)
-def historical_node(state): return run_agent("historical_review", state)
-def slr_node(state): return run_agent("slr", state)
-def news_node(state): return run_agent("news", state) # New News Agent
-def gap_node(state): return run_agent("gap_synthesis", state)
-def innovation_node(state): return run_agent("innovation_novelty", state)
+# Pipeline A Nodes (Async)
+async def domain_node(state): return await run_agent("domain_intelligence", state)
+async def historical_node(state): return await run_agent("historical_review", state)
+async def slr_node(state): return await run_agent("slr", state)
+async def news_node(state): return await run_agent("news", state)
+async def gap_node(state): return await run_agent("gap_synthesis", state)
+async def innovation_node(state): return await run_agent("innovation_novelty", state)
 
-# Pipeline B Nodes
-def decomp_node(state): return run_agent("paper_decomposition", state)
-def understanding_node(state): return run_agent("paper_understanding", state)
-def verify_node(state): return run_agent("technical_verification", state)
-def critique_node(state): return run_agent("hallucination_detection", state)
+# Pipeline B Nodes (Async)
+async def decomp_node(state): return await run_agent("paper_decomposition", state)
+async def understanding_node(state): return await run_agent("paper_understanding", state)
+async def verify_node(state): return await run_agent("technical_verification", state)
+async def critique_node(state): return await run_agent("hallucination_detection", state)
 
-# Shared Nodes
-def visualization_node(state): return run_agent("visualization", state)
+# Shared Nodes (Async)
+async def visualization_node(state): return await run_agent("visualization", state)
 
-def multi_stage_report_node(state):
-    """
-    Multi-stage report node with document locking.
-    Prevents parallel LaTeX writes (prompt.json rule).
-    """
+async def multi_stage_report_node(state):
     from utils.document_lock import document_lock
     job_id = state.get("_job_id", "default")
-    
-    # Acquire document lock before LaTeX operations
     if document_lock.acquire(job_id, owner="multi_stage_report", timeout=60):
         try:
-            result = run_agent("multi_stage_report", state)
-            # Increment version after successful write
+            result = await run_agent("multi_stage_report", state)
             document_lock.increment_version(job_id)
             return result
         finally:
@@ -215,24 +187,15 @@ def multi_stage_report_node(state):
         logger.error(f"[Job #{job_id}] Failed to acquire document lock for multi_stage_report")
         return {"history": ["MultiStageReport: FAILED - Could not acquire document lock"]}
 
-def scoring_node(state): return run_agent("scoring", state)
+async def scoring_node(state): return await run_agent("scoring", state)
+async def write_node(state): return await run_agent("scientific_writing", state)
 
-# Legacy nodes (kept for compatibility) - with document locking
-def write_node(state): return run_agent("scientific_writing", state)
-
-def latex_node(state):
-    """
-    LaTeX generation node with document locking.
-    Editor is the ONLY agent allowed to modify LaTeX (prompt.json rule).
-    """
+async def latex_node(state):
     from utils.document_lock import document_lock
     job_id = state.get("_job_id", "default")
-    
-    # Acquire document lock before LaTeX operations
     if document_lock.acquire(job_id, owner="latex_generation", timeout=60):
         try:
-            result = run_agent("latex_generation", state)
-            # Increment version after successful write
+            result = await run_agent("latex_generation", state)
             document_lock.increment_version(job_id)
             return result
         finally:

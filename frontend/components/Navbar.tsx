@@ -11,8 +11,8 @@ export default function Navbar() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Hide navbar inside workspace (full-screen layout)
-  if (pathname.startsWith('/workspace/')) return null;
+  // Hide navbar on landing page (has its own fixed header) and inside workspace
+  if (pathname === '/' || pathname.startsWith('/workspace/')) return null;
 
   function handleLogout() {
     logout();

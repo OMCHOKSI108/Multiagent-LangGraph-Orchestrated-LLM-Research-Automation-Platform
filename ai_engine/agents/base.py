@@ -45,18 +45,32 @@ class RetryLLMWrapper:
             logger.warning("[RetryLLMWrapper] Falling back to OFFLINE Ollama provider as last resort.")
             try:
                 from llm.factory import get_llm_provider
-                import os
-                
                 # Temporarily spoof LLM_STATUS for the factory request
                 _old_status = getattr(config, "LLM_STATUS", "OFFLINE")
                 config.LLM_STATUS = "OFFLINE"
-                fallback_provider = get_llm_provider("phi3:mini") # Known local model
+                fallback_provider = get_llm_provider("phi3:mini")
                 config.LLM_STATUS = _old_status
-                
                 return fallback_provider.invoke_with_retry(messages)
             except Exception as fallback_e:
                 logger.error(f"[RetryLLMWrapper] Complete Failure. Ollama fallback also failed: {fallback_e}")
-                raise e # Throw original online error if local also fails
+                raise e
+
+    async def ainvoke(self, messages, *args, **kwargs):
+        try:
+            return await self._provider.ainvoke_with_retry(messages)
+        except Exception as e:
+            logger.error(f"[RetryLLMWrapper] Primary provider ({self._provider.provider_name}) exhausted/failed: {e}")
+            logger.warning("[RetryLLMWrapper] Falling back to OFFLINE Ollama provider for async retry.")
+            try:
+                from llm.factory import get_llm_provider
+                _old_status = getattr(config, "LLM_STATUS", "OFFLINE")
+                config.LLM_STATUS = "OFFLINE"
+                fallback_provider = get_llm_provider("phi3:mini")
+                config.LLM_STATUS = _old_status
+                return await fallback_provider.ainvoke_with_retry(messages)
+            except Exception as fallback_e:
+                logger.error(f"[RetryLLMWrapper] Complete Failure. Ollama async fallback also failed: {fallback_e}")
+                raise e
         
     def __getattr__(self, name):
         # Delegate all other Langchain model methods (like bind_tools) to the underlying model
@@ -196,6 +210,82 @@ class BaseAgent:
                 json.dump(data, f, indent=2)
         except Exception as e:
             logger.warning(f"[{self.name}] Cache write failed: {e}")
+
+    async def arun(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Asynchronous version of run().
+        Prevents blocking the FastAPI event loop during LLM inference.
+        """
+        job_id = state.get("_job_id", "?")
+        research_id = int(job_id) if str(job_id).isdigit() else None
+        
+        logger.info(f"[{self.name}] Job #{job_id} - Running (Async)...")
+        start_time = time.time()
+        
+        emit_agent_start(self.name, research_id=research_id)
+        
+        context = self._truncate_context(state, self.max_context_tokens)
+        input_signature = f"{self.system_prompt}:{self.model_name}:{context}"
+        input_hash = self._compute_hash(input_signature)
+        
+        cached_result = self._get_from_cache(input_hash)
+        if cached_result:
+            logger.info(f"[{self.name}] Cache HIT (Async).")
+            emit_agent_complete(self.name, 0, success=True, research_id=research_id)
+            return cached_result
+
+        messages = [
+            SystemMessage(content=self.system_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
+            HumanMessage(content=context)
+        ]
+        
+        try:
+            # NON-BLOCKING ASYNC CALL
+            response = await self.llm.ainvoke(messages)
+            raw_content = response.content
+            
+            parsed_json = self._extract_json(raw_content)
+            
+            elapsed = time.time() - start_time
+            elapsed_ms = int(elapsed * 1000)
+            logger.info(f"[{self.name}] Job #{job_id} - Completed (Async) in {elapsed:.2f}s")
+            
+            output_hash = self._compute_hash(raw_content)
+
+            try:
+                track_agent_usage(
+                    agent_name=self.name,
+                    model_name=self.model_name,
+                    prompt_text=context,
+                    completion_text=raw_content,
+                    execution_time_ms=elapsed_ms,
+                    job_id=str(job_id),
+                    success=True
+                )
+            except: pass
+            
+            result = {
+                "response": parsed_json,
+                "raw": raw_content,
+                "agent": self.name,
+                "execution_time": elapsed,
+                "input_hash": input_hash,
+                "output_hash": output_hash
+            }
+
+            self._save_to_cache(input_hash, result)
+            emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
+            
+            return result
+        except Exception as e:
+            elapsed = time.time() - start_time
+            elapsed_ms = int(elapsed * 1000)
+            logger.error(f"[{self.name}] Job #{job_id} - Failed (Async): {e}")
+            
+            emit_agent_complete(self.name, elapsed_ms, success=False, research_id=research_id)
+            emit_error(f"Agent {self.name}: {str(e)}", recoverable=True, research_id=research_id)
+            
+            return {"error": str(e), "raw": "Error during execution", "agent": self.name}
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """

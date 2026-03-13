@@ -136,6 +136,14 @@ export interface ResearchResult {
     report_markdown?: string;
   };
   findings?: Record<string, AgentFinding>;
+  topic_suggestions?: TopicSuggestion[];
+}
+
+export interface TopicSuggestion {
+  title: string;
+  domain: string;
+  novelty_angle: string;
+  estimated_complexity: string;
 }
 
 export interface AgentFinding {

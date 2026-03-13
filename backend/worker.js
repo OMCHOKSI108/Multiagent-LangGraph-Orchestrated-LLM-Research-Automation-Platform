@@ -1,3 +1,7 @@
+const path = require('path');
+require('dotenv').config({
+    path: process.env.ROOT_ENV_PATH || path.resolve(__dirname, '..', '.env')
+});
 const db = require('./config/db');
 const axios = require('axios');
 const logger = require('./utils/logger');
@@ -158,19 +162,25 @@ async function processQueue() {
 
             const finalResult = aiResponse.data;
 
-            // Mark as completed
+            // Determine final status based on AI engine state
+            let status = 'completed';
+            if (finalResult.topic_suggestions && !finalResult.topic_locked) {
+                status = 'waiting'; // Waiting for user to select a topic
+            }
+
+            // Mark job with detected status
             await db.query(
                 `UPDATE ${table}
-                 SET status = 'completed',
-                     result_json = $1,
-                     report_markdown = $2,
-                     completed_at = NOW(),
+                 SET status = $1,
+                     result_json = $2,
+                     report_markdown = $3,
+                     completed_at = ${status === 'completed' ? 'NOW()' : 'NULL'},
                      updated_at = NOW()
-                 WHERE id = $3`,
-                [finalResult, finalResult.report_markdown || "", job.id]
+                 WHERE id = $4`,
+                [status, finalResult, finalResult.report_markdown || "", job.id]
             );
 
-            logger.info(`[Worker] Job #${job.id} Completed Successfully.`);
+            logger.info(`[Worker] Job #${job.id} marked as ${status}.`);
 
         } catch (aiErr) {
             const errorMsg = aiErr.response?.data?.detail || aiErr.message;

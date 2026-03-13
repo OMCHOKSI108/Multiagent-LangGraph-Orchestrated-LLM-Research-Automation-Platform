@@ -353,67 +353,88 @@ export default function WorkspacePage() {
 
   // ─── SSE / Event polling ──────────────────────────────────────────────────────
 
-  function startEventPolling(sid: number) {
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const stopEventPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  const startEventPolling = useCallback((sid: number) => {
+    stopEventPolling();
     let lastCount = 0;
-    const interval = setInterval(async () => {
-      if (abortRef.current) { clearInterval(interval); return; }
+    pollingIntervalRef.current = setInterval(async () => {
+      if (abortRef.current) { stopEventPolling(); return; }
       try {
         const evts = await eventsApi.list(sid);
         if (Array.isArray(evts) && evts.length > lastCount) {
           setFeedEvents(prev => {
             const newOnes = evts.slice(lastCount);
-            lastCount = evts.length;
             return [...prev, ...newOnes];
           });
           lastCount = evts.length;
         }
       } catch { /* ignore */ }
     }, 3000);
-    return () => clearInterval(interval);
-  }
+  }, [stopEventPolling]);
 
   // ─── Poll research status ────────────────────────────────────────────────────
 
   async function pollResearch(sid: number) {
+    if (running) return; // Prevent double polling
     setRunning(true);
     abortRef.current = false;
     setAbort(false);
 
-    const stopPolling = startEventPolling(sid);
+    startEventPolling(sid);
     setTab('feed');
 
     let lastStage = '';
-    for (let i = 0; i < 120; i++) {
-      if (abortRef.current) break;
-      await sleep(4000);
-      if (abortRef.current) break;
+    try {
+      for (let i = 0; i < 150; i++) {
+        if (abortRef.current) break;
+        await sleep(4000);
+        if (abortRef.current) break;
 
-      try {
-        const s = await wsApi.getResearchStatus(wsId, sid);
-        if (s.current_stage && s.current_stage !== lastStage) {
-          lastStage = s.current_stage;
-          setStatusText(lastStage);
-        }
-        if (s.status === 'completed') {
-          addMsg(s.report_markdown || 'Research completed. See Report tab.', 'bot');
-          if (s.result_json) setResultJson(s.result_json);
-          if (s.report_markdown) setReportMd(s.report_markdown);
-          setStatusText('✓ Completed');
-          setTab('report');
-          await loadWorkspace();
-          break;
-        }
-        if (s.status === 'failed') {
-          addMsg('Research failed.', 'bot');
-          setStatusText('Failed');
-          break;
-        }
-      } catch { /* ignore polling error */ }
+        try {
+          const s = await wsApi.getResearchStatus(wsId, sid);
+          if (s.current_stage && s.current_stage !== lastStage) {
+            lastStage = s.current_stage;
+            setStatusText(lastStage);
+          }
+          
+          if (s.status === 'completed') {
+            addMsg(s.report_markdown || 'Research completed. See Report tab.', 'bot');
+            if (s.result_json) setResultJson(s.result_json);
+            if (s.report_markdown) setReportMd(s.report_markdown);
+            setStatusText('✓ Completed');
+            setTab('report');
+            break;
+          }
+          
+          if (s.status === 'waiting') {
+            setStatusText('Waiting for Topic Selection');
+            // Check if we have suggestions to show
+            if (s.result_json?.topic_suggestions) {
+              setResultJson(s.result_json);
+            }
+            break; // Stop status polling, wait for user action
+          }
+
+          if (s.status === 'failed') {
+            addMsg('Research failed.', 'bot');
+            setStatusText('Failed');
+            break;
+          }
+        } catch { /* ignore polling error */ }
+      }
+    } finally {
+      stopEventPolling();
+      setRunning(false);
+      await loadWorkspace();
     }
-
-    stopPolling();
-    setRunning(false);
-    await loadWorkspace();
   }
 
   // ─── Dispatch research ────────────────────────────────────────────────────────

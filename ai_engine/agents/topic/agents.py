@@ -138,8 +138,9 @@ Output as JSON.""")
                 print(f"[{self.name}] Event emitted successfully")
             except Exception as e:
                 print(f"[{self.name}] Event emission error: {e}")
-            import time
-            time.sleep(3) # Slow down the loop
+
+            # RETURN IMMEDIATELY — The graph orchestrator/router_graph.py 
+            # will handle the 'loop back' or 'wait' condition based on topic_locked=False
             return {
                 "topic_locked": False,
                 "topic_suggestions": existing_suggestions
