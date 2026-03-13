@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     try {
       const me = await authApi.me();
-      setUser(me);
+      setUser(me.user);
     } catch {
       setUser(null);
       clearToken();
@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (stored) {
       setTokenState(stored);
       authApi.me()
-        .then(setUser)
+        .then(d => setUser(d.user))
         .catch(() => { clearToken(); setTokenState(null); })
         .finally(() => setLoading(false));
     } else {
@@ -48,8 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await authApi.login(email, password);
     setToken(data.token);
     setTokenState(data.token);
-    const me = await authApi.me();
-    setUser(me);
+    setUser(data.user);
   };
 
   const signup = async (username: string, email: string, password: string) => {
