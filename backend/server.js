@@ -55,23 +55,23 @@ app.use(passport.initialize());
 
 app.use('/generated_images', express.static('generated_images'));
 app.use('/research_images', express.static(path.join(__dirname, '..', 'frontend', 'public', 'research_images')));
-app.use('/auth/login', authLimiter);
-app.use('/auth/signup', authLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/signup', authLimiter);
 
 // Routes
 const auth = require('./middleware/auth');
-app.use('/auth', require('./routes/auth.routes'));
-app.use('/user', require('./routes/user.routes'));
-app.use('/workspaces', require('./routes/workspace.routes'));
-app.use('/research', require('./routes/research.routes'));
-app.use('/chat', require('./routes/chat.routes'));
-app.use('/events', require('./routes/events.routes'));
-app.use('/agents', require('./routes/agents.routes'));
-app.use('/memories', auth, require('./routes/memory.routes'));
-app.use('/export', auth, require('./routes/export.routes'));
-app.use('/usage', auth, require('./routes/usage.routes'));
-app.use('/admin', require('./routes/admin.routes'));
-app.use('/sources', require('./routes/sources.routes'));
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/user', require('./routes/user.routes'));
+app.use('/api/workspaces', require('./routes/workspace.routes'));
+app.use('/api/research', require('./routes/research.routes'));
+app.use('/api/chat', require('./routes/chat.routes'));
+app.use('/api/events', require('./routes/events.routes'));
+app.use('/api/agents', require('./routes/agents.routes'));
+app.use('/api/memories', auth, require('./routes/memory.routes'));
+app.use('/api/export', auth, require('./routes/export.routes'));
+app.use('/api/usage', auth, require('./routes/usage.routes'));
+app.use('/api/admin', require('./routes/admin.routes'));
+app.use('/api/sources', require('./routes/sources.routes'));
 
 // Initialize Redis client if REDIS_URL is provided
 if (process.env.REDIS_URL) {
@@ -105,7 +105,7 @@ app.get('/', (req, res) => {
 });
 
 // Dedicated Health Endpoint for Docker
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.status(200).json({
         status: "healthy",
         timestamp: new Date().toISOString(),
