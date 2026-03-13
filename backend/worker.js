@@ -47,7 +47,7 @@ async function recoverStaleJobs() {
 
         // Only recover user-triggered jobs that are genuinely stale
         const triggerFilter = useNewTable
-            ? `AND trigger_source = 'user'`
+            ? `AND trigger_source IN ('user', 'retry')`
             : '';
 
         const result = await db.query(
@@ -102,7 +102,7 @@ async function processQueue() {
 
         // CRITICAL: Only pick up user-triggered jobs
         const triggerFilter = useNewTable
-            ? `AND trigger_source = 'user'`
+            ? `AND trigger_source IN ('user', 'retry')`
             : '';
 
         // Fetch columns based on table
