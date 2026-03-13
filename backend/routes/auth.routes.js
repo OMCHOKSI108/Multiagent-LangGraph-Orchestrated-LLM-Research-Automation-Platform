@@ -19,12 +19,22 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 if (process.env.GOOGLE_CLIENT_ID) {
     router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
-    router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed` }), (req, res) => { const jwtSecret = getJwtSecretOrThrow(res); if (!jwtSecret) return; const token = jwt.sign({ id: req.user.id, username: req.user.username }, jwtSecret, { expiresIn: '24h' }); res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}`); });
+    router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed` }), (req, res) => { 
+        const jwtSecret = getJwtSecretOrThrow(res); 
+        if (!jwtSecret) return; 
+        const token = jwt.sign({ id: req.user.id, username: req.user.username, role: req.user.role }, jwtSecret, { expiresIn: '24h' }); 
+        res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}`); 
+    });
 }
 
 if (process.env.GITHUB_CLIENT_ID) {
     router.get('/github', passport.authenticate('github', { scope: ['user:email'], session: false }));
-    router.get('/github/callback', passport.authenticate('github', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed` }), (req, res) => { const jwtSecret = getJwtSecretOrThrow(res); if (!jwtSecret) return; const token = jwt.sign({ id: req.user.id, username: req.user.username }, jwtSecret, { expiresIn: '24h' }); res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}`); });
+    router.get('/github/callback', passport.authenticate('github', { session: false, failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed` }), (req, res) => { 
+        const jwtSecret = getJwtSecretOrThrow(res); 
+        if (!jwtSecret) return; 
+        const token = jwt.sign({ id: req.user.id, username: req.user.username, role: req.user.role }, jwtSecret, { expiresIn: '24h' }); 
+        res.redirect(`${FRONTEND_URL}/oauth/callback?token=${token}`); 
+    });
 }
 // --------------------
 
@@ -88,7 +98,7 @@ router.post('/login', async (req, res) => {
 
         // Generate JWT
         const token = jwt.sign(
-            { id: user.id, username: user.username },
+            { id: user.id, username: user.username, role: user.role },
             jwtSecret,
             { expiresIn: '24h' }
         );

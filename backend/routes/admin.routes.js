@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 
-// Apply admin authentication to all routes in this router
+// Apply base authentication then admin authorization to all routes in this router
+router.use(auth);
 router.use(adminAuth);
 
 /**
