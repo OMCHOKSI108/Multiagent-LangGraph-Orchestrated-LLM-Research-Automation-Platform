@@ -93,7 +93,15 @@ router.post('/login', async (req, res) => {
             { expiresIn: '24h' }
         );
 
-        res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+        res.json({ 
+            token, 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                email: user.email,
+                role: user.role
+            } 
+        });
 
     } catch (err) {
         console.error(err);
@@ -105,7 +113,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', require('../middleware/auth'), async (req, res) => {
     try {
         const result = await db.query(
-            "SELECT id, username, email FROM users WHERE id = $1",
+            "SELECT id, username, email, role FROM users WHERE id = $1",
             [req.user.id]
         );
         if (result.rows.length === 0) {
@@ -134,7 +142,7 @@ router.patch('/me', require('../middleware/auth'), async (req, res) => {
         }
 
         const result = await db.query(
-            "UPDATE users SET username = $1 WHERE id = $2 RETURNING id, username, email",
+            "UPDATE users SET username = $1 WHERE id = $2 RETURNING id, username, email, role",
             [trimmedUsername, req.user.id]
         );
 

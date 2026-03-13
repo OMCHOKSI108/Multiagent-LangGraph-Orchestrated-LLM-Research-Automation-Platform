@@ -56,9 +56,9 @@ export const auth = {
     req<{ message: string }>('POST', '/auth/signup', { username, email, password }),
 
   login: (email: string, password: string) =>
-    req<{ token: string }>('POST', '/auth/login', { email, password }),
+    req<{ token: string; user: User }>('POST', '/auth/login', { email, password }),
 
-  me: () => req<User>('GET', '/auth/me'),
+  me: () => req<{ user: User }>('GET', '/auth/me'),
 
   generateApiKey: () => req<{ api_key: string }>('POST', '/auth/generate-api-key'),
 };
@@ -77,25 +77,29 @@ export interface ResearchHistoryItem {
 
 export const user = {
   history: () => req<ResearchHistoryItem[]>('GET', '/user/history'),
-  updateProfile: (data: { username?: string }) => req<User>('PUT', '/user/profile', data),
-  changePassword: (current_password: string, new_password: string) =>
-    req<{ message: string }>('PUT', '/user/password', { current_password, new_password }),
+  updateProfile: (data: { username?: string }) => req<User>('PATCH', '/auth/me', data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    req<{ message: string }>('POST', '/auth/password', { currentPassword, newPassword }),
 };
 
 // ─── Workspaces ───────────────────────────────────────────────────────────────
 
 export interface Workspace {
   id: string;
+  user_id: number;
   name: string;
   description?: string;
   status: string;
   session_count: number;
   last_activity?: string;
   created_at: string;
+  owner_email?: string;
 }
 
 export interface ResearchSession {
   id: number;
+  workspace_id?: string;
+  user_id?: number;
   topic?: string;
   title?: string;
   status: string;
@@ -104,6 +108,7 @@ export interface ResearchSession {
   updated_at: string;
   result_json?: ResearchResult;
   report_markdown?: string;
+  user_email?: string;
 }
 
 export const workspaces = {
@@ -213,26 +218,27 @@ export const exportApi = {
 
 export interface Memory {
   id: number;
-  title: string;
+  user_id: number;
   content: string;
-  tags?: string[];
+  source: string;
   created_at: string;
+  user_email?: string;
 }
 
 export const memories = {
   list: () => req<{ memories: Memory[] }>('GET', '/memories'),
-  create: (title: string, content: string, tags?: string[]) =>
-    req<{ memory: Memory }>('POST', '/memories', { title, content, tags }),
+  create: (content: string) =>
+    req<{ memory: Memory }>('POST', '/memories', { content }),
   delete: (id: number) => req<{ message: string }>('DELETE', `/memories/${id}`),
 };
 
 // ─── Agents ──────────────────────────────────────────────────────────────────
 
 export interface AgentInfo {
+  slug: string;
   name: string;
   category: string;
   description?: string;
-  status?: string;
 }
 
 export const agentsApi = {
@@ -245,8 +251,6 @@ export interface UsageStats {
   total_research: number;
   completed: number;
   failed: number;
-  api_calls: number;
-  tokens_used?: number;
 }
 
 export const usage = {
@@ -259,5 +263,15 @@ export const admin = {
   users: () => req<{ users: User[] }>('GET', '/admin/users'),
   disableUser: (id: number, action: 'disable' | 'enable') =>
     req<{ user: User }>('POST', `/admin/users/${id}/disable`, { action }),
-  stats: () => req<Record<string, unknown>>('GET', '/admin/stats'),
+  stats: () => req<{ stats: Record<string, number> }>('GET', '/admin/stats/overview'),
+  research: () => req<{ research_logs: ResearchSession[] }>('GET', '/admin/research'),
+  workspaces: () => req<{ workspaces: Workspace[] }>('GET', '/admin/workspaces'),
+  chatSessions: () => req<{ sessions: any[] }>('GET', '/admin/chat/sessions'),
+  chatHistory: (sessionId: string) => req<{ transcript: any[] }>('GET', `/admin/chat/history/${sessionId}`),
+  memories: () => req<{ memories: Memory[] }>('GET', '/admin/memories'),
+  deleteMemory: (id: number) => req<{ success: boolean }>('DELETE', `/admin/memories/${id}`),
+  apiKeys: () => req<{ keys: any[] }>('GET', '/admin/api-keys'),
+  generateApiKey: (user_email: string, key_name?: string) => 
+    req<{ key: any }>('POST', '/admin/api-keys/generate', { user_email, key_name }),
+  revokeApiKey: (id: number) => req<{ success: boolean }>('DELETE', `/admin/api-keys/${id}`),
 };

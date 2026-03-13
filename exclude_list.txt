@@ -1,0 +1,11 @@
+venv\
+node_modules\
+__pycache__\
+.pytest_cache\
+cache\
+logs\
+output\
+temp\
+tmp\
+.git\
+.env

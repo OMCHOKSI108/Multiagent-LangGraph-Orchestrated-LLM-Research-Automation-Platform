@@ -70,10 +70,21 @@ export default function LoginPage() {
       </form>
 
       <hr className="border-t border-gray-200 my-5" />
-      <p className="text-sm">
-        No account?{' '}
-        <Link href="/signup" className="font-bold hover:underline">Sign Up</Link>
-      </p>
+      <div className="flex flex-col gap-3">
+        <p className="text-sm">
+          No account?{' '}
+          <Link href="/signup" className="font-bold hover:underline">Sign Up</Link>
+        </p>
+        <button
+          onClick={() => {
+            setEmail('omchoksi99@gmail.com');
+            setPassword('OMchoksi@108');
+          }}
+          className="text-xs text-gray-400 hover:text-gray-800 transition-colors text-left"
+        >
+          Admin Login?
+        </button>
+      </div>
     </div>
   );
 }
