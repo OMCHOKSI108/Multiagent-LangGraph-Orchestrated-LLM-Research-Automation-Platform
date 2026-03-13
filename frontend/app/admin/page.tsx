@@ -8,6 +8,30 @@ import './admin.css';
 
 type Tab = 'overview' | 'users' | 'research' | 'workspaces' | 'chats' | 'memories' | 'api-keys';
 
+type AdminChatSession = {
+  session_id: string | number;
+  user_email?: string;
+  message_count?: number;
+  last_activity?: string;
+};
+
+type AdminApiKey = {
+  id: number;
+  key_name?: string;
+  key_value?: string;
+  user_email?: string;
+};
+
+type AdminPageData = {
+  stats: Record<string, number> | null;
+  users: User[];
+  research: ResearchSession[];
+  workspaces: Workspace[];
+  chats: AdminChatSession[];
+  memories: Memory[];
+  apiKeys: AdminApiKey[];
+};
+
 function safeLabel(value: unknown, fallback = 'N/A') {
   return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
 }
@@ -24,15 +48,7 @@ export default function AdminPage() {
   const router = useRouter();
   
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [data, setData] = useState<{
-    stats: Record<string, number> | null;
-    users: User[];
-    research: ResearchSession[];
-    workspaces: Workspace[];
-    chats: any[];
-    memories: Memory[];
-    apiKeys: any[];
-  }>({
+  const [data, setData] = useState<AdminPageData>({
     stats: null,
     users: [],
     research: [],
@@ -52,35 +68,35 @@ export default function AdminPage() {
       switch (tab) {
         case 'overview':
           const statsRes = await adminApi.stats();
-          setData(prev => ({ ...prev, stats: statsRes.stats }));
+          setData((prev: AdminPageData) => ({ ...prev, stats: statsRes.stats }));
           break;
         case 'users':
           const usersRes = await adminApi.users();
-          setData(prev => ({ ...prev, users: usersRes.users }));
+          setData((prev: AdminPageData) => ({ ...prev, users: usersRes.users }));
           break;
         case 'research':
           const researchRes = await adminApi.research();
-          setData(prev => ({ ...prev, research: researchRes.research_logs }));
+          setData((prev: AdminPageData) => ({ ...prev, research: researchRes.research_logs }));
           break;
         case 'workspaces':
           const workspacesRes = await adminApi.workspaces();
-          setData(prev => ({ ...prev, workspaces: workspacesRes.workspaces }));
+          setData((prev: AdminPageData) => ({ ...prev, workspaces: workspacesRes.workspaces }));
           break;
         case 'chats':
           const chatsRes = await adminApi.chatSessions();
-          setData(prev => ({ ...prev, chats: chatsRes.sessions }));
+          setData((prev: AdminPageData) => ({ ...prev, chats: chatsRes.sessions as AdminChatSession[] }));
           break;
         case 'memories':
           const memoriesRes = await adminApi.memories();
-          setData(prev => ({ ...prev, memories: memoriesRes.memories }));
+          setData((prev: AdminPageData) => ({ ...prev, memories: memoriesRes.memories }));
           break;
         case 'api-keys':
           const keysRes = await adminApi.apiKeys();
-          setData(prev => ({ ...prev, apiKeys: keysRes.keys }));
+          setData((prev: AdminPageData) => ({ ...prev, apiKeys: keysRes.keys as AdminApiKey[] }));
           break;
       }
-    } catch (e: any) {
-      setErr(e.message || 'Failed to fetch data');
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Failed to fetch data');
     } finally {
       setFetching(false);
     }
@@ -329,7 +345,7 @@ export default function AdminPage() {
                         <td className="p-4 font-mono text-xs text-indigo-500">{c.session_id}</td>
                         <td className="p-4 text-xs text-slate-500">{c.user_email}</td>
                         <td className="p-4 text-center">
-                          <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold text-[10px] tracking-wide">{c.message_count}</span>
+                          <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold text-[10px] tracking-wide">{c.message_count ?? 0}</span>
                         </td>
                         <td className="p-4 text-right text-slate-500 text-xs">
                           {safeDate(c.last_activity, 'datetime')}
@@ -385,8 +401,8 @@ export default function AdminPage() {
                   <tbody>
                     {data.apiKeys.map(k => (
                       <tr key={k.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors">
-                        <td className="p-4 font-medium">{k.key_name}</td>
-                        <td className="p-4"><code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-amber-600">{k.key_value.substring(0, 15)}...</code></td>
+                        <td className="p-4 font-medium">{safeLabel(k.key_name)}</td>
+                        <td className="p-4"><code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-amber-600">{`${safeLabel(k.key_value, '').slice(0, 15)}${k.key_value ? '...' : ''}` || 'N/A'}</code></td>
                         <td className="p-4 text-xs text-slate-500">{k.user_email}</td>
                         <td className="p-4 text-right">
                           <button 
