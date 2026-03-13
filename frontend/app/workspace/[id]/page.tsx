@@ -546,30 +546,30 @@ export default function WorkspacePage() {
   return (
     <div
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-      className="flex flex-col bg-white"
+      className="flex flex-col bg-slate-950 text-slate-50"
     >
       {/* Workspace header */}
-      <div className="border-b border-gray-200 h-11 px-4 flex items-center justify-between flex-shrink-0 bg-white z-10">
-        <div className="flex items-center gap-3 text-sm">
+      <div className="border-b border-slate-800/80 h-11 px-4 flex items-center justify-between flex-shrink-0 bg-slate-950/80 backdrop-blur-xl z-10">
+        <div className="flex items-center gap-3 text-sm text-slate-200">
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-gray-500 hover:text-gray-900 cursor-pointer border-none bg-transparent"
+            className="text-slate-400 hover:text-slate-100 cursor-pointer border-none bg-transparent"
           >
             ← Back
           </button>
-          <span className="font-semibold">{wsName}</span>
+          <span className="font-semibold text-slate-50">{wsName}</span>
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-[11px] text-slate-400">
           {running && <><Spinner /> <span>{statusText || 'Running'}</span></>}
           {!running && statusText && <span>{statusText}</span>}
           {curSession && !running && (
             <div className="flex gap-1">
               <button onClick={() => handleExport('markdown')}
-                className="border border-gray-200 px-2 py-0.5 hover:bg-gray-50 cursor-pointer bg-white text-xs">
+                className="border border-slate-700/70 px-2 py-0.5 hover:bg-slate-900 cursor-pointer bg-slate-950 text-xs text-slate-100 rounded-md">
                 ↓ MD
               </button>
               <button onClick={() => handleExport('json')}
-                className="border border-gray-200 px-2 py-0.5 hover:bg-gray-50 cursor-pointer bg-white text-xs">
+                className="border border-slate-700/70 px-2 py-0.5 hover:bg-slate-900 cursor-pointer bg-slate-950 text-xs text-slate-100 rounded-md">
                 ↓ JSON
               </button>
             </div>
@@ -580,27 +580,27 @@ export default function WorkspacePage() {
       {/* Main panels */}
       <div className="flex flex-1 min-h-0">
         {/* Left: sessions sidebar + chat */}
-        <div className="flex border-r border-gray-200" style={{ width: '55%' }}>
+        <div className="flex border-r border-slate-800/80" style={{ width: '55%' }}>
           {/* Sessions sidebar */}
           <div
-            className="border-r border-gray-100 bg-gray-50 flex flex-col flex-shrink-0"
+            className="border-r border-slate-800/80 bg-slate-950/60 flex flex-col flex-shrink-0"
             style={{ width: 200 }}
           >
-            <div className="px-3 py-2 text-xs font-bold border-b border-gray-100">Sessions</div>
+            <div className="px-3 py-2 text-[11px] font-semibold border-b border-slate-800/80 uppercase tracking-[0.16em] text-slate-400">Sessions</div>
             <div className="flex-1 overflow-y-auto">
               {sessions.length === 0 ? (
-                <p className="text-xs text-gray-400 px-3 pt-2">No sessions yet</p>
+                <p className="text-xs text-slate-500 px-3 pt-2">No sessions yet</p>
               ) : (
                 sessions.map(s => {
                   const label = s.topic || s.title || 'Untitled';
                   const short = label.length > 30 ? label.slice(0, 28) + '…' : label;
                   const isActive = curSession?.id === s.id;
-                  const stClr = s.status === 'completed' ? 'text-green-700' : s.status === 'running' ? 'text-yellow-700' : s.status === 'failed' ? 'text-red-600' : 'text-gray-400';
+                  const stClr = s.status === 'completed' ? 'text-emerald-300' : s.status === 'running' ? 'text-amber-300' : s.status === 'failed' ? 'text-rose-300' : 'text-slate-500';
                   return (
                     <div
                       key={s.id}
                       onClick={() => loadSession(s)}
-                      className={`px-3 py-2 cursor-pointer border-b border-gray-100 text-xs hover:bg-gray-100 ${isActive ? 'bg-gray-200 font-semibold' : ''}`}
+                      className={`px-3 py-2 cursor-pointer border-b border-slate-900 text-xs hover:bg-slate-900/80 ${isActive ? 'bg-slate-900 font-semibold text-slate-50' : 'text-slate-300'}`}
                     >
                       {short}
                       <br />
@@ -615,16 +615,16 @@ export default function WorkspacePage() {
           </div>
 
           {/* Chat area */}
-          <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0 bg-slate-950/40">
             {/* Messages */}
             <div ref={chatLogRef} className="flex-1 overflow-y-auto p-4">
               {msgs.length === 0 && (
-                <div className="text-sm text-gray-400 leading-relaxed">
-                  <p className="mb-2">Welcome to <b>{wsName}</b>!</p>
-                  <p className="mb-1">Type a research question or use slash commands:</p>
-                  <p className="text-xs text-gray-500 mb-0.5"><code>/research [topic]</code> — Standard research</p>
-                  <p className="text-xs text-gray-500 mb-0.5"><code>/deepresearch [topic]</code> — Deep analysis</p>
-                  <p className="text-xs text-gray-500"><code>/gatherdata [topic]</code> — Data gathering only</p>
+                <div className="text-sm text-slate-400 leading-relaxed">
+                  <p className="mb-2">Welcome to <span className="font-semibold text-slate-100">{wsName}</span>.</p>
+                  <p className="mb-1">Ask a research question or trigger a pipeline with slash commands:</p>
+                  <p className="text-xs text-slate-300 mb-0.5 font-mono"><code>/research [topic]</code> — Standard research</p>
+                  <p className="text-xs text-slate-300 mb-0.5 font-mono"><code>/deepresearch [topic]</code> — Deep analysis</p>
+                  <p className="text-xs text-slate-300 font-mono"><code>/gatherdata [topic]</code> — Data gathering only</p>
                 </div>
               )}
               {msgs.map(m => <ChatBubble key={m.id} msg={m} />)}
@@ -632,13 +632,13 @@ export default function WorkspacePage() {
 
             {/* Slash hint */}
             {showSlashHint && (
-              <div className="mx-4 mb-1 text-xs bg-yellow-50 border border-yellow-200 px-3 py-1.5">
-                <b>Commands:</b> /research &middot; /deepresearch &middot; /gatherdata &middot; /help
+              <div className="mx-4 mb-1 text-[11px] bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-200">
+                <span className="font-semibold">Commands:</span> /research · /deepresearch · /gatherdata · /help
               </div>
             )}
 
             {/* Input bar */}
-            <div className="border-t border-gray-200 p-2.5 flex gap-2 flex-shrink-0">
+            <div className="border-t border-slate-800/80 p-2.5 flex gap-2 flex-shrink-0 bg-slate-950/80">
               <textarea
                 value={chatInput}
                 onChange={e => {
@@ -648,15 +648,15 @@ export default function WorkspacePage() {
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                 }}
-                placeholder="Ask a question or type / for commands..."
+                placeholder="Ask a question or type / for commands…"
                 rows={2}
                 disabled={running}
-                className="flex-1 border border-gray-300 px-3 py-1.5 text-sm resize-none outline-none focus:border-gray-500 disabled:bg-gray-50"
+                className="flex-1 input-field resize-none disabled:opacity-60"
               />
               {running ? (
                 <button
                   onClick={() => { abortRef.current = true; setAbort(true); setRunning(false); setStatusText('Stopped'); }}
-                  className="border border-red-400 text-red-600 px-3 py-1 text-sm hover:bg-red-50 cursor-pointer bg-white self-end"
+                  className="border border-rose-400 text-rose-200 px-3 py-1 text-xs rounded-lg hover:bg-rose-950/60 cursor-pointer bg-slate-950 self-end"
                 >
                   Stop
                 </button>
@@ -664,7 +664,7 @@ export default function WorkspacePage() {
                 <button
                   onClick={handleSend}
                   disabled={!chatInput.trim()}
-                  className="border border-gray-700 px-4 py-1 text-sm hover:bg-gray-100 disabled:opacity-40 cursor-pointer bg-white self-end"
+                  className="btn-primary px-4 py-1.5 text-xs self-end disabled:opacity-40"
                 >
                   Send
                 </button>
@@ -674,16 +674,15 @@ export default function WorkspacePage() {
         </div>
 
         {/* Right: tabbed panels */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 bg-slate-950/40">
           {/* Tab bar */}
-          <div className="flex border-b border-gray-200 flex-shrink-0 flex-wrap">
+          <div className="flex border-b border-slate-800/80 flex-shrink-0 flex-wrap">
             {TABS.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`px-3 py-2 text-xs border-none bg-transparent cursor-pointer border-b-2 transition-colors
-                  ${tab === t.id ? 'border-b-gray-900 font-semibold border-b-2' : 'border-b-transparent hover:bg-gray-50'}`}
-                style={{ borderBottom: tab === t.id ? '2px solid #111' : '2px solid transparent' }}
+                className={`px-3 py-2 text-[11px] border-none bg-transparent cursor-pointer border-b-2 transition-colors
+                  ${tab === t.id ? 'border-b-emerald-400 text-emerald-300 font-semibold' : 'border-b-transparent text-slate-400 hover:bg-slate-900/60'}`}
               >
                 {t.label}
               </button>
@@ -691,12 +690,12 @@ export default function WorkspacePage() {
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4 text-sm">
             {/* Live Feed */}
             {tab === 'feed' && (
               <div ref={feedRef}>
                 {feedEvents.length === 0 ? (
-                  <p className="text-sm text-gray-400">Live agent activity will stream here.</p>
+                  <p className="text-sm text-slate-400">Live agent activity will stream here.</p>
                 ) : (
                   feedEvents.map((ev, i) => <FeedItem key={ev.id ?? i} ev={ev} />)
                 )}
@@ -710,25 +709,25 @@ export default function WorkspacePage() {
             {tab === 'report' && (
               reportMd
                 ? <div className="prose-research"><ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd}</ReactMarkdown></div>
-                : <p className="text-sm text-gray-400">Report appears after research completes.</p>
+                : <p className="text-sm text-slate-400">Report appears after research completes.</p>
             )}
 
             {/* Raw Data */}
             {tab === 'raw' && (
               rawKeys.length === 0
-                ? <p className="text-sm text-gray-400">Raw agent data appears here.</p>
+                ? <p className="text-sm text-slate-400">Raw agent data appears here.</p>
                 : (
                   <div>
-                    <p className="text-xs font-semibold mb-3">{rawKeys.length} agents responded</p>
+                    <p className="text-xs font-semibold mb-3 text-slate-300">{rawKeys.length} agents responded</p>
                     {rawKeys.map(k => {
                       const v = findings[k] as unknown;
                       const preview = typeof v === 'string'
                         ? v.slice(0, 600)
                         : JSON.stringify(v, null, 2).slice(0, 600);
                       return (
-                        <div key={k} className="border border-gray-200 p-2.5 mb-2">
-                          <h4 className="text-xs font-semibold mb-1">{k}</h4>
-                          <pre className="text-[11px] text-gray-600 whitespace-pre-wrap overflow-x-auto">{preview}…</pre>
+                        <div key={k} className="border border-slate-800 rounded-lg p-2.5 mb-2 bg-slate-950/60">
+                          <h4 className="text-xs font-semibold mb-1 text-slate-200">{k}</h4>
+                          <pre className="text-[11px] text-slate-300 whitespace-pre-wrap overflow-x-auto">{preview}…</pre>
                         </div>
                       );
                     })}
