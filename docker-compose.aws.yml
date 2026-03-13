@@ -50,12 +50,13 @@ services:
       PORT: 8000
       AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-change_this_to_a_secure_random_string}
       LLM_STATUS: ONLINE
+      BACKEND_URL: http://backend:5000
       OLLAMA_BASE_URL: http://ollama:11434
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgres://${POSTGRES_USER:-avnadmin}:${POSTGRES_PASSWORD:-AVNS_kitWuvmp7Q-98DTnqOh}@postgres:5432/${POSTGRES_DB:-research_platform}
       MODEL_REASONING: ${MODEL_REASONING:-openrouter/anthropic/claude-3.5-sonnet:beta}
       MODEL_WRITING: ${MODEL_WRITING:-groq/gemma2-9b-it}
-      MODEL_CODING: qwen2.5-coder:1.5b
+      MODEL_CODING: ${MODEL_CODING:-groq/qwen-2.5-coder-32b}
       MODEL_CRITICAL: ${MODEL_CRITICAL:-gemini/gemini-2.0-flash}
       OPENROUTER_API_1: ${OPENROUTER_API_1:-}
       GROQ_API_1: ${GROQ_API_1:-}
