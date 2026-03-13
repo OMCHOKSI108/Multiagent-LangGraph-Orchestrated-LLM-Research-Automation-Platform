@@ -4,17 +4,25 @@ import { AuthProvider } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
 
 export const metadata: Metadata = {
-  title: 'Deep Research Platform',
-  description: 'Multi-agent AI research automation — 20+ specialized agents for comprehensive academic research.',
+  title: 'MARP – Multi‑Agentic Research Platform',
+  description:
+    'A multi‑agent AI research environment for serious academics: topic discovery, literature review, verification, and report generation.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className="h-full">
+      <body className="h-full bg-slate-950 text-slate-50">
         <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
+          <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
+            <Navbar />
+            <main className="flex-1 relative z-10">{children}</main>
+          </div>
+          <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+            <div className="absolute -top-40 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-3xl" />
+            <div className="absolute bottom-[-160px] right-[-80px] h-72 w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#0f172a_0,_transparent_55%),radial-gradient(circle_at_bottom,_#020617_0,_transparent_55%)] opacity-70" />
+          </div>
         </AuthProvider>
       </body>
     </html>
