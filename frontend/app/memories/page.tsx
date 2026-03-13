@@ -76,51 +76,53 @@ export default function MemoriesPage() {
   );
 
   return (
-    <div className="max-w-[600px] mx-auto mt-10 px-5 pb-16">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-normal">Memories</h2>
-        <button
-          onClick={() => setShowCreate(v => !v)}
-          className="border border-gray-700 px-4 py-1.5 text-sm hover:bg-gray-100 cursor-pointer bg-white"
-        >
-          + New Memory
-        </button>
-      </div>
-
-      <p className="text-sm text-gray-500 mb-4">
-        Store important findings, notes, and context that persist across research sessions.
-      </p>
+    <div className="section-shell pb-20">
+      <div className="max-w-[720px] w-full mx-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-50">Memories</h2>
+            <p className="text-sm text-slate-400 mt-1">
+              Store important findings, notes, and context that persist across research sessions.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreate(v => !v)}
+            className="btn-primary px-4 py-1.5 text-sm"
+          >
+            + New Memory
+          </button>
+        </div>
 
       {/* Create form */}
       {showCreate && (
-        <div className="border border-gray-300 p-4 mb-4">
+        <div className="surface-card mb-4">
           <div className="mb-2">
-            <label className="block text-xs text-gray-500 mb-1">Title *</label>
+            <label className="block text-[11px] text-slate-400 mb-1 uppercase tracking-[0.16em]">Title *</label>
             <input value={title} onChange={e => setTitle(e.target.value)}
               placeholder="Memory title"
-              className="w-full border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600" />
+              className="w-full input-field" />
           </div>
           <div className="mb-2">
-            <label className="block text-xs text-gray-500 mb-1">Content *</label>
+            <label className="block text-[11px] text-slate-400 mb-1 uppercase tracking-[0.16em]">Content *</label>
             <textarea value={content} onChange={e => setContent(e.target.value)}
               placeholder="What do you want to remember?"
               rows={4}
-              className="w-full border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600 resize-none" />
+              className="w-full input-field resize-none" />
           </div>
           <div className="mb-3">
-            <label className="block text-xs text-gray-500 mb-1">Tags (comma-separated)</label>
+            <label className="block text-[11px] text-slate-400 mb-1 uppercase tracking-[0.16em]">Tags (comma-separated)</label>
             <input value={tags} onChange={e => setTags(e.target.value)}
               placeholder="e.g. AI, research, quantum"
-              className="w-full border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600" />
+              className="w-full input-field" />
           </div>
-          {createErr && <p className="text-red-600 text-xs mb-2">{createErr}</p>}
+          {createErr && <p className="text-rose-300 text-xs mb-2">{createErr}</p>}
           <div className="flex gap-2">
             <button onClick={handleCreate} disabled={creating}
-              className="border border-gray-700 px-4 py-1.5 text-sm hover:bg-gray-100 disabled:opacity-40 cursor-pointer bg-white">
+              className="btn-primary px-4 py-1.5 text-sm disabled:opacity-40">
               {creating ? 'Saving...' : 'Save Memory'}
             </button>
             <button onClick={() => { setShowCreate(false); setCreateErr(''); }}
-              className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 cursor-pointer bg-white">
+              className="btn-ghost px-4 py-1.5 text-sm">
               Cancel
             </button>
           </div>
@@ -136,39 +138,40 @@ export default function MemoriesPage() {
 
       {/* List */}
       {fetching ? (
-        <p className="text-sm text-gray-400">Loading...</p>
+        <p className="text-sm text-slate-400">Loading...</p>
       ) : fetchErr ? (
-        <p className="text-sm text-red-600">{fetchErr}</p>
+        <p className="text-sm text-rose-300">{fetchErr}</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-slate-400">
           {query ? 'No memories match your search.' : 'No memories saved yet. Create one to track important findings.'}
         </p>
       ) : (
         filtered.map(m => (
-          <div key={m.id} className="border border-gray-200 px-4 py-3 mb-2">
+          <div key={m.id} className="surface-card mb-2 py-3 px-4">
             <div className="flex items-start justify-between mb-1">
-              <h3 className="text-sm font-semibold">{m.title}</h3>
+              <h3 className="text-sm font-semibold text-slate-100">{m.title}</h3>
               <button
                 onClick={() => handleDelete(m.id)}
-                className="text-xs text-gray-400 hover:text-red-600 ml-2 border-none bg-transparent cursor-pointer"
+                className="text-xs text-slate-500 hover:text-rose-300 ml-2 border-none bg-transparent cursor-pointer"
               >
                 ✕
               </button>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed mb-1 whitespace-pre-wrap">{m.content}</p>
+            <p className="text-sm text-slate-200 leading-relaxed mb-1 whitespace-pre-wrap">{m.content}</p>
             <div className="flex items-center justify-between">
               <div className="flex gap-1 flex-wrap">
                 {(m.tags || []).map(tag => (
-                  <span key={tag} className="text-[10px] bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
+                  <span key={tag} className="text-[10px] bg-slate-900/80 border border-slate-700 px-1.5 py-0.5 rounded text-slate-200">
                     {tag}
                   </span>
                 ))}
               </div>
-              <span className="text-xs text-gray-400">{new Date(m.created_at).toLocaleDateString()}</span>
+              <span className="text-xs text-slate-500">{new Date(m.created_at).toLocaleDateString()}</span>
             </div>
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }

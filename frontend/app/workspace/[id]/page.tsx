@@ -49,12 +49,16 @@ function ChatBubble({ msg }: { msg: Msg }) {
   return (
     <div className={`mb-3 ${isUser ? 'text-right' : 'text-left'}`}>
       <div
-        className={`inline-block max-w-[88%] text-left px-3 py-2 border text-sm leading-relaxed
-          ${isUser ? 'bg-gray-100 border-gray-300' : msg.role === 'system' ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200'}`}
+        className={`inline-block max-w-[88%] text-left px-3 py-2 border text-sm leading-relaxed rounded-lg shadow-sm
+          ${isUser
+            ? 'bg-emerald-500/10 border-emerald-400/60 text-emerald-100'
+            : msg.role === 'system'
+              ? 'bg-slate-900/70 border-slate-700 text-slate-200'
+              : 'bg-slate-900/80 border-slate-700 text-slate-100'}`}
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
       </div>
-      <div className="text-[10px] text-gray-400 mt-0.5">
+      <div className="text-[10px] text-slate-500 mt-0.5">
         {isUser ? 'You' : msg.role === 'system' ? 'System' : 'AI'} &middot;{' '}
         {new Date(msg.ts).toLocaleTimeString()}
       </div>
@@ -64,14 +68,16 @@ function ChatBubble({ msg }: { msg: Msg }) {
 
 function FeedItem({ ev }: { ev: ResearchEvent }) {
   const sev = ev.severity || 'info';
-  const color = sev === 'error' ? 'text-red-600' : sev === 'warning' ? 'text-yellow-700' : 'text-gray-700';
+  const color = sev === 'error' ? 'text-rose-300' : sev === 'warning' ? 'text-amber-300' : 'text-slate-200';
   return (
-    <div className={`py-1 border-b border-gray-100 text-xs leading-snug ${color}`}>
+    <div className={`py-1 border-b border-slate-800/80 text-xs leading-snug ${color}`}>
       {ev.stage && (
-        <span className="inline-block bg-gray-100 px-1.5 rounded text-[10px] mr-1.5 text-gray-600">{ev.stage}</span>
+        <span className="inline-block bg-slate-900/80 px-1.5 rounded text-[10px] mr-1.5 text-slate-300 border border-slate-700/70">
+          {ev.stage}
+        </span>
       )}
       {ev.message || ev.category || 'Event'}
-      <span className="text-gray-400 ml-2">{new Date(ev.created_at).toLocaleTimeString()}</span>
+      <span className="text-slate-500 ml-2">{new Date(ev.created_at).toLocaleTimeString()}</span>
     </div>
   );
 }
@@ -199,17 +205,19 @@ function AiChatPanel({ sessionId }: { sessionId: number | null }) {
   if (!sessionId) return <p className="text-sm text-gray-400 p-4">Select or start a research session to chat.</p>;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-slate-950/40 border-l border-slate-800/80">
       <div className="flex-1 overflow-y-auto p-3">
         {!loaded ? (
-          <p className="text-xs text-gray-400">Loading...</p>
+          <p className="text-xs text-slate-400">Loading...</p>
         ) : msgs.length === 0 ? (
-          <p className="text-xs text-gray-400">No chat history. Ask a question about the research.</p>
+          <p className="text-xs text-slate-400">No chat history. Ask a question about the research.</p>
         ) : (
           msgs.map(m => (
             <div key={m.id} className={`mb-2 text-xs ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block max-w-[90%] px-2.5 py-1.5 border text-left leading-relaxed
-                ${m.role === 'user' ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'}`}>
+              <div className={`inline-block max-w-[90%] px-2.5 py-1.5 border text-left leading-relaxed rounded-lg shadow-sm
+                ${m.role === 'user'
+                  ? 'bg-emerald-500/10 border-emerald-400/60 text-emerald-100'
+                  : 'bg-slate-900/80 border-slate-700 text-slate-100'}`}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
               </div>
             </div>
@@ -217,19 +225,19 @@ function AiChatPanel({ sessionId }: { sessionId: number | null }) {
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="border-t border-gray-200 p-2 flex gap-2">
+      <div className="border-t border-slate-800/80 p-2 flex gap-2 bg-slate-950/80">
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
           placeholder="Ask AI about this research..."
           rows={2}
-          className="flex-1 border border-gray-300 px-2 py-1.5 text-sm resize-none outline-none focus:border-gray-500"
+          className="flex-1 input-field px-2 py-1.5 text-sm resize-none"
         />
         <button
           onClick={sendMsg}
           disabled={sending || !input.trim()}
-          className="border border-gray-700 px-3 py-1 text-sm hover:bg-gray-100 disabled:opacity-40 cursor-pointer bg-white whitespace-nowrap self-end"
+          className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40 whitespace-nowrap self-end"
         >
           {sending ? '...' : 'Send'}
         </button>

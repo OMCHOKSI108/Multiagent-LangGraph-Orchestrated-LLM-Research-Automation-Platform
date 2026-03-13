@@ -108,90 +108,92 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="max-w-[720px] mx-auto mt-10 px-5 pb-16">
+    <div className="section-shell pb-20">
+      <div className="max-w-[900px] w-full mx-auto">
 
-      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
 
-        <div>
-          <h2 className="text-xl font-normal mb-0">Agent Directory</h2>
-          <p className="text-sm text-gray-500">
-            {agents.length} registered agents in the pipeline
-          </p>
-        </div>
-
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search agents..."
-          className="border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600 w-48"
-        />
-
-      </div>
-
-      {fetchErr && (
-        <p className="text-xs text-yellow-700 mb-3">
-          Note: {fetchErr} — showing built-in agent list.
-        </p>
-      )}
-
-      {Object.entries(grouped).map(([category, list]) => (
-
-        <div key={category} className="mb-6">
-
-          <h3 className="text-sm font-semibold text-gray-500 mb-2 uppercase tracking-wide">
-            {CATEGORY_LABELS[category] || category}
-          </h3>
-
-          <div className="grid gap-2">
-
-            {list.map((agent) => {
-
-              const status = agent.status ?? 'unknown';
-
-              return (
-                <div
-                  key={agent.name}
-                  className="border border-gray-200 px-4 py-3 flex items-start gap-3"
-                >
-
-                  <div>
-                    <p className="text-sm font-semibold font-mono">{agent.name}</p>
-
-                    {agent.description && (
-                      <p className="text-xs text-gray-500 mt-0.5 leading-snug">
-                        {agent.description}
-                      </p>
-                    )}
-                  </div>
-
-                  <span
-                    className={`ml-auto text-[10px] px-1.5 py-0.5 rounded border flex-shrink-0
-                    ${
-                      status === 'active'
-                        ? 'border-green-300 text-green-700 bg-green-50'
-                        : status === 'offline'
-                        ? 'border-red-300 text-red-600 bg-red-50'
-                        : 'border-gray-200 text-gray-500 bg-gray-50'
-                    }`}
-                  >
-                    {status}
-                  </span>
-
-                </div>
-              );
-            })}
-
+          <div>
+            <h2 className="text-2xl font-semibold text-slate-50 mb-0">Agent Directory</h2>
+            <p className="text-sm text-slate-400">
+              {agents.length} registered agents in the pipeline
+            </p>
           </div>
 
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Search agents..."
+            className="input-field w-56"
+          />
+
         </div>
-      ))}
 
-      {Object.keys(grouped).length === 0 && (
-        <p className="text-sm text-gray-400">
-          No agents match your search.
-        </p>
-      )}
+        {fetchErr && (
+          <p className="text-xs text-amber-300 mb-3">
+            Note: {fetchErr} — showing built-in agent list.
+          </p>
+        )}
 
+        {Object.entries(grouped).map(([category, list]) => (
+
+          <div key={category} className="mb-8">
+
+            <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-[0.2em]">
+              {CATEGORY_LABELS[category] || category}
+            </h3>
+
+            <div className="grid gap-2">
+
+              {list.map((agent) => {
+
+                const status = agent.status ?? 'unknown';
+
+                return (
+                  <div
+                    key={agent.name}
+                    className="surface-card flex items-start gap-3 py-3 px-4"
+                  >
+
+                    <div>
+                      <p className="text-sm font-semibold font-mono text-slate-50">{agent.name}</p>
+
+                      {agent.description && (
+                        <p className="text-xs text-slate-400 mt-0.5 leading-snug">
+                          {agent.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <span
+                      className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full border flex-shrink-0 capitalize
+                      ${
+                        status === 'active'
+                          ? 'border-emerald-400/70 text-emerald-300 bg-emerald-500/10'
+                          : status === 'offline'
+                          ? 'border-rose-400/70 text-rose-300 bg-rose-500/10'
+                          : 'border-slate-700 text-slate-300 bg-slate-900/80'
+                      }`}
+                    >
+                      {status}
+                    </span>
+
+                  </div>
+                );
+              })}
+
+            </div>
+
+          </div>
+        ))}
+
+        {Object.keys(grouped).length === 0 && (
+          <p className="text-sm text-slate-400">
+            No agents match your search.
+          </p>
+        )}
+
+      </div>
     </div>
   );
 }

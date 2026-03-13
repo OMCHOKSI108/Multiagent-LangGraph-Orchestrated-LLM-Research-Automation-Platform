@@ -94,58 +94,59 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-[560px] mx-auto mt-10 px-5 pb-16">
-      <h2 className="text-xl font-normal mb-5">My Profile</h2>
+    <div className="section-shell pb-20">
+      <div className="max-w-[720px] w-full mx-auto">
+        <h2 className="text-2xl font-semibold mb-5 text-slate-50">My Profile</h2>
 
       {/* Profile info */}
-      <div className="border border-gray-200 p-4 mb-5">
+      <div className="surface-card mb-5">
         <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-0.5">Name</label>
+          <label className="block text-[11px] text-slate-400 mb-0.5 uppercase tracking-[0.16em]">Name</label>
           {editMode ? (
             <input
               value={username}
               onChange={e => setUsername(e.target.value)}
-              className="border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600 w-full"
+              className="input-field w-full"
             />
           ) : (
-            <p className="text-sm">{user.username || '—'}</p>
+            <p className="text-sm text-slate-50">{user.username || '—'}</p>
           )}
         </div>
         <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-0.5">Email</label>
-          <p className="text-sm">{user.email}</p>
+          <label className="block text-[11px] text-slate-400 mb-0.5 uppercase tracking-[0.16em]">Email</label>
+          <p className="text-sm text-slate-200">{user.email}</p>
         </div>
         <div className="mb-3">
-          <label className="block text-xs text-gray-500 mb-0.5">Role</label>
-          <p className="text-sm capitalize">{user.role || 'user'}</p>
+          <label className="block text-[11px] text-slate-400 mb-0.5 uppercase tracking-[0.16em]">Role</label>
+          <p className="text-sm capitalize text-slate-200">{user.role || 'user'}</p>
         </div>
         <div className="mb-4">
-          <label className="block text-xs text-gray-500 mb-0.5">Member Since</label>
-          <p className="text-sm">{new Date(user.created_at).toLocaleDateString()}</p>
+          <label className="block text-[11px] text-slate-400 mb-0.5 uppercase tracking-[0.16em]">Member Since</label>
+          <p className="text-sm text-slate-200">{new Date(user.created_at).toLocaleDateString()}</p>
         </div>
 
-        {saveMsg && <p className="text-sm text-green-700 mb-2">{saveMsg}</p>}
+        {saveMsg && <p className="text-sm text-emerald-300 mb-2">{saveMsg}</p>}
 
         <div className="flex gap-2">
           {editMode ? (
             <>
               <button onClick={saveProfile} disabled={saving}
-                className="border border-gray-700 px-4 py-1.5 text-sm hover:bg-gray-100 disabled:opacity-40 cursor-pointer bg-white">
+                className="btn-primary px-4 py-1.5 text-sm disabled:opacity-40">
                 {saving ? 'Saving...' : 'Save'}
               </button>
               <button onClick={() => { setEditMode(false); setUsername(user.username || ''); }}
-                className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 cursor-pointer bg-white">
+                className="btn-ghost px-4 py-1.5 text-sm">
                 Cancel
               </button>
             </>
           ) : (
             <button onClick={() => setEditMode(true)}
-              className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 cursor-pointer bg-white">
+              className="btn-ghost px-4 py-1.5 text-sm">
               Edit Name
             </button>
           )}
           <button onClick={handleLogout}
-            className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 cursor-pointer bg-white ml-auto">
+            className="btn-ghost px-4 py-1.5 text-sm ml-auto text-rose-300 hover:text-rose-200">
             Logout
           </button>
         </div>
@@ -153,87 +154,88 @@ export default function ProfilePage() {
 
       {/* Usage stats */}
       {stats && (
-        <div className="border border-gray-200 p-4 mb-5">
-          <h3 className="text-sm font-semibold mb-3">Usage Statistics</h3>
+        <div className="surface-card mb-5">
+          <h3 className="text-sm font-semibold mb-3 text-slate-100">Usage Statistics</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-gray-500 text-xs">Total Research</span><p className="font-semibold">{stats.total_research}</p></div>
-            <div><span className="text-gray-500 text-xs">Completed</span><p className="font-semibold text-green-700">{stats.completed}</p></div>
-            <div><span className="text-gray-500 text-xs">Failed</span><p className="font-semibold text-red-600">{stats.failed}</p></div>
-            <div><span className="text-gray-500 text-xs">API Calls</span><p className="font-semibold">{stats.api_calls}</p></div>
+            <div><span className="text-slate-400 text-xs">Total Research</span><p className="font-semibold text-slate-100">{stats.total_research}</p></div>
+            <div><span className="text-slate-400 text-xs">Completed</span><p className="font-semibold text-emerald-300">{stats.completed}</p></div>
+            <div><span className="text-slate-400 text-xs">Failed</span><p className="font-semibold text-rose-300">{stats.failed}</p></div>
+            <div><span className="text-slate-400 text-xs">API Calls</span><p className="font-semibold text-slate-100">{stats.api_calls}</p></div>
           </div>
         </div>
       )}
 
       {/* API Key */}
-      <div className="border border-gray-200 p-4 mb-5">
-        <h3 className="text-sm font-semibold mb-2">API Key</h3>
-        <p className="text-xs text-gray-500 mb-2">
+      <div className="surface-card mb-5">
+        <h3 className="text-sm font-semibold mb-2 text-slate-100">API Key</h3>
+        <p className="text-xs text-slate-400 mb-2">
           Used for direct research API access (<code>/research/start</code>)
         </p>
         {apiKey && (
-          <div className="bg-gray-50 border border-gray-200 px-3 py-2 mb-2 font-mono text-xs break-all select-all">
+          <div className="bg-slate-900/70 border border-slate-700 px-3 py-2 mb-2 font-mono text-xs break-all select-all text-slate-100 rounded-md">
             {apiKey}
           </div>
         )}
-        {genErr && <p className="text-red-600 text-xs mb-2">{genErr}</p>}
+        {genErr && <p className="text-rose-300 text-xs mb-2">{genErr}</p>}
         <button
           onClick={genApiKey}
           disabled={genning}
-          className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-40 cursor-pointer bg-white"
+          className="btn-primary px-4 py-1.5 text-sm disabled:opacity-40"
         >
           {genning ? 'Generating...' : apiKey ? 'Regenerate Key' : 'Generate API Key'}
         </button>
       </div>
 
       {/* Change password */}
-      <div className="border border-gray-200 p-4 mb-5">
-        <h3 className="text-sm font-semibold mb-3">Change Password</h3>
+      <div className="surface-card mb-5">
+        <h3 className="text-sm font-semibold mb-3 text-slate-100">Change Password</h3>
         <div className="flex flex-col gap-2 max-w-sm">
           <input type="password" placeholder="Current password" value={curPass}
             onChange={e => setCurPass(e.target.value)}
-            className="border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600" />
+            className="input-field" />
           <input type="password" placeholder="New password (min 6)" value={newPass}
             onChange={e => setNewPass(e.target.value)}
-            className="border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600" />
-          {passErr && <p className="text-red-600 text-xs">{passErr}</p>}
-          {passMsg && <p className="text-green-700 text-xs">{passMsg}</p>}
+            className="input-field" />
+          {passErr && <p className="text-rose-300 text-xs">{passErr}</p>}
+          {passMsg && <p className="text-emerald-300 text-xs">{passMsg}</p>}
           <button onClick={changePassword} disabled={changingPass}
-            className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-40 cursor-pointer bg-white self-start">
+            className="btn-primary px-4 py-1.5 text-sm disabled:opacity-40 self-start">
             {changingPass ? 'Changing...' : 'Change Password'}
           </button>
         </div>
       </div>
 
       {/* Research History */}
-      <hr className="border-t border-gray-200 my-5" />
-      <h3 className="text-base font-normal mb-3">Research History</h3>
+      <hr className="border-t border-slate-800 my-5" />
+      <h3 className="text-base font-semibold mb-3 text-slate-100">Research History</h3>
       {histErr ? (
-        <p className="text-sm text-red-600">{histErr}</p>
+        <p className="text-sm text-rose-300">{histErr}</p>
       ) : history.length === 0 ? (
-        <p className="text-sm text-gray-400">No research history yet.</p>
+        <p className="text-sm text-slate-400">No research history yet.</p>
       ) : (
         history.map(h => (
-          <div key={h.id} className="border border-gray-200 px-4 py-2.5 mb-2">
-            <h4 className="text-sm font-semibold mb-0.5">
+          <div key={h.id} className="surface-card mb-2 py-3 px-4">
+            <h4 className="text-sm font-semibold mb-0.5 text-slate-100">
               {h.title || h.task || h.topic || 'Untitled Research'}
             </h4>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-400">
               <StatusBadge status={h.status} /> &middot; {new Date(h.created_at).toLocaleDateString()}
               {h.workspace_name && <> &middot; {h.workspace_name}</>}
             </p>
           </div>
         ))
       )}
+      </div>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    completed: 'text-green-700',
-    failed: 'text-red-600',
-    running: 'text-yellow-700',
-    queued: 'text-blue-700',
+    completed: 'text-emerald-300',
+    failed: 'text-rose-300',
+    running: 'text-amber-300',
+    queued: 'text-sky-300',
   };
-  return <span className={colors[status] || 'text-gray-500'}>{status}</span>;
+  return <span className={colors[status] || 'text-slate-400'}>{status}</span>;
 }
