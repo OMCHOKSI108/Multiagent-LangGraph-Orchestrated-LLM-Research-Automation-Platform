@@ -220,6 +220,8 @@ export interface Memory {
   id: number;
   user_id: number;
   content: string;
+  title?: string;
+  tags?: string[];
   source: string;
   created_at: string;
   user_email?: string;
@@ -227,8 +229,11 @@ export interface Memory {
 
 export const memories = {
   list: () => req<{ memories: Memory[] }>('GET', '/memories'),
-  create: (content: string) =>
-    req<{ memory: Memory }>('POST', '/memories', { content }),
+  create: (title: string, content: string, tags?: string[]) =>
+    req<{ memory: Memory }>('POST', '/memories', { 
+      content, 
+      metadata: { title, tags } 
+    }),
   delete: (id: number) => req<{ message: string }>('DELETE', `/memories/${id}`),
 };
 

@@ -32,7 +32,12 @@ export default function MemoriesPage() {
     setFetching(true); setFetchErr('');
     try {
       const d = await memoriesApi.list();
-      setMems(d.memories || []);
+      const processed = (d.memories || []).map((m: any) => ({
+        ...m,
+        title: m.metadata?.title || 'Untitled Memory',
+        tags: m.metadata?.tags || []
+      }));
+      setMems(processed);
     } catch (e: unknown) {
       setFetchErr(e instanceof Error ? e.message : 'Failed');
     } finally {
@@ -46,7 +51,7 @@ export default function MemoriesPage() {
     setCreating(true);
     try {
       const tagArr = tags.split(',').map(t => t.trim()).filter(Boolean);
-      await memoriesApi.create(title.trim(), content.trim(), tagArr.length ? tagArr : undefined);
+      await memoriesApi.create(title.trim(), content.trim(), tagArr);
       setTitle(''); setContent(''); setTags(''); setShowCreate(false);
       await load();
     } catch (e: unknown) {
@@ -65,7 +70,7 @@ export default function MemoriesPage() {
   }
 
   const filtered = mems.filter(m =>
-    m.title.toLowerCase().includes(query.toLowerCase()) ||
+    (m.title || '').toLowerCase().includes(query.toLowerCase()) ||
     m.content.toLowerCase().includes(query.toLowerCase()) ||
     (m.tags || []).some(t => t.toLowerCase().includes(query.toLowerCase()))
   );
