@@ -80,6 +80,60 @@ router.post('/users/:id/disable', async (req, res) => {
 });
 
 /**
+ * 3. PATCH /admin/users/:id/role
+ * Change user role (e.g. promote to admin)
+ */
+router.patch('/users/:id/role', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+
+        if (!['admin', 'user'].includes(role)) {
+            return res.status(400).json({ error: "Invalid role. Use 'admin' or 'user'." });
+        }
+
+        const result = await db.query(
+            'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, email, role',
+            [role, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({ success: true, message: `User role updated to ${role}`, user: result.rows[0] });
+    } catch (err) {
+        console.error('[Admin] Error updating user role:', err);
+        res.status(500).json({ error: 'Failed to update user role' });
+    }
+});
+
+/**
+ * 4. DELETE /admin/users/:id
+ * Hard delete a user and all their data (cascades).
+ */
+router.delete('/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (parseInt(id) === req.user.id) {
+            return res.status(400).json({ error: "You cannot delete your own admin account" });
+        }
+
+        const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json({ success: true, message: "User and all associated data deleted" });
+    } catch (err) {
+        console.error('[Admin] Error deleting user:', err);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+/**
  * 3. DELETE /admin/users/:id
  * Delete a user and cascade.
  */
@@ -157,6 +211,24 @@ router.get('/research', async (req, res) => {
 });
 
 /**
+ * 6.5 DELETE /admin/research/:id
+ * Force delete a research job.
+ */
+router.delete('/research/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Delete from both if they exist
+        await db.query('DELETE FROM research_sessions WHERE id = $1', [id]);
+        await db.query('DELETE FROM research_logs WHERE id = $1', [id]);
+        
+        res.json({ success: true, message: "Research job deleted" });
+    } catch (err) {
+        console.error('[Admin] Error deleting research job:', err);
+        res.status(500).json({ error: 'Failed to delete research job' });
+    }
+});
+
+/**
  * 7. GET /admin/workspaces
  * List all workspaces across all users.
  */
@@ -179,6 +251,21 @@ router.get('/workspaces', async (req, res) => {
     } catch (err) {
         console.error('[Admin] Error fetching workspaces:', err);
         res.status(500).json({ error: 'Failed to fetch workspaces' });
+    }
+});
+
+/**
+ * 7.5 DELETE /admin/workspaces/:id
+ * Force delete a workspace.
+ */
+router.delete('/workspaces/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.query('DELETE FROM workspaces WHERE id = $1', [id]);
+        res.json({ success: true, message: "Workspace deleted" });
+    } catch (err) {
+        console.error('[Admin] Error deleting workspace:', err);
+        res.status(500).json({ error: 'Failed to delete workspace' });
     }
 });
 
