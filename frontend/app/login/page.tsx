@@ -14,7 +14,10 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) router.replace('/dashboard');
+    if (!loading && user) {
+      if (user.role === 'admin') router.replace('/admin');
+      else router.replace('/dashboard');
+    }
   }, [user, loading, router]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -22,8 +25,10 @@ export default function LoginPage() {
     setError('');
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
-      router.push('/dashboard');
+      const data = await login(email.trim(), password);
+      // login doesn't return user, but useAuth state will update
+      // and useEffect will handle the redirect. 
+      // But we can also check the data if it has role
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

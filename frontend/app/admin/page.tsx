@@ -90,7 +90,7 @@ export default function AdminPage() {
         <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight admin-gradient-text uppercase">Admin Console</h1>
-            <p className="text-slate-500 text-sm mt-1">Platform-wide management and intelligence dashboard.</p>
+            <p className="text-slate-500 text-sm mt-1">Welcome chief admin. This is your platform-wide intelligence dashboard.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">ADMIN MODE</span>
