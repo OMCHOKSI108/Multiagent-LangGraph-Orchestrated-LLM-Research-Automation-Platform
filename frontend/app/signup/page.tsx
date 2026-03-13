@@ -36,60 +36,79 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="max-w-[400px] mx-auto mt-16 px-5">
-      <h2 className="text-xl font-normal mb-5">Create Account</h2>
-
-      {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-      {ok && <p className="text-green-700 text-sm mb-3">{ok}</p>}
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">Name</label>
-          <input
-            required
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Your name"
-            className="w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-600"
-          />
+    <div className="section-shell flex items-center justify-center py-14">
+      <div className="grid w-full max-w-4xl gap-10 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-center">
+        <div className="hidden md:block text-sm text-slate-300">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 mb-3">Create your workspace</p>
+          <h2 className="text-3xl font-semibold mb-3">Sign up for MARP.</h2>
+          <p className="text-sm text-slate-300 mb-4 max-w-md">
+            One account gives you access to workspaces, live research sessions, the agent directory, and the profile area
+            where your API key and usage stats live.
+          </p>
+          <ul className="space-y-2 text-xs text-slate-400">
+            <li>• You can always export your workspaces and reports.</li>
+            <li>• Admin roles can later be granted from the console.</li>
+            <li>• Passwords are never stored in plain text.</li>
+          </ul>
         </div>
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">Email</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-600"
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-500 mb-1">Password</label>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Min 6 characters"
-            className="w-full border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-600"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="border border-gray-800 px-5 py-2 text-sm hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer bg-white"
-        >
-          {submitting ? 'Creating account...' : 'Sign Up'}
-        </button>
-      </form>
 
-      <hr className="border-t border-gray-200 my-5" />
-      <p className="text-sm">
-        Have an account?{' '}
-        <Link href="/login" className="font-bold hover:underline">Login</Link>
-      </p>
+        <div className="surface-card p-6 md:p-7 w-full max-w-md mx-auto">
+          <h2 className="text-2xl font-semibold mb-1">Create account</h2>
+          <p className="text-xs text-slate-400 mb-5">We keep it simple – just the basics to start your research studio.</p>
+
+          {error && <p className="mb-3 rounded-lg border border-rose-500/60 bg-rose-950/40 px-3 py-2 text-xs text-rose-100">{error}</p>}
+          {ok && <p className="mb-3 rounded-lg border border-emerald-500/50 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-100">{ok}</p>}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Name</label>
+              <input
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your name"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-[0.16em] text-slate-400">Password</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                className="input-field"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary mt-1"
+            >
+              {submitting ? 'Creating account…' : 'Sign up'}
+            </button>
+          </form>
+
+          <div className="mt-5 h-px w-full bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
+          <p className="mt-4 text-xs text-slate-400">
+            Already have an account?{' '}
+            <Link href="/login" className="text-emerald-300 hover:text-emerald-200 underline-offset-2 hover:underline">Log in</Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

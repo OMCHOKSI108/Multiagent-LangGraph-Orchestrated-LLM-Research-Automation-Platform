@@ -84,54 +84,67 @@ export default function DashboardPage() {
     (w.description || '').toLowerCase().includes(query.toLowerCase())
   );
 
-  if (loading) return <div className="max-w-[560px] mx-auto mt-16 px-5 text-gray-400">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="section-shell mt-16 text-slate-400 text-sm">Loading your workspaces…</div>
+    );
+  }
 
   return (
-    <div className="max-w-[600px] mx-auto mt-10 px-5 pb-16">
+    <div className="section-shell mt-10 pb-16 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-normal m-0">My Workspaces</h2>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 mb-1">Workspace hub</p>
+          <h2 className="text-2xl font-semibold mb-1">My research workspaces</h2>
+          <p className="text-xs text-slate-400 max-w-xl">
+            Each workspace is a long‑lived container for one project: questions, runs, reports, chat, and exports live
+            together.
+          </p>
+        </div>
         <button
           onClick={() => setShowCreate(v => !v)}
-          className="border border-gray-700 px-4 py-1.5 text-sm hover:bg-gray-100 cursor-pointer bg-white"
+          className="self-start sm:self-auto btn-primary mt-2 sm:mt-0"
         >
-          + New Workspace
+          + New workspace
         </button>
       </div>
 
       {/* Create form */}
       {showCreate && (
-        <div className="border border-gray-300 p-4 mb-4">
-          <div className="mb-2">
-            <label className="block text-xs text-gray-500 mb-1">Workspace Name *</label>
-            <input
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder="e.g. AI Ethics Research"
-              className="w-full border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600"
-            />
+        <div className="surface-card p-5">
+          <div className="mb-3 flex items-start gap-3">
+            <div className="flex-1">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Workspace name *</label>
+              <input
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="e.g. LLMs for medical question answering"
+                className="input-field"
+              />
+            </div>
           </div>
           <div className="mb-3">
-            <label className="block text-xs text-gray-500 mb-1">Description (optional)</label>
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Description (optional)</label>
             <input
               value={newDesc}
               onChange={e => setNewDesc(e.target.value)}
-              placeholder="What is this workspace for?"
-              className="w-full border border-gray-300 px-3 py-1.5 text-sm outline-none focus:border-gray-600"
+              placeholder="What is this workspace exploring?"
+              className="input-field"
             />
           </div>
-          {createErr && <p className="text-red-600 text-xs mb-2">{createErr}</p>}
+          {createErr && <p className="text-rose-300 text-xs mb-2">{createErr}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="border border-gray-700 px-4 py-1.5 text-sm hover:bg-gray-100 disabled:opacity-40 cursor-pointer bg-white"
+              className="btn-primary"
             >
-              {creating ? 'Creating...' : 'Create'}
+              {creating ? 'Creating…' : 'Create workspace'}
             </button>
             <button
               onClick={() => { setShowCreate(false); setCreateErr(''); }}
-              className="border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50 cursor-pointer bg-white"
+              className="btn-ghost text-xs px-4"
             >
               Cancel
             </button>
@@ -144,36 +157,37 @@ export default function DashboardPage() {
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search workspaces..."
-          className="w-full border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-gray-400 mb-3"
+          placeholder="Search workspaces by name or description…"
+          className="input-field max-w-md"
         />
       )}
 
       {/* List */}
-      {fetching ? (
-        <p className="text-sm text-gray-400">Loading workspaces...</p>
-      ) : fetchErr ? (
-        <p className="text-sm text-red-600">{fetchErr}</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-gray-400">
-          {query ? 'No workspaces match your search.' : 'No workspaces yet. Create one to start.'}
-        </p>
-      ) : (
-        filtered.map(ws => (
-          <WorkspaceCard
-            key={ws.id}
-            ws={ws}
-            onClick={() => router.push(`/workspace/${ws.id}`)}
-          />
-        ))
-      )}
+      <div className="surface-card p-4">
+        {fetching ? (
+          <p className="text-sm text-slate-400">Loading workspaces…</p>
+        ) : fetchErr ? (
+          <p className="text-sm text-rose-300">{fetchErr}</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            {query ? 'No workspaces match your search.' : 'No workspaces yet. Create one to start your first project.'}
+          </p>
+        ) : (
+          filtered.map(ws => (
+            <WorkspaceCard
+              key={ws.id}
+              ws={ws}
+              onClick={() => router.push(`/workspace/${ws.id}`)}
+            />
+          ))
+        )}
+      </div>
 
       {/* Quick links */}
-      <hr className="border-t border-gray-100 my-6" />
-      <div className="flex gap-6 text-sm text-gray-500">
-        <Link href="/agents" className="hover:underline">Agent Directory</Link>
-        <Link href="/memories" className="hover:underline">Memories</Link>
-        <Link href="/profile" className="hover:underline">Profile &amp; API Key</Link>
+      <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+        <Link href="/agents" className="hover:text-emerald-300 transition-colors">Agent directory</Link>
+        <Link href="/memories" className="hover:text-emerald-300 transition-colors">Global memories</Link>
+        <Link href="/profile" className="hover:text-emerald-300 transition-colors">Profile &amp; API key</Link>
       </div>
     </div>
   );
