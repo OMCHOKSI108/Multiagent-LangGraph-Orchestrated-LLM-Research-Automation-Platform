@@ -19,6 +19,7 @@ router.get('/users', async (req, res) => {
                 u.id, 
                 u.username, 
                 u.email,
+                COALESCE(u.role, 'user') AS role,
                 u.is_active,
                 u.created_at,
                 (SELECT COUNT(*) FROM workspaces w WHERE w.user_id = u.id) as workspace_count,

@@ -1,9 +1,11 @@
 'use client';
 
-const API_BASE =
-  typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
-    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+function normalizeApiBase(baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
 
 function getToken(): string {
   if (typeof window === 'undefined') return '';
