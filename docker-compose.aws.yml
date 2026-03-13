@@ -59,8 +59,14 @@ services:
       MODEL_CODING: ${MODEL_CODING:-groq/qwen-2.5-coder-32b}
       MODEL_CRITICAL: ${MODEL_CRITICAL:-gemini/gemini-2.0-flash}
       OPENROUTER_API_1: ${OPENROUTER_API_1:-}
+      OPENROUTER_API_2: ${OPENROUTER_API_2:-}
+      OPENROUTER_API_3: ${OPENROUTER_API_3:-}
       GROQ_API_1: ${GROQ_API_1:-}
+      GROQ_API_2: ${GROQ_API_2:-}
+      GROQ_API_3: ${GROQ_API_3:-}
       GEMINI_API_1: ${GEMINI_API_1:-}
+      GEMINI_API_2: ${GEMINI_API_2:-}
+      GEMINI_API_3: ${GEMINI_API_3:-}
     depends_on:
       - postgres
       - redis
