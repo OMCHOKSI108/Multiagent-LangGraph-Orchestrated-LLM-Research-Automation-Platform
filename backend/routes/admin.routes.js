@@ -59,6 +59,12 @@ router.post('/users/:id/disable', async (req, res) => {
         }
 
         const isActive = action === 'enable';
+        
+        // Prevent admin from disabling themselves
+        if (!isActive && userId === req.user.id) {
+            return res.status(400).json({ error: "You cannot disable your own admin account" });
+        }
+
         const result = await db.query(
             'UPDATE users SET is_active = $1 WHERE id = $2 RETURNING id, username, email, is_active',
             [isActive, userId]
