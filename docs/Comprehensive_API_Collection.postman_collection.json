@@ -1,0 +1,1156 @@
+{
+  "info": {
+    "_postman_id": "comprehensive-backend-api",
+    "name": "Paperguide Complete Backend API",
+    "description": "Full Postman collection for Paperguide backend including authentication, workspaces, research, chat, agents, admin, and user management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://advertisement-optimum-slip-agricultural.trycloudflare.com/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_USER_JWT_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "YOUR_API_KEY",
+      "type": "string"
+    },
+    {
+      "key": "adminKey",
+      "value": "OMCHOKSI@108_ADMIN_KEY",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "pm.test('Response status: ' + pm.response.code + ' ' + pm.response.json() + '\\n');"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "POST Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"testpass123\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"testpass123\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. User Management",
+      "item": [
+        {
+          "name": "Generate API Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Research Key\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Workspaces",
+      "item": [
+        {
+          "name": "List Workspaces",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Create Workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Workspace\",\n  \"description\": \"A test workspace for research\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workspace Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Workspace",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Workspace Name\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Archive Workspace",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start Research Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/research/start"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"Quantum computing applications\",\n  \"depth\": \"deep\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Session Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/research/{{sessionId}}/status"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lock Topic",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/research/{{sessionId}}/topic"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"Refined research topic\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Topic Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/research/{{sessionId}}/suggestions"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Workspace Sources",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/sources"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload File to Workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/upload"
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Research (Legacy)",
+      "item": [
+        {
+          "name": "Start Research (API Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"AI in healthcare\",\n  \"depth\": \"deep\",\n  \"api_key\": \"{{apiKey}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Research Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/research/status/{{researchId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Share Research",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/research/{{researchId}}/share"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Research",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/research/{{researchId}}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Chat",
+      "item": [
+        {
+          "name": "Send Chat Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"research_id\": {{researchId}},\n  \"message\": \"What are the key findings?\",\n  \"api_key\": \"{{apiKey}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Chat History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/chat/history/{{sessionId}}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Events (SSE)",
+      "item": [
+        {
+          "name": "Get SSE Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events/token/{{researchId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Connect SSE Stream",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events/stream/{{sseToken}}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('SSE Event: ' + pm.response.json() + '\\n');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Agents",
+      "item": [
+        {
+          "name": "List All Agents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Test Domain Intelligence Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"AI in healthcare applications\",\n  \"options\": {\"max_papers\": 10}\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Historical Review Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Neural networks development in healthcare\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Systematic Literature Review Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Transformer architecture in medical imaging\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Gap Synthesis Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Computer vision limitations in healthcare\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Innovation & Novelty Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Sustainable AI computing in healthcare\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Paper Decomposition Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"https://arxiv.org/abs/1706.03762\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Paper Understanding Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Attention mechanism in transformers\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Technical Verification Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"BERT achieves 95% accuracy on GLUE benchmark\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Interactive Chatbot Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Explain attention mechanism in simple terms\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Reviewer Style Critique Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"AI will replace all human jobs within 5 years\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Hallucination Detection Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"GPT-4 has 1 trillion parameters and was trained on 100TB of data\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Data Scraper Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"https://arxiv.org/abs/2023.12345\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test News Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Recent AI breakthroughs 2024\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test Scoring Agent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"task\": \"Evaluate research methodology quality\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Search Providers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          },
+          "response": []
+        },
+        {
+          "name": "Test Search Providers Connection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"openai\",\n  \"api_key\": \"sk-test123\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Export",
+      "item": [
+        {
+          "name": "Export as Markdown",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/export/{{researchId}}/markdown"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export as PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/export/{{researchId}}/pdf"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export as LaTeX",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/export/{{researchId}}/latex"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export as ZIP",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/export/{{researchId}}/zip"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "9. Usage",
+      "item": [
+        {
+          "name": "Get Usage Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usage/stats?hours=24"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Test LLM Provider Connection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"openai\",\n  \"api_key\": \"sk-test123\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10. Sources",
+      "item": [
+        {
+          "name": "List Session Sources",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/sources/{{sessionId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Scrape URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": {{sessionId}},\n  \"url\": \"https://example.com/paper\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Store Sources",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"sources\": [ {\"url\": \"...\", \"title\": \"...\"} ]}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11. Admin",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disable User Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/disable"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"disable\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enable User Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}/enable"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"enable\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{userId}}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Platform Overview Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/stats/overview"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List All Research Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/research"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
