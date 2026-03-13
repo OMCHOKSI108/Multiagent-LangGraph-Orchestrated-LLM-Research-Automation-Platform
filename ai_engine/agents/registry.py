@@ -127,4 +127,21 @@ AGENTS: Dict[str, Any] = {
 
     # PHASE 5: Section Re-Research
     "section_reresearch": _lazy(".reresearch.agents", "SectionReResearchAgent", model_name=config.MODEL_REASONING),
+
+    # ── MARP New Agents ──────────────────────────────────────────────────
+    # Query Router — classifies user messages into direct/search/deep
+    "query_planner": _lazy(".planner.query_planner", "QueryPlannerAgent",
+                           model_name=config.MODEL_CODING),
+
+    # Web Scraper — 7-strategy search+scrape+synthesize
+    "web_scraper": _lazy(".scraper.web_scraper", "WebScraperAgent",
+                         model_name=config.MODEL_WRITING),
+
+    # Data Cleaner — deterministic + LLM quality filtering
+    "data_cleaner": _lazy(".processing.cleaner", "DataCleanerAgent",
+                          model_name=config.MODEL_REASONING),
+
+    # IEEE Paper Generator — full academic paper + conversational editing
+    "ieee_paper": _lazy(".report.ieee_paper", "IEEEPaperAgent",
+                        model_name=config.MODEL_WRITING),
 }
