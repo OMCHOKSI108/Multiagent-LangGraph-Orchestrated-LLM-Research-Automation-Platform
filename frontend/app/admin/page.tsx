@@ -8,6 +8,17 @@ import './admin.css';
 
 type Tab = 'overview' | 'users' | 'research' | 'workspaces' | 'chats' | 'memories' | 'api-keys';
 
+function safeLabel(value: unknown, fallback = 'N/A') {
+  return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
+}
+
+function safeDate(value: unknown, mode: 'date' | 'datetime' = 'date') {
+  if (!value) return 'N/A';
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return 'N/A';
+  return mode === 'datetime' ? date.toLocaleString() : date.toLocaleDateString();
+}
+
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -175,11 +186,16 @@ export default function AdminPage() {
                           <div className="text-xs text-slate-400">{u.email}</div>
                         </td>
                         <td className="p-4">
+                          {(() => {
+                            const normalizedRole = safeLabel(u.role, 'user');
+                            return (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            u.role === 'admin' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-slate-50 text-slate-500 border-slate-200'
+                            normalizedRole === 'admin' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-slate-50 text-slate-500 border-slate-200'
                           }`}>
-                            {u.role.toUpperCase()}
+                            {normalizedRole.toUpperCase()}
                           </span>
+                            );
+                          })()}
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-1.5">
@@ -188,7 +204,7 @@ export default function AdminPage() {
                           </div>
                         </td>
                         <td className="p-4 text-slate-500 text-xs">
-                          {new Date(u.created_at).toLocaleDateString()}
+                          {safeDate(u.created_at)}
                         </td>
                         <td className="p-4 text-right">
                           <button 
@@ -236,17 +252,22 @@ export default function AdminPage() {
                         </td>
                         <td className="p-4 text-xs text-slate-500">{r.user_email}</td>
                         <td className="p-4">
+                          {(() => {
+                            const normalizedStatus = safeLabel(r.status, 'unknown');
+                            return (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            r.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            r.status === 'failed' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                            normalizedStatus === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                            normalizedStatus === 'failed' ? 'bg-rose-50 text-rose-600 border-rose-100' :
                             'bg-amber-50 text-amber-600 border-amber-100'
                           }`}>
-                            {r.status.toUpperCase()}
+                            {normalizedStatus.toUpperCase()}
                           </span>
+                            );
+                          })()}
                         </td>
                         <td className="p-4 text-xs text-slate-400 capitalize">{r.current_stage || 'N/A'}</td>
                         <td className="p-4 text-right text-slate-500 text-xs">
-                          {new Date(r.created_at).toLocaleString()}
+                          {safeDate(r.created_at, 'datetime')}
                         </td>
                       </tr>
                     ))}
@@ -280,7 +301,7 @@ export default function AdminPage() {
                           <span className="font-mono bg-slate-100 px-2 py-1 rounded text-slate-600">{w.session_count}</span>
                         </td>
                         <td className="p-4 text-right text-slate-500 text-xs">
-                          {new Date(w.created_at).toLocaleDateString()}
+                          {safeDate(w.created_at)}
                         </td>
                       </tr>
                     ))}
@@ -311,7 +332,7 @@ export default function AdminPage() {
                           <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold text-[10px] tracking-wide">{c.message_count}</span>
                         </td>
                         <td className="p-4 text-right text-slate-500 text-xs">
-                          {new Date(c.last_activity).toLocaleString()}
+                          {safeDate(c.last_activity, 'datetime')}
                         </td>
                       </tr>
                     ))}
@@ -342,7 +363,7 @@ export default function AdminPage() {
                   <p className="text-sm text-slate-700 mb-4 line-clamp-4 italic">"{m.content}"</p>
                   <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
                     <span className="text-[10px] font-medium text-indigo-400">{m.user_email}</span>
-                    <span className="text-[10px] text-slate-300">{new Date(m.created_at).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-slate-300">{safeDate(m.created_at)}</span>
                   </div>
                 </div>
               ))}
