@@ -61,25 +61,17 @@ export default function HomePage() {
       {/* Hero & top section */}
       <section className="section-shell pt-20 pb-16 lg:pb-20 flex flex-col lg:flex-row items-center gap-10">
         <div className="flex-1 max-w-xl">
-          <div className="inline-flex items-center gap-2 mb-5">
-            <span className="relative h-9 w-9 overflow-hidden rounded-2xl bg-slate-900/70 ring-1 ring-slate-700/70 shadow-md">
+          <div className="mb-6">
+            <span className="relative inline-flex h-12 w-12 overflow-hidden rounded-full bg-slate-900/80 ring-1 ring-slate-600/70 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
               <Image
                 src={Logo}
                 alt="MARP logo"
                 fill
-                sizes="40px"
+                sizes="48px"
                 className="object-cover"
                 priority
               />
             </span>
-            <div className="flex flex-col leading-tight">
-              <span className="text-xs font-semibold tracking-tight text-slate-50">
-                MARP
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                Research Studio
-              </span>
-            </div>
           </div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300/80 mb-3">
             Multi‑Agent Research Environment
