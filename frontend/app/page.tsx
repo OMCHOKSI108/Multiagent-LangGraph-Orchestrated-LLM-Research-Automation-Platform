@@ -157,7 +157,9 @@ export default function HomePage() {
               </p>
             </div>
             <button
-              onClick={() => setModal('signup')}
+              onClick={() => {
+                window.location.href = 'https://multiagent-lang-graph-orchestrated.vercel.app/login';
+              }}
               className="self-start md:self-auto btn-primary"
             >
               Open research workspace
