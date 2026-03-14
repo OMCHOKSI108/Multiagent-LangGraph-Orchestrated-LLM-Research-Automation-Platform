@@ -554,7 +554,7 @@ export default function WorkspacePage() {
   return (
     <div
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-      className="flex flex-col bg-slate-950 text-slate-50"
+      className="flex flex-col workspace-root"
     >
       {/* Workspace header */}
       <div className="border-b border-slate-800/80 h-11 px-4 flex items-center justify-between flex-shrink-0 bg-slate-950/80 backdrop-blur-xl z-10">

@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useTheme } from '@/components/ThemeProvider';
 import { useState } from 'react';
 
 export default function Navbar() {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Hide navbar on landing page (has its own fixed header) and inside workspace
-  if (pathname === '/' || pathname.startsWith('/workspace/')) return null;
+  // Hide navbar inside workspace (workspace UI has its own header)
+  if (pathname.startsWith('/workspace/')) return null;
 
   function handleLogout() {
     logout();
@@ -34,7 +36,7 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl h-14">
+    <nav className="sticky top-0 z-40 border-b backdrop-blur-xl h-14 marp-nav">
       <div className="section-shell h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 no-underline">
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-400 to-indigo-500 text-xs font-black text-slate-950 shadow-md">
@@ -59,6 +61,14 @@ export default function Navbar() {
               {navLink('/memories', 'Memories')}
               {navLink('/profile', 'Profile')}
               {user.role === 'admin' && navLink('/admin', 'Admin')}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                className="ml-4 theme-toggle inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/60 text-[11px] text-slate-200 hover:border-emerald-400 hover:text-emerald-300 cursor-pointer"
+              >
+                {theme === 'dark' ? '☀︎' : '☾'}
+              </button>
               <button
                 onClick={handleLogout}
                 className="ml-6 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 hover:text-rose-300 cursor-pointer border-none bg-transparent"
@@ -87,6 +97,16 @@ export default function Navbar() {
           <div className="sm:hidden absolute inset-x-0 top-14 bg-slate-950/95 border-b border-slate-800 shadow-xl z-50 flex flex-col px-5 pb-5 pt-3 gap-3 text-sm">
             {user ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => { toggleTheme(); setMenuOpen(false); }}
+                  className="mb-1 text-xs text-slate-300 flex items-center gap-2"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/60 text-[11px]">
+                    {theme === 'dark' ? '☀︎' : '☾'}
+                  </span>
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
                 <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="text-slate-100">Workspaces</Link>
                 <Link href="/agents" onClick={() => setMenuOpen(false)} className="text-slate-100">Agents</Link>
                 <Link href="/memories" onClick={() => setMenuOpen(false)} className="text-slate-100">Memories</Link>
@@ -101,6 +121,16 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                <button
+                  type="button"
+                  onClick={() => { toggleTheme(); setMenuOpen(false); }}
+                  className="mb-1 text-xs text-slate-300 flex items-center gap-2"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/60 text-[11px]">
+                    {theme === 'dark' ? '☀︎' : '☾'}
+                  </span>
+                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </button>
                 <Link href="/login" onClick={() => setMenuOpen(false)} className="text-slate-100">Login</Link>
                 <Link href="/signup" onClick={() => setMenuOpen(false)} className="text-slate-100">Sign Up</Link>
               </>
