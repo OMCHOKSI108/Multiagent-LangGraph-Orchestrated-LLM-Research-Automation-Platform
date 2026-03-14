@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/components/ThemeProvider';
 import { useState } from 'react';
+import Logo from '../logo.webp';
 
 export default function Navbar() {
   const { user, logout, loading } = useAuth();
@@ -39,8 +41,15 @@ export default function Navbar() {
     <nav className="sticky top-0 z-40 border-b backdrop-blur-xl h-14 marp-nav">
       <div className="section-shell h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 no-underline">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-400 to-indigo-500 text-xs font-black text-slate-950 shadow-md">
-            M
+          <span className="relative h-8 w-8 overflow-hidden rounded-xl bg-slate-900/60 ring-1 ring-slate-700/70 shadow-md">
+            <Image
+              src={Logo}
+              alt="MARP logo"
+              fill
+              sizes="32px"
+              className="object-cover"
+              priority
+            />
           </span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold tracking-tight text-slate-50">
