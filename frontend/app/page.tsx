@@ -74,13 +74,17 @@ export default function HomePage() {
           </p>
           <div className="flex flex-wrap items-center gap-3 mb-5">
             <button
-              onClick={() => setModal('signup')}
+              onClick={() => {
+                window.location.href = 'https://multiagent-lang-graph-orchestrated.vercel.app/login';
+              }}
               className="btn-primary"
             >
               Start a workspace
             </button>
             <button
-              onClick={() => setModal('login')}
+              onClick={() => {
+                window.location.href = 'https://multiagent-lang-graph-orchestrated.vercel.app/login';
+              }}
               className="btn-ghost"
             >
               Continue existing research

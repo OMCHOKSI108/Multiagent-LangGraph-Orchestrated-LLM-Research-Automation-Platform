@@ -11,7 +11,7 @@ import {
   Scene, PerspectiveCamera, WebGLRenderer,
   SphereGeometry, MeshBasicMaterial, Mesh,
   Color, Vector3, LineBasicMaterial, BufferGeometry,
-  Line,
+  Line, BufferAttribute,
 } from 'three';
 
 export default function KnowledgeGraph3D() {
@@ -36,7 +36,7 @@ export default function KnowledgeGraph3D() {
       'Agents', 'Knowledge', 'Report', 'Data',
       'AI', 'Citations', 'Insights', 'Discovery',
     ];
-    const nodePositions: Vector3[] = [];
+    const nodes: { base: Vector3; mesh: Mesh }[] = [];
     const nodeGeo = new SphereGeometry(0.06, 16, 16);
 
     concepts.forEach((_, i) => {
@@ -47,22 +47,29 @@ export default function KnowledgeGraph3D() {
         2.2 * Math.sin(theta) * Math.sin(phi),
         2.2 * Math.cos(phi),
       );
-      nodePositions.push(pos);
 
       const shade   = 0.3 + (i / concepts.length) * 0.4;
       const nodeMat = new MeshBasicMaterial({ color: new Color(shade, shade, shade) });
       const mesh    = new Mesh(nodeGeo, nodeMat);
       mesh.position.copy(pos);
       scene.add(mesh);
+
+      nodes.push({ base: pos, mesh });
     });
 
     // ── Edges ────────────────────────────────────────────────────────
     const edgeMat = new LineBasicMaterial({ color: 0xcccccc, opacity: 0.35, transparent: true });
-    for (let i = 0; i < nodePositions.length; i++) {
-      for (let j = i + 1; j < nodePositions.length; j++) {
-        if (nodePositions[i].distanceTo(nodePositions[j]) < 2.8) {
-          const geo = new BufferGeometry().setFromPoints([nodePositions[i], nodePositions[j]]);
-          scene.add(new Line(geo, edgeMat));
+    const edges: { geo: BufferGeometry; aIndex: number; bIndex: number }[] = [];
+
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        if (nodes[i].base.distanceTo(nodes[j].base) < 2.8) {
+          const geo = new BufferGeometry();
+          const positions = new Float32Array(6);
+          geo.setAttribute('position', new BufferAttribute(positions, 3));
+          const line = new Line(geo, edgeMat);
+          scene.add(line);
+          edges.push({ geo, aIndex: i, bIndex: j });
         }
       }
     }
@@ -73,6 +80,26 @@ export default function KnowledgeGraph3D() {
     const animate = () => {
       raf = requestAnimationFrame(animate);
       angle += 0.003;
+
+       // subtle wave motion on nodes along their radial direction
+       const t = performance.now() * 0.001;
+       nodes.forEach((node, idx) => {
+         const dir = node.base.clone().normalize();
+         const amp = 0.18;
+         const offset = Math.sin(t * 0.8 + idx * 0.7) * amp;
+         node.mesh.position.copy(node.base).addScaledVector(dir, offset);
+       });
+
+       // update edge geometry positions to follow moving nodes
+       edges.forEach(({ geo, aIndex, bIndex }) => {
+         const posAttr = geo.getAttribute('position') as BufferAttribute;
+         const a = nodes[aIndex].mesh.position;
+         const b = nodes[bIndex].mesh.position;
+         posAttr.setXYZ(0, a.x, a.y, a.z);
+         posAttr.setXYZ(1, b.x, b.y, b.z);
+         posAttr.needsUpdate = true;
+       });
+
       scene.rotation.y = angle;
       scene.rotation.x = Math.sin(angle * 0.3) * 0.15;
       renderer.render(scene, camera);
