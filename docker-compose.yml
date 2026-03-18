@@ -1,6 +1,5 @@
-version: "3.9"
-
 services:
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -10,69 +9,71 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 10
     restart: unless-stopped
-    networks:
-      - app_net
+    networks: [app_net]
 
   redis:
     image: redis:7-alpine
-    command: [ "redis-server", "--appendonly", "yes" ]
+    command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 10
     restart: unless-stopped
-    networks:
-      - app_net
+    networks: [app_net]
 
   ai_engine:
     build:
       context: ./ai_engine
-      dockerfile: Dockerfile
     environment:
       PORT: 8000
-      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
-      LLM_STATUS: ${LLM_STATUS:-ONLINE}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      LLM_STATUS: ${LLM_STATUS:-HYBRID}
+
+      # Networking fix
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+
       REDIS_URL: redis://redis:6379/0
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://multiagent-lang-graph-orchestrated.vercel.app,http://localhost:3000,http://localhost:5173}
-      OPENROUTER_API_1: ${OPENROUTER_API_1:-}
-      OPENROUTER_API_2: ${OPENROUTER_API_2:-}
-      OPENROUTER_API_3: ${OPENROUTER_API_3:-}
-      GROQ_API_1: ${GROQ_API_1:-}
-      GROQ_API_2: ${GROQ_API_2:-}
-      GROQ_API_3: ${GROQ_API_3:-}
-      GEMINI_API_1: ${GEMINI_API_1:-}
-      GEMINI_API_2: ${GEMINI_API_2:-}
-      GEMINI_API_3: ${GEMINI_API_3:-}
-      HF_TOKEN: ${HF_TOKEN:-}
-      MODEL_REASONING: ${MODEL_REASONING:-phi3:mini}
-      MODEL_WRITING: ${MODEL_WRITING:-gemma2:2b}
-      MODEL_CODING: ${MODEL_CODING:-qwen2.5-coder:1.5b}
-      MODEL_CRITICAL: ${MODEL_CRITICAL:-phi3:mini}
+      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET}
+
+      # ===== LOCAL MODELS =====
+      MODEL_LOCAL_REASONING: ${MODEL_LOCAL_REASONING:-mistral:7b-instruct}
+      MODEL_LOCAL_WRITING: ${MODEL_LOCAL_WRITING:-gemma2:2b}
+      MODEL_LOCAL_CODING: ${MODEL_LOCAL_CODING:-qwen2.5-coder:1.5b}
+
+      # ===== ONLINE MODELS =====
+      MODEL_ONLINE_REASONING: ${MODEL_ONLINE_REASONING:-openrouter/anthropic/claude-3.5-sonnet}
+      MODEL_ONLINE_WRITING: ${MODEL_ONLINE_WRITING:-openrouter/openai/gpt-4o-mini}
+      MODEL_ONLINE_CODING: ${MODEL_ONLINE_CODING:-openrouter/deepseek/deepseek-coder}
+
+      # API KEYS
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      HF_TOKEN: ${HF_TOKEN}
+
       MAX_TOKENS: ${MAX_TOKENS:-4096}
       AI_ENGINE_MAX_WORKERS: ${AI_ENGINE_MAX_WORKERS:-4}
-      GOOGLE_SEARCH_API_KEY: ${GOOGLE_SEARCH_API_KEY:-}
-      GOOGLE_SEARCH_CX: ${GOOGLE_SEARCH_CX:-}
+
     volumes:
       - ai_output:/output
       - ai_logs:/app/logs
       - ai_cache:/app/cache
+
     healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()" ]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
       interval: 15s
       timeout: 5s
       retries: 10
+
     restart: unless-stopped
-    networks:
-      - app_net
+    networks: [app_net]
 
   backend:
     build:
@@ -81,28 +82,29 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
+
       AI_ENGINE_URL: http://ai_engine:8000
-      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:5000}
-      JWT_SECRET: ${JWT_SECRET:-change_me}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      SESSION_SECRET: ${SESSION_SECRET:-change_me_too}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://127.0.0.1:3000}
-      RATE_LIMIT_REQUESTS_PER_MIN: ${RATE_LIMIT_REQUESTS_PER_MIN:-60}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
-      QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-2}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-1800000}
+      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET}
+
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-research_platform}
-      DB_USER: ${POSTGRES_USER:-research}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-research_password}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
       REDIS_URL: redis://redis:6379/0
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+
+      # SECURITY
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+
+      # PERFORMANCE
+      QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-4}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
+
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,37 +112,18 @@ services:
         condition: service_healthy
       ai_engine:
         condition: service_healthy
+
     ports:
       - "5000:5000"
-    healthcheck:
-      test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/api/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" ]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    networks:
-      - app_net
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
     healthcheck:
-      test: [ "CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000', r => process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))" ]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/api/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 10
+
     restart: unless-stopped
-    networks:
-      - app_net
+    networks: [app_net]
 
   worker:
     build:
@@ -149,15 +132,16 @@ services:
     environment:
       NODE_ENV: production
       AI_ENGINE_URL: http://ai_engine:8000
-      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET:-}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-1800000}
+      REDIS_URL: redis://redis:6379/0
+
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-research_platform}
-      DB_USER: ${POSTGRES_USER:-research}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-research_password}
-      REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -165,9 +149,32 @@ services:
         condition: service_healthy
       ai_engine:
         condition: service_healthy
+
     restart: unless-stopped
-    networks:
-      - app_net
+    networks: [app_net]
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    ports:
+      - "3000:3000"
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000', r => process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+    restart: unless-stopped
+    networks: [app_net]
 
 volumes:
   postgres_data:
@@ -175,7 +182,6 @@ volumes:
   ai_output:
   ai_logs:
   ai_cache:
-
 
 networks:
   app_net:
