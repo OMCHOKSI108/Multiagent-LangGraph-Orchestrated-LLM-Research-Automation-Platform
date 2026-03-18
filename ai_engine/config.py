@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 logger = logging.getLogger("ai_engine.config")
 
-# Set Hugging Face Cache to D: drive (Local Project Folder)
+# Set Hugging Face Cache to project-local directory
 # MUST BE SET BEFORE IMPORTING TRANSFORMERS
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 hf_cache_dir = os.path.join(project_root, "data", "huggingface")
@@ -14,6 +14,13 @@ print(f"[Config] HF_HOME set to: {hf_cache_dir}")
 
 root_env_path = os.path.join(project_root, ".env")
 load_dotenv(dotenv_path=root_env_path)
+
+# ============================
+# Environment
+# ============================
+# ENVIRONMENT controls behavior differences between local dev and production.
+# Expected values: "development", "production", "staging" (case-insensitive).
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
 
 # ============================
 # LLM Mode (Dual-Mode Switching)
@@ -87,13 +94,19 @@ def validate_env():
     warnings = []
 
     if LLM_STATUS == "ONLINE":
-        if not GROQ_API_KEYS:
-            warnings.append(
-                "LLM_STATUS=ONLINE but no Groq API keys found. "
-                "Set GROQ_API_1, GROQ_API_2, or GROQ_API_3 in .env"
+        if not (GROQ_API_KEYS or OPENROUTER_API_KEYS or GEMINI_API_KEYS):
+            msg = (
+                "LLM_STATUS=ONLINE but no cloud LLM API keys found. "
+                "Configure GROQ_API_*, OPENROUTER_API_*, or GEMINI_API_* in .env "
+                "or set LLM_STATUS=OFFLINE to use local Ollama."
             )
+            warnings.append(msg)
+            # In non-development environments, treat this as a hard error
+            if ENVIRONMENT != "development":
+                raise RuntimeError(f"[Config] {msg}")
         else:
-            print(f"[Config] Groq API keys loaded: {len(GROQ_API_KEYS)} key(s)")
+            if GROQ_API_KEYS:
+                print(f"[Config] Groq API keys loaded: {len(GROQ_API_KEYS)} key(s)")
 
     elif LLM_STATUS == "OFFLINE":
         print(f"[Config] Ollama base URL: {OLLAMA_BASE_URL}")

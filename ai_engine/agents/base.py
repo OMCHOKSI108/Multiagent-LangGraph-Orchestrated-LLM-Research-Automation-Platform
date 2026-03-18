@@ -33,7 +33,13 @@ logger = logging.getLogger("ai_engine.agents")
 
 
 class RetryLLMWrapper:
-    """Proxies LangChain calls but overrides invoke() to add multi-key rotation."""
+    """Proxies LangChain calls and adds provider-level retry.
+
+    NOTE: We intentionally do NOT mutate global config (e.g., LLM_STATUS)
+    here to avoid race conditions under concurrent requests. If the primary
+    provider fails, we log and re-raise the error instead of silently
+    switching global mode.
+    """
     def __init__(self, provider):
         self._provider = provider
     
@@ -42,35 +48,17 @@ class RetryLLMWrapper:
             return self._provider.invoke_with_retry(messages)
         except Exception as e:
             logger.error(f"[RetryLLMWrapper] Primary provider ({self._provider.provider_name}) exhausted/failed: {e}")
-            logger.warning("[RetryLLMWrapper] Falling back to OFFLINE Ollama provider as last resort.")
-            try:
-                from llm.factory import get_llm_provider
-                # Temporarily spoof LLM_STATUS for the factory request
-                _old_status = getattr(config, "LLM_STATUS", "OFFLINE")
-                config.LLM_STATUS = "OFFLINE"
-                fallback_provider = get_llm_provider("phi3:mini")
-                config.LLM_STATUS = _old_status
-                return fallback_provider.invoke_with_retry(messages)
-            except Exception as fallback_e:
-                logger.error(f"[RetryLLMWrapper] Complete Failure. Ollama fallback also failed: {fallback_e}")
-                raise e
+            # Do not mutate global LLM_STATUS or silently change providers here.
+            # Upstream callers should decide how to handle provider failures.
+            raise
 
     async def ainvoke(self, messages, *args, **kwargs):
         try:
             return await self._provider.ainvoke_with_retry(messages)
         except Exception as e:
             logger.error(f"[RetryLLMWrapper] Primary provider ({self._provider.provider_name}) exhausted/failed: {e}")
-            logger.warning("[RetryLLMWrapper] Falling back to OFFLINE Ollama provider for async retry.")
-            try:
-                from llm.factory import get_llm_provider
-                _old_status = getattr(config, "LLM_STATUS", "OFFLINE")
-                config.LLM_STATUS = "OFFLINE"
-                fallback_provider = get_llm_provider("phi3:mini")
-                config.LLM_STATUS = _old_status
-                return await fallback_provider.ainvoke_with_retry(messages)
-            except Exception as fallback_e:
-                logger.error(f"[RetryLLMWrapper] Complete Failure. Ollama async fallback also failed: {fallback_e}")
-                raise e
+            # Avoid global state changes; propagate the failure.
+            raise
         
     def __getattr__(self, name):
         # Delegate all other Langchain model methods (like bind_tools) to the underlying model

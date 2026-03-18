@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
-from config import SEARCH_PROVIDERS
+from config import SEARCH_PROVIDERS, ENVIRONMENT
 from utils.metrics import get_metrics
 
 # ============================
@@ -51,10 +51,19 @@ _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 async def verify_internal_key(api_key: str = Security(_api_key_header)):
     """
     Validates the internal API key for mutation endpoints.
-    If AI_ENGINE_SECRET is not configured, all requests are allowed (dev mode).
+    If AI_ENGINE_SECRET is not configured:
+      - In development: allow all (dev mode).
+      - In non-development: treat as misconfiguration and block access.
     """
     if not AI_ENGINE_SECRET:
-        return  # No secret configured — dev mode, allow all
+        # Development mode: keep current relaxed behavior
+        if ENVIRONMENT == "development":
+            return
+        # In any non-development environment, missing secret is a hard error
+        raise HTTPException(
+            status_code=500,
+            detail="AI Engine misconfigured: AI_ENGINE_SECRET must be set in non-development environments.",
+        )
     if api_key != AI_ENGINE_SECRET:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
 
@@ -121,7 +130,11 @@ app = FastAPI(
 # ============================
 # CORS Middleware
 # ============================
-_allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000,https://multiagent-lang-graph-orchestrated.vercel.app,*")
+# Default to a conservative set of origins; can be overridden via ALLOWED_ORIGINS.
+_allowed_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000,https://multiagent-lang-graph-orchestrated.vercel.app",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _allowed_origins.split(",") if o.strip()],

@@ -9,7 +9,14 @@ require('dotenv').config({
 const app = express();
 const PORT = process.env.PORT || 5000;
 const isDev = process.env.NODE_ENV !== 'production';
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://127.0.0.1:3000')
+
+// Prefer CORS_ORIGINS (comma-separated), fall back to CORS_ORIGIN
+const corsEnv =
+    process.env.CORS_ORIGINS ||
+    process.env.CORS_ORIGIN ||
+    'http://localhost:3000,http://127.0.0.1:3000';
+
+const allowedOrigins = corsEnv
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean);
