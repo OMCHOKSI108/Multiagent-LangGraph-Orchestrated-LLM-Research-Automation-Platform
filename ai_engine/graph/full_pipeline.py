@@ -257,23 +257,13 @@ workflow.add_edge("innovation", "visualization")
 workflow.add_edge("critique", "visualization")
 workflow.add_edge("visualization", "scoring")
 workflow.add_edge("scoring", "multi_stage_report")
-workflow.add_edge("multi_stage_report", END)
+workflow.add_edge("multi_stage_report", "latex")
+workflow.add_edge("latex", END)
 
-try:
-    import sqlite3
-    from langgraph.checkpoint.sqlite import SqliteSaver
-
-    checkpoint_dir = os.path.join(os.path.dirname(__file__), "..", "data", "checkpoints")
-    os.makedirs(checkpoint_dir, exist_ok=True)
-    checkpoint_path = os.path.join(checkpoint_dir, "pipeline_checkpoints.db")
-
-    sqlite_conn = sqlite3.connect(checkpoint_path, check_same_thread=False)
-    checkpointer = SqliteSaver(sqlite_conn)
-    app = workflow.compile(checkpointer=checkpointer)
-    logger.info(f"[Pipeline] Compiled with checkpointing: {checkpoint_path}")
-except ImportError:
-    app = workflow.compile()
-    logger.warning("[Pipeline] Compiled WITHOUT checkpointing (langgraph.checkpoint not available)")
-except Exception as e:
-    app = workflow.compile()
-    logger.warning(f"[Pipeline] Checkpointing failed, running without: {e}")
+# NOTE:
+# This workflow is fully async (all nodes are async coroutines), so it must be
+# executed via `ainvoke`. A synchronous SqliteSaver checkpointer is incompatible
+# with async execution and causes deterministic runtime failures.
+# Compile without a checkpointer to keep the pipeline stable.
+app = workflow.compile()
+logger.warning("[Pipeline] Compiled WITHOUT checkpointing (async-safe mode)")

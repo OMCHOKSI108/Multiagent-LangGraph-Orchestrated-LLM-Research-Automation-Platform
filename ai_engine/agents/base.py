@@ -9,6 +9,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 # This provides automatic mode switching (OFFLINE/ONLINE),
 # multi-key rotation for Groq, and rate-limit handling.
 from llm.factory import get_llm_provider
+from llm.base import LLMProvider, RetryLLMWrapper
 
 try:
     import config
@@ -33,80 +34,7 @@ logger = logging.getLogger("ai_engine.agents")
 
 
 
-class RetryLLMWrapper:
-    """Proxies LangChain calls and adds provider-level retry.
-
-    NOTE: We intentionally do NOT mutate global config (e.g., LLM_STATUS)
-    here to avoid race conditions under concurrent requests. If the primary
-    provider fails, we log and re-raise the error instead of silently
-    switching global mode.
-    """
-
-    TOKEN_OVERFLOW_ERRORS = (
-        "413",
-        "payload too large",
-        "context length exceeded",
-        "maximum context length",
-        "token limit",
-        "too many tokens",
-    )
-
-    def __init__(self, provider):
-        self._provider = provider
-
-    def _is_token_overflow(self, error: Exception) -> bool:
-        message = str(error).lower()
-        return any(token in message for token in self.TOKEN_OVERFLOW_ERRORS)
-
-    def _shrink_text(self, text: str) -> str:
-        if len(text) <= 512:
-            return text
-        return text[: max(512, len(text) // 2)] + "...(truncated)"
-
-    def _shrink_messages(self, messages):
-        shrunk = []
-        for message in messages:
-            content = getattr(message, "content", "")
-            if isinstance(content, str) and content:
-                content = self._shrink_text(content)
-            shrunk.append(message.__class__(content=content))
-        return shrunk
-
-    def invoke(self, messages, *args, **kwargs):
-        attempt_messages = messages
-        for _ in range(3):
-            try:
-                return self._provider.invoke_with_retry(attempt_messages)
-            except Exception as e:
-                if self._is_token_overflow(e):
-                    logger.warning(
-                        f"[RetryLLMWrapper] Token overflow from {self._provider.provider_name}; shrinking prompt and retrying."
-                    )
-                    attempt_messages = self._shrink_messages(attempt_messages)
-                    continue
-                logger.error(f"[RetryLLMWrapper] Primary provider ({self._provider.provider_name}) exhausted/failed: {e}")
-                raise
-        raise RuntimeError("Prompt remained too large after repeated shrinking")
-
-    async def ainvoke(self, messages, *args, **kwargs):
-        attempt_messages = messages
-        for _ in range(3):
-            try:
-                return await self._provider.ainvoke_with_retry(attempt_messages)
-            except Exception as e:
-                if self._is_token_overflow(e):
-                    logger.warning(
-                        f"[RetryLLMWrapper] Token overflow from {self._provider.provider_name}; shrinking prompt and retrying."
-                    )
-                    attempt_messages = self._shrink_messages(attempt_messages)
-                    continue
-                logger.error(f"[RetryLLMWrapper] Primary provider ({self._provider.provider_name}) exhausted/failed: {e}")
-                raise
-
-        raise RuntimeError("Prompt remained too large after repeated shrinking")
-
-    def __getattr__(self, name):
-        return getattr(self._provider.get_langchain_llm(), name)
+# Removed redundant RetryLLMWrapper here, now in llm/base.py
 
 class BaseAgent:
     # Token limits per model (approximate)
@@ -249,17 +177,8 @@ class BaseAgent:
         By default, it runs the synchronous run() in an executor.
         Subclasses can override this for native async execution.
         """
-        # If the subclass has overridden arun but not run, we should 
-        # let the overridden arun handle it. However, BaseAgent defines arun.
-        # We check if the current instance's arun is the same as BaseAgent.arun
-        if self.__class__.arun == BaseAgent.arun:
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, self.run, state)
-        else:
-            # This should theoretically not be hit if the subclass overrides arun,
-            # as the subclass's arun would be called directly.
-            # But we include it for clarity.
-            return await self.arun(state)
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.run, state)
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """

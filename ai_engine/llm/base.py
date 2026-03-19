@@ -180,3 +180,23 @@ class LLMProvider(ABC):
 
         logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
         raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
+
+
+class RetryLLMWrapper:
+    """
+    Wraps an LLMProvider to provide a LangChain-compatible interface
+    (invoke/ainvoke) that automatically uses the provider's retry logic.
+    """
+    def __init__(self, provider: LLMProvider):
+        self.provider = provider
+
+    def invoke(self, messages: list) -> Any:
+        return self.provider.invoke_with_retry(messages)
+
+    async def ainvoke(self, messages: list) -> Any:
+        return await self.provider.ainvoke_with_retry(messages)
+
+    @property
+    def model_name(self) -> str:
+        return self.provider.model_name
+

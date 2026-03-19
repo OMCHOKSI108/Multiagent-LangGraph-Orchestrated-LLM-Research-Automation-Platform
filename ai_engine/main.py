@@ -737,7 +737,16 @@ async def run_research(request: ResearchRequest):
     
     try:
         # RUN NATIVELY ASYNC PIPELINE
-        result = await pipeline.ainvoke(initial_state)
+        # LangGraph checkpointing requires configurable IDs when a checkpointer is attached.
+        thread_id = str(request.session_id or job_id)
+        pipeline_config = {
+            "configurable": {
+                "thread_id": thread_id,
+                "checkpoint_ns": "research_pipeline",
+                "checkpoint_id": f"job-{job_id}",
+            }
+        }
+        result = await pipeline.ainvoke(initial_state, config=pipeline_config)
         
         logger.info(f"[Job #{job_id}] Research completed successfully")
         

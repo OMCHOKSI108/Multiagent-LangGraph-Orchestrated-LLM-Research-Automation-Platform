@@ -11,7 +11,12 @@ const AI_ENGINE_SECRET = process.env.AI_ENGINE_SECRET || "";
 const { splitMarkdownIntoSections } = require('./utils/markdown');
 const STALE_JOB_TIMEOUT_MINUTES = 30;
 const MAX_RETRIES = 3;
-const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.AI_REQUEST_TIMEOUT_MS || "1800000", 10);
+const DEFAULT_AI_REQUEST_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const MIN_AI_REQUEST_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes safety floor
+const configuredTimeout = Number.parseInt(process.env.AI_REQUEST_TIMEOUT_MS || `${DEFAULT_AI_REQUEST_TIMEOUT_MS}`, 10);
+const AI_REQUEST_TIMEOUT_MS = Number.isFinite(configuredTimeout)
+    ? Math.max(configuredTimeout, MIN_AI_REQUEST_TIMEOUT_MS)
+    : DEFAULT_AI_REQUEST_TIMEOUT_MS;
 let workerRunning = true;
 
 // ============================================
@@ -290,6 +295,12 @@ async function startWorker() {
     logger.info(`[Worker] Stale job timeout: ${STALE_JOB_TIMEOUT_MINUTES} minutes`);
     logger.info(`[Worker] Max retries: ${MAX_RETRIES}`);
     logger.info(`[Worker] AI request timeout: ${AI_REQUEST_TIMEOUT_MS} ms`);
+    if (configuredTimeout < MIN_AI_REQUEST_TIMEOUT_MS) {
+        logger.warn(
+            `[Worker] AI_REQUEST_TIMEOUT_MS=${configuredTimeout} is too low for long research jobs. ` +
+            `Using enforced minimum ${MIN_AI_REQUEST_TIMEOUT_MS} ms instead.`
+        );
+    }
 
     // Wait for AI Engine to be ready
     await waitForAiEngine();
