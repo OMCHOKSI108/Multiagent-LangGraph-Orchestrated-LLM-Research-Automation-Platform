@@ -45,7 +45,7 @@ services:
       # ===== LOCAL MODELS =====
       MODEL_LOCAL_REASONING: ${MODEL_LOCAL_REASONING:-mistral:7b-instruct}
       MODEL_LOCAL_WRITING: ${MODEL_LOCAL_WRITING:-gemma2:2b}
-      MODEL_LOCAL_CODING: ${MODEL_LOCAL_CODING:-qwen2.5-coder:1.5b}
+      MODEL_LOCAL_CODING: ${MODEL_LOCAL_CODING:-qwen2.5-coder:latest}
 
       # ===== ONLINE MODELS =====
       MODEL_ONLINE_REASONING: ${MODEL_ONLINE_REASONING:-openrouter/anthropic/claude-3.5-sonnet}

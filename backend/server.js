@@ -24,10 +24,20 @@ const allowedOrigins = corsEnv
 // Trust the first proxy (Railway/Vercel) so rate-limiting gets the real client IP
 app.set('trust proxy', 1);
 
+function shouldSkipGlobalRateLimit(req) {
+    // AI engine emits a high volume of internal events during long research runs.
+    // Limiting these writes can starve user-facing APIs and produce false 429s.
+    const p = req.path || '';
+    if (req.method === 'POST' && (p === '/api/events' || p === '/api/events/source')) return true;
+    if (p === '/api/health' || p === '/') return true;
+    return false;
+}
+
 // Global limiter (lenient in development to avoid blocking local UX)
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isDev ? 2000 : 500,
+    max: isDev ? 5000 : 2000,
+    skip: shouldSkipGlobalRateLimit,
     message: { error: 'Too many requests, please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,

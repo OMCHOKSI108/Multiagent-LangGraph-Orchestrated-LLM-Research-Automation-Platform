@@ -11,7 +11,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         serif: ['Georgia', 'Times New Roman', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
       },
     },
   },

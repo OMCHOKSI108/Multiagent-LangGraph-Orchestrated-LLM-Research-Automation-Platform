@@ -13,6 +13,12 @@ const STALE_JOB_TIMEOUT_MINUTES = 30;
 const MAX_RETRIES = 3;
 const DEFAULT_AI_REQUEST_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const MIN_AI_REQUEST_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes safety floor
+
+function normalizeSectionTitle(title) {
+    const clean = String(title || 'Section').trim() || 'Section';
+    // document_sections.section_title is VARCHAR(500)
+    return clean.slice(0, 500);
+}
 const configuredTimeout = Number.parseInt(process.env.AI_REQUEST_TIMEOUT_MS || `${DEFAULT_AI_REQUEST_TIMEOUT_MS}`, 10);
 const AI_REQUEST_TIMEOUT_MS = Number.isFinite(configuredTimeout)
     ? Math.max(configuredTimeout, MIN_AI_REQUEST_TIMEOUT_MS)
@@ -210,7 +216,7 @@ async function processQueue() {
                                 `INSERT INTO document_sections 
                                  (session_id, section_title, content_markdown, section_order, section_type)
                                  VALUES ($1, $2, $3, $4, $5)`,
-                                [job.id, section.title, section.content, section.order, 'general']
+                                [job.id, normalizeSectionTitle(section.title), section.content, section.order, 'general']
                             );
                         }
                     }

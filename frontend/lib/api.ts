@@ -36,7 +36,9 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     const msg = (data as { error?: string; message?: string }).error
       || (data as { error?: string; message?: string }).message
       || `HTTP ${res.status}`;
-    throw new Error(msg);
+    const err = new Error(msg) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return data as T;
 }
@@ -112,6 +114,8 @@ export interface ResearchSession {
   title?: string;
   status: string;
   current_stage?: string;
+  started_at?: string;
+  completed_at?: string;
   created_at: string;
   updated_at: string;
   result_json?: ResearchResult;
@@ -140,14 +144,19 @@ export const workspaces = {
   getResearchStatus: (workspaceId: string, sessionId: number) =>
     req<ResearchSession>('GET', `/workspaces/${workspaceId}/research/${sessionId}/status`),
 
-  getSections: (workspaceId: string, sessionId: number) =>
-    req<{ sections: any[] }>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/sections`),
+  getSections: async (workspaceId: string, sessionId: number) => {
+    const data = await req<any>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/sections`);
+    if (Array.isArray(data)) return { sections: data };
+    return { sections: data?.sections || [] };
+  },
 
   editSection: (workspaceId: string, sessionId: number, sectionId: number, instruction: string) =>
     req<{ message: string; new_content: string }>('POST', `/workspaces/${workspaceId}/sessions/${sessionId}/sections/${sectionId}/edit`, { instruction }),
 
-  getFullReport: (workspaceId: string, sessionId: number) =>
-    req<{ markdown: string }>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/full-report`),
+  getFullReport: async (workspaceId: string, sessionId: number) => {
+    const data = await req<any>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/full-report`);
+    return { markdown: data?.markdown || data?.report || '' };
+  },
 };
 
 // ─── Research (legacy direct API) ────────────────────────────────────────────
@@ -218,6 +227,9 @@ export const events = {
 
   getSSEToken: (researchId: number) =>
     req<{ token: string }>('GET', `/events/token/${researchId}`),
+
+  sources: (researchId: number) =>
+    req<Array<Record<string, any>>>('GET', `/events/${researchId}/sources`),
 };
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -261,6 +273,35 @@ export const exportApi = {
       headers: { 'x-auth-token': token },
     });
     if (!res.ok) throw new Error('Export failed');
+    return res.blob();
+  },
+  downloadLatex: async (id: number) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/export/${id}/latex`, {
+      headers: { 'x-auth-token': token },
+    });
+    if (!res.ok) throw new Error('LaTeX export failed');
+    return res.blob();
+  },
+  downloadPdf: async (id: number) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/export/${id}/pdf`, {
+      headers: { 'x-auth-token': token },
+    });
+    if (!res.ok) throw new Error('PDF export failed');
+    return res.blob();
+  },
+  compileToPdf: async (researchId: number, content: string) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/export/compile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': token,
+      },
+      body: JSON.stringify({ researchId, content }),
+    });
+    if (!res.ok) throw new Error('Compile failed');
     return res.blob();
   },
 };

@@ -17,10 +17,18 @@ const app = express();
 // Vercel-specific configuration
 const isVercel = process.env.VERCEL === '1';
 
+function shouldSkipGlobalRateLimit(req) {
+    const p = req.path || '';
+    if (req.method === 'POST' && (p === '/events' || p === '/events/source')) return true;
+    if (p === '/health' || p === '/') return true;
+    return false;
+}
+
 // Global limiter
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: isVercel ? 300 : 800,
+    max: isVercel ? 2000 : 3000,
+    skip: shouldSkipGlobalRateLimit,
     message: { error: 'Too many requests, please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,

@@ -580,7 +580,7 @@ router.get('/:wid/sessions/:id/sections', auth, async (req, res) => {
             'SELECT * FROM document_sections WHERE session_id = $1 ORDER BY section_order ASC',
             [id]
         );
-        res.json(result.rows);
+        res.json({ sections: result.rows });
     } catch (err) {
         console.error('[Sections] Fetch error:', err.message);
         res.status(500).json({ error: 'Server error' });
@@ -668,11 +668,12 @@ router.get('/:wid/sessions/:id/full-report', auth, async (req, res) => {
         if (result.rows.length === 0) {
             // Fallback to the session's monolithic report if no sections exist yet
             const sessionResult = await db.query('SELECT report_markdown FROM research_sessions WHERE id = $1', [id]);
-            return res.json({ report: sessionResult.rows[0]?.report_markdown || "" });
+            const markdown = sessionResult.rows[0]?.report_markdown || "";
+            return res.json({ markdown, report: markdown });
         }
 
         const fullReport = result.rows.map(r => r.content_markdown).join('\n\n');
-        res.json({ report: fullReport });
+        res.json({ markdown: fullReport, report: fullReport });
     } catch (err) {
         console.error('[FullReport] Compilation error:', err.message);
         res.status(500).json({ error: 'Server error' });

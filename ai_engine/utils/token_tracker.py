@@ -40,7 +40,7 @@ class TokenTracker:
         # Ollama models (free but compute cost)
         "phi3:mini": {"prompt": 0.0, "completion": 0.0},
         "gemma2:2b": {"prompt": 0.0, "completion": 0.0},
-        "qwen2.5-coder:1.5b": {"prompt": 0.0, "completion": 0.0},
+        "qwen2.5-coder:latest": {"prompt": 0.0, "completion": 0.0},
         
         # Online API costs (approximate)
         "gemini-1.5-flash": {"prompt": 0.00035, "completion": 0.0014},

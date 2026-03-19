@@ -241,7 +241,7 @@ class TestFactory:
         mock_cfg.LLM_STATUS = "OFFLINE"
         mock_cfg.MODEL_REASONING = "phi3:mini"
         mock_cfg.MODEL_WRITING = "gemma2:2b"
-        mock_cfg.MODEL_CODING = "qwen2.5-coder:1.5b"
+        mock_cfg.MODEL_CODING = "qwen2.5-coder:latest"
         mock_cfg.MODEL_CRITICAL = "phi3:mini"
         mock_cfg.MAX_TOKENS = 4096
         mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"

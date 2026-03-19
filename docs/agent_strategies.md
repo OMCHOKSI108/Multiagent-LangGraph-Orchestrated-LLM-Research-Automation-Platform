@@ -58,7 +58,7 @@
 *   **Status**: **Perfect**.
 
 ### 9. LaTeXGenerationAgent
-*   **Model**: `qwen2.5-coder:1.5b` (Code Optimized).
+*   **Model**: `qwen2.5-coder:latest` (Code Optimized).
 *   **Strategy**: **Template-Based Compilation**.
 *   **Status**: **Perfect**.
 

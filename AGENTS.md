@@ -26,7 +26,7 @@ Providers are cached as singletons keyed by `(mode, model_name)`. Supports multi
 **Four specialized model slots** defined in `ai_engine/config.py`:
 - `MODEL_REASONING` — logic/planning (default: phi3:mini)
 - `MODEL_WRITING` — prose generation (default: gemma2:2b)
-- `MODEL_CODING` — code/JSON tasks (default: qwen2.5-coder:1.5b)
+- `MODEL_CODING` — code/JSON tasks (default: qwen2.5-coder:latest)
 - `MODEL_CRITICAL` — critique/verification (default: phi3:mini)
 
 **Agent System** (`ai_engine/agents/`):

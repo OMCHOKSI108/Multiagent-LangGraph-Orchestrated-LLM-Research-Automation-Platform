@@ -6,6 +6,10 @@ const auth = require('../middleware/auth');
 const { marked } = require('marked');
 const archiver = require('archiver');
 const puppeteer = require('puppeteer-core');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { spawnSync } = require('child_process');
 
 /**
  * Workspace-aware research lookup.
@@ -145,6 +149,49 @@ async function getPdfBrowser() {
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     return _pdfBrowserPromise;
+}
+
+function runLatexPipeline({ content, title }) {
+    const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'latex-pipeline-'));
+    const inputPath = path.join(runDir, 'raw_input.tex');
+    fs.writeFileSync(inputPath, String(content || ''), 'utf8');
+
+    const args = [
+        '-m',
+        'latex_pipeline.main',
+        '--input-file',
+        inputPath,
+        '--output-dir',
+        runDir,
+        '--title',
+        String(title || 'Auto-Generated Research Paper'),
+    ];
+
+    const proc = spawnSync('python3', args, {
+        cwd: path.resolve(__dirname, '..'),
+        encoding: 'utf8',
+        timeout: 300000,
+    });
+
+    const stdout = (proc.stdout || '').trim();
+    const stderr = (proc.stderr || '').trim();
+    const lastLine = stdout.split(/\r?\n/).filter(Boolean).slice(-1)[0] || '{}';
+
+    let payload = {};
+    try {
+        payload = JSON.parse(lastLine);
+    } catch (e) {
+        payload = { success: false, parse_error: 'Failed to parse pipeline JSON output', raw_stdout: stdout };
+    }
+
+    return {
+        ok: proc.status === 0 && !!payload.success,
+        status: proc.status,
+        stdout,
+        stderr,
+        runDir,
+        payload,
+    };
 }
 
 /**
@@ -313,7 +360,7 @@ ${renderedBody}
  */
 router.post('/compile', auth, async (req, res) => {
     try {
-        const { researchId, content } = req.body;
+        const { researchId, content, returnDebug } = req.body;
 
         if (!content) {
             return res.status(400).json({ error: 'Content is required' });
@@ -328,47 +375,42 @@ router.post('/compile', auth, async (req, res) => {
             }
         }
 
-        // Use the same HTML template logic as GET /pdf
-        // Logic duplicated for now to ensure isolation for this "compile" feature
-        // In production, refactor to shared function
-        const renderedBody = marked.parse(content);
-        const html = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>${title}</title>
-    <style>
-        body { font-family: 'Georgia', serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; line-height: 1.6; }
-        h1 { color: #1a1a2e; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
-        h2 { color: #16213e; margin-top: 30px; }
-        h3 { color: #0f3460; }
-        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }
-        code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9em; }
-        pre code { background: transparent; padding: 0; }
-        blockquote { border-left: 4px solid #4a90d9; margin: 20px 0; padding: 10px 20px; background: #f8f9fa; }
-        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-        th { background: #f2f2f2; }
-        img { max-width: 100%; height: auto; }
-        a { color: #4a90d9; }
-        ul, ol { padding-left: 24px; }
-        li { margin-bottom: 4px; }
-        @media print { body { margin: 0; } @page { margin: 1in; } }
-    </style>
-</head>
-<body>
-${renderedBody}
-</body>
-</html>`;
+        const run = runLatexPipeline({ content, title });
+        const report = run.payload?.report || {};
+        const cleanedTexPath = run.payload?.cleaned_tex_path;
+        const finalTexPath = run.payload?.final_tex_path;
+        const debugLogPath = run.payload?.debug_log_path;
+        const repairSummaryPath = run.payload?.repair_report_path;
+        const pdfPath = run.payload?.pdf_path;
 
-        const browser = await getPdfBrowser();
-        const page = await (await browser).newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-        const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' } });
-        await page.close();
+        if (!run.ok || !pdfPath || !fs.existsSync(pdfPath)) {
+            return res.status(500).json({
+                error: 'LaTeX compilation failed after deterministic recovery attempts',
+                details: run.stderr || run.stdout || 'Unknown compiler failure',
+                repair_summary: report,
+            });
+        }
+
+        const pdfBuffer = fs.readFileSync(pdfPath);
+
+        if (returnDebug) {
+            const safeRead = (p) => {
+                try { return p && fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : ''; } catch { return ''; }
+            };
+            return res.json({
+                success: true,
+                pdf_base64: pdfBuffer.toString('base64'),
+                cleaned_tex: safeRead(cleanedTexPath),
+                final_tex: safeRead(finalTexPath),
+                debug_log: safeRead(debugLogPath),
+                repair_summary: safeRead(repairSummaryPath),
+                report,
+            });
+        }
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.send(pdfBuffer);
+        res.setHeader('Content-Disposition', `attachment; filename="compiled_${researchId || 'document'}.pdf"`);
+        return res.send(pdfBuffer);
 
     } catch (err) {
         logger.error(`[Export] Compile error: ${err.message}`);

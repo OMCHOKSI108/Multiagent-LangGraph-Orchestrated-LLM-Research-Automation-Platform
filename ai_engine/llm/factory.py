@@ -185,7 +185,7 @@ def get_llm_status() -> Dict[str, Any]:
         "config": {
             "model_reasoning": getattr(cfg, "MODEL_REASONING", "phi3:mini"),
             "model_writing": getattr(cfg, "MODEL_WRITING", "gemma2:2b"),
-            "model_coding": getattr(cfg, "MODEL_CODING", "qwen2.5-coder:1.5b"),
+            "model_coding": getattr(cfg, "MODEL_CODING", "qwen2.5-coder:latest"),
             "model_critical": getattr(cfg, "MODEL_CRITICAL", "phi3:mini"),
             "groq_default_models": list(getattr(cfg, "DEFAULT_MODELS", [])),
             "max_tokens": getattr(cfg, "MAX_TOKENS", 4096),

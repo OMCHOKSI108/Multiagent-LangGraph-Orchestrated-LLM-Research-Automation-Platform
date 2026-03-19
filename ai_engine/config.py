@@ -85,7 +85,7 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 # Specialized Models (optimized for low storage / efficient performance)
 MODEL_REASONING = os.getenv("MODEL_REASONING", "phi3:mini")        # Logic, reasoning
 MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")            # Prose
-MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:1.5b")     # Code/JSON
+MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:latest")     # Code/JSON
 MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")          # Critique
 
 # Active Groq fallback models used when ONLINE/HYBRID routing selects Groq.
@@ -112,19 +112,19 @@ CLOUD_MODEL_MAPPINGS = {
     "groq": {
         "phi3:mini": "llama-3.1-8b-instant",
         "gemma2:2b": "llama-3.1-8b-instant",
-        "qwen2.5-coder:1.5b": "llama-3.3-70b-versatile",
+        "qwen2.5-coder:latest": "llama-3.3-70b-versatile",
         "default": "llama-3.3-70b-versatile"
     },
     "openrouter": {
         "phi3:mini": "microsoft/phi-3-mini-128k-instruct",
         "gemma2:2b": "google/gemma-2-9b-it",
-        "qwen2.5-coder:1.5b": "qwen/qwen-2.5-coder-32b-instruct",
+        "qwen2.5-coder:latest": "qwen/qwen-2.5-coder-32b-instruct",
         "default": "anthropic/claude-3.5-sonnet"
     },
     "gemini": {
         "phi3:mini": "gemini-1.5-flash",
         "gemma2:2b": "gemini-1.5-flash",
-        "qwen2.5-coder:1.5b": "gemini-1.5-pro",
+        "qwen2.5-coder:latest": "gemini-1.5-pro",
         "default": "gemini-1.5-flash"
     }
 }

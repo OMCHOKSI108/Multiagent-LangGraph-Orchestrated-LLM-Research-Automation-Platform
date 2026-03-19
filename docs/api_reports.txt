@@ -904,12 +904,12 @@ TABLE OF CONTENTS
 
   19. MemoryKnowledgeGraphAgent
       Role    : Knowledge graph construction/maintenance
-      Model   : qwen2.5-coder:1.5b (coding)
+      Model   : qwen2.5-coder:latest (coding)
       Output  : graph_updates, new_nodes, new_edges
 
   20. CitationGraphAnalysisAgent
       Role    : Scientometric citation analysis
-      Model   : qwen2.5-coder:1.5b (coding)
+      Model   : qwen2.5-coder:latest (coding)
       Output  : seminal_papers, citation_clusters
 
   21. ScientificWritingAgent
@@ -919,7 +919,7 @@ TABLE OF CONTENTS
 
   22. LaTeXGenerationAgent
       Role    : Academic PDF/LaTeX generation (15-20 pages)
-      Model   : qwen2.5-coder:1.5b (coding)
+      Model   : qwen2.5-coder:latest (coding)
       Output  : Raw LaTeX code
 
   23. ReviewerAdversarialCritiqueAgent
@@ -941,7 +941,7 @@ TABLE OF CONTENTS
 
   26. VisualizationAgent
       Role    : Research data visualization
-      Model   : qwen2.5-coder:1.5b (coding)
+      Model   : qwen2.5-coder:latest (coding)
       Providers: VisionProvider (Stable Diffusion)
       Output  : timeline_mermaid, methodology_mermaid, data_chart_mermaid,
                 image_gen_prompt, description
@@ -959,7 +959,7 @@ TABLE OF CONTENTS
   Critical/Review (gemma2:2b)    : Technical Verification, Data Validation,
                                    Reproducibility, Adversarial Critique,
                                    Hallucination Detection
-  Coding (qwen2.5-coder:1.5b)   : Memory Graph, Citation Analysis,
+  Coding (qwen2.5-coder:latest)   : Memory Graph, Citation Analysis,
                                    LaTeX Generation, Visualization
 
 
@@ -1125,7 +1125,7 @@ TABLE OF CONTENTS
      Models   :
        - phi3:mini           -> Reasoning tasks
        - gemma2:2b           -> Writing & critique tasks
-       - qwen2.5-coder:1.5b  -> Code generation & structured output
+       - qwen2.5-coder:latest  -> Code generation & structured output
      Temperature: 0.7
      Cost     : $0 (local inference)
 
@@ -1188,7 +1188,7 @@ TABLE OF CONTENTS
   Cost Model (per 1K tokens, USD):
     phi3:mini            : $0.0000 prompt, $0.0000 completion  (local)
     gemma2:2b            : $0.0000 prompt, $0.0000 completion  (local)
-    qwen2.5-coder:1.5b   : $0.0000 prompt, $0.0000 completion  (local)
+    qwen2.5-coder:latest   : $0.0000 prompt, $0.0000 completion  (local)
     gemini-2.5-flash     : $0.00035 prompt, $0.0014 completion
     llama3-70b-8192      : $0.0008 prompt, $0.0008 completion
 
@@ -1290,7 +1290,7 @@ TABLE OF CONTENTS
   OLLAMA_BASE_URL      | http://localhost:11434      | Ollama server URL
   MODEL_REASONING      | phi3:mini                  | Reasoning model
   MODEL_WRITING        | gemma2:2b                  | Writing model
-  MODEL_CODING         | qwen2.5-coder:1.5b         | Code generation model
+  MODEL_CODING         | qwen2.5-coder:latest         | Code generation model
   MODEL_CRITICAL       | phi3:mini                  | Critical review model
   MAX_TOKENS           | 4096                       | Default max tokens
   HF_HOME              | {project}/data/huggingface | HuggingFace cache dir
@@ -1299,7 +1299,7 @@ TABLE OF CONTENTS
   Per-Model Token Limits (Hardcoded):
     phi3:mini           : 4096
     gemma2:2b           : 8192
-    qwen2.5-coder:1.5b  : 4096
+    qwen2.5-coder:latest  : 4096
 
 
 ################################################################################

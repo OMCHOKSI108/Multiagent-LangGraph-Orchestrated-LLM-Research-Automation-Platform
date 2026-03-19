@@ -15,6 +15,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function isAuthExpired(err: unknown): boolean {
+  const status = (err as { status?: number } | null)?.status;
+  return status === 401 || status === 403;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
@@ -24,10 +29,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const me = await authApi.me();
       setUser(me.user);
-    } catch {
-      setUser(null);
-      clearToken();
-      setTokenState(null);
+    } catch (err) {
+      if (isAuthExpired(err)) {
+        setUser(null);
+        clearToken();
+        setTokenState(null);
+        return;
+      }
+      // transient errors (e.g. 429/5xx/network) should not force logout
+      console.warn('[Auth] refreshUser transient failure:', err);
     }
   }, []);
 
@@ -37,7 +47,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokenState(stored);
       authApi.me()
         .then(d => setUser(d.user))
-        .catch(() => { clearToken(); setTokenState(null); })
+        .catch((err) => {
+          if (isAuthExpired(err)) {
+            clearToken();
+            setTokenState(null);
+            setUser(null);
+            return;
+          }
+          // keep session token on transient failures
+          console.warn('[Auth] initial me() transient failure:', err);
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

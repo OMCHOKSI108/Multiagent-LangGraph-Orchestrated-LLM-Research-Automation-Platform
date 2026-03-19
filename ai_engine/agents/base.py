@@ -41,7 +41,7 @@ class BaseAgent:
     TOKEN_LIMITS = {
         "phi3:mini": 4096,
         "gemma2:2b": 8192,
-        "qwen2.5-coder:1.5b": 4096,
+        "qwen2.5-coder:latest": 4096,
         "default": 4096
     }
     

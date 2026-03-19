@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Inter, Outfit } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
 import { ThemeProvider } from '@/components/ThemeProvider';
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
   title: 'MARP – Multi‑Agentic Research Platform',
@@ -12,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full">
+    <html lang="en" className={`h-full ${inter.variable} ${outfit.variable}`}>
+      <body className="h-full font-sans">
         <AuthProvider>
           <ThemeProvider>
             <div className="min-h-screen flex flex-col app-shell">
