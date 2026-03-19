@@ -60,7 +60,7 @@ class SystematicLiteratureReviewAgent(BaseAgent):
         # Web
         context_str += "\n--- Source: Web/Surveys ---\n"
         for r in ddg_results + google_results:
-            context_str += f"- {r['title']}: {r.get('body', '')}\n"
+            context_str += f"- {r.get('title', 'Untitled')}: {r.get('body', '')}\n"
             
         enhanced_prompt = f"{self.system_prompt}\n\ngennuine REAL-TIME DATASET (30+ Sources Scanned):\n{context_str}"
         
@@ -73,10 +73,21 @@ class SystematicLiteratureReviewAgent(BaseAgent):
             response = self.llm.invoke(messages)
             raw_content = response.content
             parsed_json = self._extract_json(raw_content)
-            
+
             if isinstance(parsed_json, dict):
-                parsed_json["_meta_sources"] = {"arxiv": arxiv_papers, "web": ddg_results + google_results}
-                
+                parsed_json.setdefault("title", f"Systematic Literature Review: {task}")
+                parsed_json.setdefault("topic", task)
+                parsed_json["_meta_sources"] = {
+                    "arxiv": arxiv_papers,
+                    "openalex": openalex_results,
+                    "pubmed": pubmed_results,
+                    "web": ddg_results + google_results,
+                }
+                parsed_json.setdefault(
+                    "source_count",
+                    len(arxiv_papers) + len(openalex_results) + len(pubmed_results) + len(ddg_results) + len(google_results),
+                )
+
             return {
                 "response": parsed_json,
                 "raw": raw_content,
@@ -84,7 +95,19 @@ class SystematicLiteratureReviewAgent(BaseAgent):
             }
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
-            return {"error": str(e), "raw": "Error during execution"}
+            return {
+                "response": {
+                    "title": f"Systematic Literature Review: {task}",
+                    "topic": task,
+                    "methodologies_matrix": [],
+                    "findings_summary": "SLR generation failed; downstream stages should treat this as partial evidence.",
+                    "statistical_trends": {},
+                    "fallback": True,
+                    "error": str(e),
+                },
+                "raw": "Error during execution",
+                "agent": self.name
+            }
 
 class SurveyMetaAnalysisAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -125,3 +148,5 @@ class SurveyMetaAnalysisAgent(BaseAgent):
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
             return {"error": str(e)}
+
+

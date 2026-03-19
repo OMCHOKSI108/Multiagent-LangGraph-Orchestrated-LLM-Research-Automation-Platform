@@ -12,6 +12,7 @@ if AI_ENGINE_DIR not in sys.path:
 from agents.base import BaseAgent
 from agents.orchestrator.orchestrator import OrchestratorAgent
 from agents.registry import AGENTS
+from agents.topic.agents import TopicDiscoveryAgent
 
 class TestBaseAgent:
     """Tests for BaseAgent functionality"""
@@ -222,6 +223,21 @@ class TestAgentRegistry:
                 # Restore original LLM
                 agent.llm = original_llm
 
+
+class TestTopicDiscoveryFallback:
+    """Tests for critical topic fallback behavior."""
+
+    def test_topic_discovery_returns_non_empty_fallback_suggestions(self):
+        agent = TopicDiscoveryAgent()
+        agent.llm = Mock()
+        agent.llm.invoke.side_effect = Exception("Error code: 400 model_decommissioned")
+
+        result = agent.run({"task": "graph neural networks", "_job_id": "123"})
+
+        assert result["topic_locked"] is True
+        assert result["selected_topic"]
+        assert len(result["topic_suggestions"]) == 3
+        assert result["response"]["fallback"] is True
 class TestLLMProviderCaching:
     """Tests for LLM provider factory caching (replaces old TestLLMCaching)"""
     

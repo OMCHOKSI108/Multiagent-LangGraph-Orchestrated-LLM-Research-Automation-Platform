@@ -6,24 +6,26 @@ Wraps the Groq API for cloud inference. Used when LLM_STATUS=ONLINE.
 Features:
     - Multi-key support (GROQ_API_1, GROQ_API_2, GROQ_API_3)
     - Round-robin key rotation on every LLM instantiation
-    - Automatic retry with key switching on 429 rate-limit errors
-    - Exponential backoff between retries
-    - Thread-safe key index management
+    - Model fallback when a configured model is invalid or decommissioned
+    - Retries only for transient failures such as rate limits/timeouts
+    - Thread-safe key and model index management
 """
 
+import asyncio
 import logging
 import time
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .base import LLMProvider
 
 logger = logging.getLogger("ai_engine.llm.groq")
 
-# Default model for Groq
-DEFAULT_GROQ_MODEL = "llama3-70b-8192"
+DEFAULT_GROQ_MODELS = [
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+]
 
-# Rate-limit retry configuration
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0
 BACKOFF_MULTIPLIER = 2.0
@@ -31,57 +33,75 @@ BACKOFF_MULTIPLIER = 2.0
 
 class GroqProvider(LLMProvider):
     """
-    Online LLM provider using the Groq API with multi-key rotation.
+    Online LLM provider using the Groq API with multi-key and model rotation.
 
-    Implements round-robin key rotation and automatic retry with key switching
-    when rate limits (HTTP 429) are encountered.
-
-    Args:
-        api_keys: List of Groq API keys for rotation.
-        model_name: The Groq model to use (default: 'llama3-70b-8192').
-        temperature: Sampling temperature (default 0.7).
+    Invalid-model failures are deterministic, so the provider immediately
+    switches to the next configured model instead of retrying the same request
+    with a different API key.
     """
 
     def __init__(
         self,
         api_keys: List[str],
-        model_name: str = DEFAULT_GROQ_MODEL,
+        model_name: str = DEFAULT_GROQ_MODELS[0],
         temperature: float = 0.7,
+        fallback_models: Optional[List[str]] = None,
     ):
-        # Filter out empty/None keys
+        super().__init__(provider_name="groq", model_name=model_name, temperature=temperature)
+
         self.api_keys = [k.strip() for k in api_keys if k and k.strip()]
-        self.model_name = model_name
-        self.temperature = temperature
+        self.models = self._build_model_list(model_name, fallback_models)
 
-        # Thread-safe key index for round-robin rotation
         self._key_index = 0
+        self._model_index = 0
         self._lock = threading.Lock()
-
-        # Cache LLM instances per key to avoid re-instantiation
-        self._llm_cache: Dict[int, Any] = {}
-
-        # Track rate-limit hits per key for status reporting
+        self._llm_cache: Dict[Tuple[int, str], Any] = {}
         self._rate_limit_hits: Dict[int, int] = {i: 0 for i in range(len(self.api_keys))}
+        self._model_failures: Dict[str, int] = {model: 0 for model in self.models}
 
         if not self.api_keys:
             logger.warning("[GroqProvider] No API keys provided! Provider will not be available.")
+
+    def _build_model_list(self, primary_model: str, fallback_models: Optional[List[str]]) -> List[str]:
+        models: List[str] = []
+        for candidate in [primary_model, *(fallback_models or []), *DEFAULT_GROQ_MODELS]:
+            if candidate and candidate not in models:
+                models.append(candidate)
+        return models or DEFAULT_GROQ_MODELS.copy()
 
     @property
     def provider_name(self) -> str:
         return "groq"
 
+    @property
+    def active_model(self) -> str:
+        return self.models[self._model_index]
+
     def _get_next_key_index(self) -> int:
-        """
-        Returns the current key index and advances to the next one (round-robin).
-        Thread-safe via lock.
-        """
         with self._lock:
             idx = self._key_index
             self._key_index = (self._key_index + 1) % max(len(self.api_keys), 1)
             return idx
 
-    def _create_llm_for_key(self, key_index: int) -> Any:
-        """Creates a ChatGroq instance for the given key index."""
+    def _set_active_model(self, model_name: str) -> None:
+        self.model_name = model_name
+        self._model_index = self.models.index(model_name)
+
+    def rotate_key(self) -> str:
+        if not self.api_keys:
+            return ""
+        idx = self._get_next_key_index()
+        return self.api_keys[idx]
+
+    def rotate_model(self) -> str:
+        if not self.models:
+            return ""
+        self._model_index = (self._model_index + 1) % len(self.models)
+        self.model_name = self.models[self._model_index]
+        logger.warning(f"[GroqProvider] Switching to fallback model: {self.model_name}")
+        return self.model_name
+
+    def _create_llm_for_key(self, key_index: int, model_name: str) -> Any:
         try:
             from langchain_groq import ChatGroq
         except ImportError:
@@ -92,18 +112,12 @@ class GroqProvider(LLMProvider):
 
         api_key = self.api_keys[key_index]
         return ChatGroq(
-            model_name=self.model_name,
+            model_name=model_name,
             groq_api_key=api_key,
             temperature=self.temperature,
         )
 
     def get_langchain_llm(self) -> Any:
-        """
-        Returns a ChatGroq instance using round-robin key rotation.
-
-        Each call rotates to the next API key to distribute load evenly
-        across all configured keys.
-        """
         if not self.api_keys:
             raise RuntimeError(
                 "[GroqProvider] No Groq API keys configured. "
@@ -111,96 +125,147 @@ class GroqProvider(LLMProvider):
             )
 
         key_idx = self._get_next_key_index()
+        cache_key = (key_idx, self.active_model)
 
-        # Use cached instance if available
-        if key_idx not in self._llm_cache:
-            self._llm_cache[key_idx] = self._create_llm_for_key(key_idx)
+        if cache_key not in self._llm_cache:
+            self._llm_cache[cache_key] = self._create_llm_for_key(key_idx, self.active_model)
             logger.info(
                 f"[GroqProvider] Created ChatGroq instance with key #{key_idx + 1} "
-                f"(model: {self.model_name})"
+                f"(model: {self.active_model})"
             )
 
-        return self._llm_cache[key_idx]
+        self.model_name = self.active_model
+        return self._llm_cache[cache_key]
+
+    def _invalidate_current_cache_entry(self) -> None:
+        if not self.api_keys:
+            return
+        current_idx = (self._key_index - 1) % len(self.api_keys)
+        self._llm_cache.pop((current_idx, self.active_model), None)
+
+    def _record_model_failure(self, model_name: str, error: Exception) -> None:
+        self._model_failures[model_name] = self._model_failures.get(model_name, 0) + 1
+        logger.error(f"[GroqProvider] Model '{model_name}' failed: {error}")
+
+    def _shrink_if_needed(self, messages: list, max_chars: int = 15000) -> list:
+        """Trims the last message (usually context) if it exceeds token/character limit."""
+        if not messages:
+            return messages
+            
+        import copy
+        msgs = copy.deepcopy(messages)
+        last_msg = msgs[-1]
+        
+        if hasattr(last_msg, "content") and isinstance(last_msg.content, str):
+            if len(last_msg.content) > max_chars:
+                logger.warning(f"[GroqProvider] Token overflow protected: Shrunk message from {len(last_msg.content)} to {max_chars} chars")
+                last_msg.content = last_msg.content[:max_chars] + "\n...(TRUNCATED DUE TO LENGTH)..."
+        return msgs
+
+    def _invoke_once(self, messages: list) -> Any:
+        messages = self._shrink_if_needed(messages)
+        llm = self.get_langchain_llm()
+        return llm.invoke(messages)
+
+    async def _ainvoke_once(self, messages: list) -> Any:
+        messages = self._shrink_if_needed(messages)
+        llm = self.get_langchain_llm()
+        return await llm.ainvoke(messages)
 
     def invoke_with_retry(self, messages: list) -> Any:
-        """
-        Invokes the LLM with automatic retry and key rotation on rate limits.
-
-        This method provides an additional layer of resilience on top of
-        get_langchain_llm(). If a 429 rate-limit error is encountered,
-        it switches to the next API key and retries with exponential backoff.
-
-        Args:
-            messages: List of LangChain message objects.
-
-        Returns:
-            The LLM response.
-
-        Raises:
-            Exception: If all retries across all keys are exhausted.
-        """
         last_exception = None
-        backoff = INITIAL_BACKOFF_SECONDS
 
-        for attempt in range(MAX_RETRIES):
-            try:
-                llm = self.get_langchain_llm()
-                response = llm.invoke(messages)
-                return response
+        for model_name in self.models:
+            self._set_active_model(model_name)
+            backoff = INITIAL_BACKOFF_SECONDS
 
-            except Exception as e:
-                error_str = str(e).lower()
-                is_rate_limit = (
-                    "429" in error_str
-                    or "rate_limit" in error_str
-                    or "rate limit" in error_str
-                    or "too many requests" in error_str
-                )
-
-                if is_rate_limit and len(self.api_keys) > 1:
-                    # Track the rate-limit hit
-                    current_idx = (self._key_index - 1) % len(self.api_keys)
-                    self._rate_limit_hits[current_idx] = (
-                        self._rate_limit_hits.get(current_idx, 0) + 1
-                    )
-
-                    logger.warning(
-                        f"[GroqProvider] Rate limit hit on key #{current_idx + 1}. "
-                        f"Switching to next key. Attempt {attempt + 1}/{MAX_RETRIES}. "
-                        f"Backing off for {backoff:.1f}s."
-                    )
-
-                    # Invalidate the cached LLM for this key
-                    self._llm_cache.pop(current_idx, None)
-
-                    time.sleep(backoff)
-                    backoff *= BACKOFF_MULTIPLIER
+            for attempt in range(MAX_RETRIES):
+                try:
+                    return self._invoke_once(messages)
+                except Exception as e:
+                    classification = self.classify_error(e)
                     last_exception = e
-                    continue
-                else:
-                    # Non-rate-limit error or single key — don't retry
-                    raise
 
-        # All retries exhausted
+                    if classification == "model_invalid":
+                        self._record_model_failure(model_name, e)
+                        self._invalidate_current_cache_entry()
+                        break
+
+                    if classification == "retryable":
+                        current_idx = (self._key_index - 1) % len(self.api_keys) if self.api_keys else 0
+                        self._rate_limit_hits[current_idx] = self._rate_limit_hits.get(current_idx, 0) + 1
+                        self._invalidate_current_cache_entry()
+                        logger.warning(
+                            f"[GroqProvider] Transient failure on model '{model_name}'. "
+                            f"Attempt {attempt + 1}/{MAX_RETRIES}. Backing off for {backoff:.1f}s. Error: {e}"
+                        )
+                        time.sleep(backoff)
+                        backoff *= BACKOFF_MULTIPLIER
+                        continue
+
+                    self._record_model_failure(model_name, e)
+                    break
+
         logger.error(
-            f"[GroqProvider] All {MAX_RETRIES} retry attempts exhausted across "
-            f"{len(self.api_keys)} keys."
+            f"[GroqProvider] Exhausted all fallback models without success: {', '.join(self.models)}"
         )
-        raise last_exception or RuntimeError("All Groq API retries exhausted")
+        raise last_exception or RuntimeError("All Groq models failed")
+
+    async def ainvoke_with_retry(self, messages: list) -> Any:
+        last_exception = None
+
+        for model_name in self.models:
+            self._set_active_model(model_name)
+            backoff = INITIAL_BACKOFF_SECONDS
+
+            for attempt in range(MAX_RETRIES):
+                try:
+                    return await self._ainvoke_once(messages)
+                except Exception as e:
+                    classification = self.classify_error(e)
+                    last_exception = e
+
+                    if classification == "model_invalid":
+                        self._record_model_failure(model_name, e)
+                        self._invalidate_current_cache_entry()
+                        break
+
+                    if classification == "retryable":
+                        current_idx = (self._key_index - 1) % len(self.api_keys) if self.api_keys else 0
+                        self._rate_limit_hits[current_idx] = self._rate_limit_hits.get(current_idx, 0) + 1
+                        self._invalidate_current_cache_entry()
+                        logger.warning(
+                            f"[GroqProvider] Transient failure on model '{model_name}'. "
+                            f"Attempt {attempt + 1}/{MAX_RETRIES}. Backing off for {backoff:.1f}s. Error: {e}"
+                        )
+                        await asyncio.sleep(backoff)
+                        backoff *= BACKOFF_MULTIPLIER
+                        continue
+
+                    self._record_model_failure(model_name, e)
+                    break
+
+        logger.error(
+            f"[GroqProvider] Exhausted all fallback models without success: {', '.join(self.models)}"
+        )
+        raise last_exception or RuntimeError("All Groq models failed")
 
     def is_available(self) -> bool:
-        """Checks if at least one API key is configured."""
         return len(self.api_keys) > 0
 
     def get_status(self) -> Dict[str, Any]:
-        """Returns status metadata for the /llm/status endpoint."""
         return {
             "provider": self.provider_name,
             "model": self.model_name,
+            "fallback_models": list(self.models),
             "available": self.is_available(),
             "total_keys": len(self.api_keys),
-            "active_key_index": self._key_index + 1,  # 1-indexed for display
+            "active_key_index": self._key_index + 1,
             "rate_limit_hits": dict(self._rate_limit_hits),
+            "model_failures": dict(self._model_failures),
             "max_retries": MAX_RETRIES,
             "key_rotation": "round-robin",
+            "model_fallback": True,
         }
+
+

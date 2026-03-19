@@ -110,7 +110,7 @@ class TestGroqProvider:
 
         provider = GroqProvider(
             api_keys=["key1", "", "key3", None, "  key2  "],
-            model_name="llama3-70b-8192",
+            model_name="llama-3.1-70b-versatile",
         )
         assert provider.provider_name == "groq"
         assert len(provider.api_keys) == 3
@@ -164,7 +164,7 @@ class TestGroqProvider:
 
         provider = GroqProvider(
             api_keys=["key1", "key2"],
-            model_name="llama3-70b-8192"
+            model_name="llama-3.1-70b-versatile"
         )
         status = provider.get_status()
 
@@ -213,7 +213,7 @@ class TestFactory:
         mock_cfg.GROQ_API_KEYS = ["key1", "key2"]
         mock_config.return_value = mock_cfg
 
-        provider = get_llm_provider("llama3-70b-8192")
+        provider = get_llm_provider("llama-3.1-70b-versatile")
         assert isinstance(provider, GroqProvider)
 
     @patch("llm.factory._get_config")
@@ -272,5 +272,54 @@ class TestFactory:
         assert provider1 is provider2  # Same object from cache
 
 
+
+    def test_model_decommission_switches_to_fallback_model(self):
+        """Decommissioned models should immediately fall through to the next configured model."""
+        from llm.groq_provider import GroqProvider
+
+        provider = GroqProvider(
+            api_keys=["key1"],
+            model_name="llama-3.1-70b-versatile",
+            fallback_models=["llama-3.1-8b-instant", "gemma2-9b-it"],
+        )
+
+        calls = []
+
+        def fake_invoke(messages):
+            calls.append(provider.active_model)
+            if provider.active_model == "llama-3.1-70b-versatile":
+                raise Exception("Error code: 400 model_decommissioned")
+            return "ok"
+
+        provider._invoke_once = fake_invoke
+        result = provider.invoke_with_retry(["hello"])
+
+        assert result == "ok"
+        assert calls == ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"]
+
+    def test_timeout_retries_same_model_before_fallback(self):
+        """Transient failures should retry before exhausting the fallback model list."""
+        from llm.groq_provider import GroqProvider
+
+        provider = GroqProvider(
+            api_keys=["key1", "key2"],
+            model_name="llama-3.1-8b-instant",
+            fallback_models=["gemma2-9b-it"],
+        )
+
+        attempts = {"count": 0}
+
+        def fake_invoke(messages):
+            attempts["count"] += 1
+            if attempts["count"] < 3:
+                raise Exception("request timeout from upstream")
+            return "ok"
+
+        provider._invoke_once = fake_invoke
+        result = provider.invoke_with_retry(["hello"])
+
+        assert result == "ok"
+        assert attempts["count"] == 3
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

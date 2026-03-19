@@ -8,6 +8,8 @@ const apiKeyAuth = require('../middleware/apiKeyAuth');
 const sessionKeyAuth = require('../middleware/sessionKeyAuth');
 const auth = require('../middleware/auth');
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
+
 /**
  * Enhanced fetch RAG context from workspace vector store.
  */
@@ -64,6 +66,16 @@ async function getResearchContextForUser(researchId, userId) {
     } catch (e) { /* table may not exist */ }
 
     return null;
+}
+
+async function resolveWorkspaceId(researchId) {
+    if (!researchId) return null;
+    try {
+        const res = await db.query('SELECT workspace_id FROM research_sessions WHERE id = $1', [researchId]);
+        return res.rows.length > 0 ? res.rows[0].workspace_id : null;
+    } catch (err) {
+        return null;
+    }
 }
 
 // Send Message to Chatbot
@@ -378,3 +390,4 @@ router.post('/fast', authenticateRequest, async (req, res) => {
 });
 
 module.exports = router;
+

@@ -10,6 +10,29 @@ from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
 
 
+def fallback_topic_suggestions(input_topic: str):
+    normalized = (input_topic or "the requested topic").strip() or "the requested topic"
+    return [
+        {
+            "title": f"A Comprehensive Survey on {normalized}",
+            "domain": "general",
+            "novelty_angle": "survey",
+            "estimated_complexity": "medium",
+        },
+        {
+            "title": f"Applications of {normalized} in Real-World Systems",
+            "domain": "applied_research",
+            "novelty_angle": "applications",
+            "estimated_complexity": "medium",
+        },
+        {
+            "title": f"Recent Advances in {normalized}: Methods, Benchmarks, and Open Challenges",
+            "domain": "state_of_the_art",
+            "novelty_angle": "recent_advances",
+            "estimated_complexity": "high",
+        },
+    ]
+
 class TopicDiscoveryAgent(BaseAgent):
     """
     Topic Discovery Agent - PHASE 0 Gate
@@ -226,18 +249,20 @@ Output as JSON.""")
             
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
-            
-            # Fallback: auto-lock the user's original query as the topic
-            fallback_title = f"A Comprehensive Survey on {task}"
+
+            fallback_suggestions = fallback_topic_suggestions(task)
+            fallback_title = fallback_suggestions[0]["title"]
             print(f"[{self.name}] Fallback: Auto-locking topic as '{fallback_title}'")
-            
+
             return {
                 "topic_locked": True,
                 "selected_topic": fallback_title,
-                "topic_suggestions": [
-                    {"title": fallback_title, "domain": "general", "novelty_angle": "survey", "estimated_complexity": "medium"},
-                ],
-                "response": {"topic_suggestions": [], "error": str(e), "fallback": True},
+                "topic_suggestions": fallback_suggestions,
+                "response": {
+                    "topic_suggestions": fallback_suggestions,
+                    "error": str(e),
+                    "fallback": True,
+                },
                 "agent": self.name
             }
 
@@ -312,3 +337,5 @@ class TopicLockAgent(BaseAgent):
             "topic_locked": False,
             "response": {"status": "waiting_for_user"}
         }
+
+

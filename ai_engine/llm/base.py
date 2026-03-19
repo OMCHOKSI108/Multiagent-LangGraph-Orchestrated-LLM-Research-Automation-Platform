@@ -11,7 +11,7 @@ Design Decision:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict
 import logging
 
 logger = logging.getLogger("ai_engine.llm")
@@ -22,11 +22,39 @@ class LLMProvider(ABC):
     Abstract base class for LLM providers.
 
     Each provider must implement:
-        - get_langchain_llm() → returns a LangChain chat model
-        - is_available()      → checks if the provider is reachable
-        - get_status()        → returns provider metadata for /llm/status
-        - provider_name       → human-readable name
+        - get_langchain_llm() -> returns a LangChain chat model
+        - is_available()      -> checks if the provider is reachable
+        - get_status()        -> returns provider metadata for /llm/status
+        - provider_name       -> human-readable name
     """
+
+    NON_RETRYABLE_MODEL_ERRORS = (
+        "model_decommissioned",
+        "model decommissioned",
+        "model_not_found",
+        "model not found",
+        "does not exist",
+        "not found",
+        "unknown model",
+        "invalid model",
+        "unsupported model",
+    )
+    RETRYABLE_ERRORS = (
+        "429",
+        "rate_limit",
+        "rate limit",
+        "too many requests",
+        "quota",
+        "timeout",
+        "timed out",
+        "temporarily unavailable",
+        "connection reset",
+        "connection aborted",
+        "service unavailable",
+        "internal server error",
+        "bad gateway",
+        "gateway timeout",
+    )
 
     def __init__(self, provider_name: str = "unknown", model_name: str = "", temperature: float = 0.7):
         self._provider_name = provider_name
@@ -64,7 +92,7 @@ class LLMProvider(ABC):
         Returns status metadata for the /llm/status endpoint.
         """
         ...
-        
+
     def rotate_key(self) -> str:
         """
         Moves to the next API key. Providers that support rotation should override this.
@@ -72,14 +100,33 @@ class LLMProvider(ABC):
         """
         return ""
 
+    def classify_error(self, error: Exception) -> str:
+        """
+        Categorize provider errors so retry logic can avoid hopeless retries.
+
+        Returns one of: ``model_invalid``, ``retryable``, ``non_retryable``.
+        """
+        error_str = str(error).lower()
+
+        if any(token in error_str for token in self.NON_RETRYABLE_MODEL_ERRORS):
+            return "model_invalid"
+
+        if any(token in error_str for token in self.RETRYABLE_ERRORS):
+            return "retryable"
+
+        return "non_retryable"
+
+    def is_retryable(self, error: Exception) -> bool:
+        return self.classify_error(error) == "retryable"
+
     def invoke_with_retry(self, messages: list) -> Any:
         """
-        Synchronous LLM invocation with retry logic for rate limits.
+        Synchronous LLM invocation with retry logic for transient failures.
         """
         import time
+
         max_retries = 3
         backoff = 1.0
-
         last_exception = None
 
         for attempt in range(max_retries):
@@ -87,27 +134,18 @@ class LLMProvider(ABC):
                 llm = self.get_langchain_llm()
                 return llm.invoke(messages)
             except Exception as e:
-                error_str = str(e).lower()
-                is_rate_limit = (
-                    "429" in error_str
-                    or "rate_limit" in error_str
-                    or "rate limit" in error_str
-                    or "too many requests" in error_str
-                    or "quota" in error_str
-                )
-
-                if is_rate_limit:
-                    logger.warning(
-                        f"[{self.provider_name}] Rate limit hit. "
-                        f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s."
-                    )
-                    self.rotate_key()
-                    time.sleep(backoff)
-                    backoff *= 2.0
-                    last_exception = e
-                    continue
-                else:
+                classification = self.classify_error(e)
+                if classification != "retryable":
                     raise e
+
+                logger.warning(
+                    f"[{self.provider_name}] Transient failure. "
+                    f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s. Error: {e}"
+                )
+                self.rotate_key()
+                time.sleep(backoff)
+                backoff *= 2.0
+                last_exception = e
 
         logger.error(f"[{self.provider_name}] All {max_retries} sync retry attempts exhausted.")
         raise last_exception or RuntimeError(f"All {self.provider_name} sync API retries exhausted")
@@ -117,39 +155,28 @@ class LLMProvider(ABC):
         Asynchronous version of invoke_with_retry.
         """
         import asyncio
-        import time
+
         max_retries = 3
         backoff = 1.0
-        
         last_exception = None
-        
+
         for attempt in range(max_retries):
             try:
                 llm = self.get_langchain_llm()
                 return await llm.ainvoke(messages)
             except Exception as e:
-                error_str = str(e).lower()
-                is_rate_limit = (
-                    "429" in error_str
-                    or "rate_limit" in error_str
-                    or "rate limit" in error_str
-                    or "too many requests" in error_str
-                    or "quota" in error_str
-                )
-                
-                if is_rate_limit:
-                    logger.warning(
-                        f"[{self.provider_name}] Rate limit hit. "
-                        f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s."
-                    )
-                    self.rotate_key()
-                    await asyncio.sleep(backoff)
-                    backoff *= 2.0
-                    last_exception = e
-                    continue
-                else:
+                classification = self.classify_error(e)
+                if classification != "retryable":
                     raise e
-                    
+
+                logger.warning(
+                    f"[{self.provider_name}] Transient failure. "
+                    f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s. Error: {e}"
+                )
+                self.rotate_key()
+                await asyncio.sleep(backoff)
+                backoff *= 2.0
+                last_exception = e
+
         logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
         raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
-

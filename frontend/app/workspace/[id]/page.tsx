@@ -93,7 +93,7 @@ const SOURCE_AGENTS: [string, string, string | null][] = [
   ['data_scraper',        '🌐 Scraped Data', 'results'],
   ['google_news',         '📰 News', 'results'],
   ['domain_intelligence', '🧠 Domain Intelligence', null],
-  ['topic_discovery',     '🔎 Topic Discovery', null],
+  ['topic_discovery',     '🔎 Topic Discovery', 'topic_suggestions'],
   ['gap_synthesis',       '🔍 Gap Analysis', null],
   ['scoring',             '📊 Quality Score', null],
   ['fact_check',          '✅ Fact Check', null],
@@ -113,13 +113,60 @@ interface SourceItem {
   content?: string;
   snippet?: string;
   relevance?: number;
+  domain?: string;
+  novelty_angle?: string;
+  estimated_complexity?: string;
 }
 
-function SourcesPanel({ resultJson }: { resultJson: ResearchResult | null }) {
-  if (!resultJson) return <p className="text-gray-400 text-sm">No data yet.</p>;
+function SourcesPanel({ resultJson, feedEvents }: { resultJson: ResearchResult | null, feedEvents?: any[] }) {
+  if (!resultJson && (!feedEvents || feedEvents.length === 0)) return <p className="text-slate-400 text-sm">No data yet.</p>;
 
-  const findings = resultJson.final_state?.findings || resultJson.findings || {};
+  const findings = resultJson?.final_state?.findings || resultJson?.findings || {};
   const sections: JSX.Element[] = [];
+
+  // Extract real-time sources from feedEvents (Live during research)
+  if (feedEvents && feedEvents.length > 0) {
+    const realtimeSources = feedEvents.filter(e => e.category === 'source').map(e => ({
+      title: e.details?.title || e.message,
+      url: e.details?.url,
+      abstract: e.details?.description || e.details?.snippet,
+      domain: e.details?.domain || e.details?.source_type,
+    }));
+
+    if (realtimeSources.length > 0) {
+      // Deduplicate by URL or title
+      const uniqueSources = Array.from(new Map(realtimeSources.map(s => [s.url || s.title, s])).values());
+      
+      sections.push(
+        <div key="realtime_sources" className="mb-6">
+          <h4 className="text-sm font-semibold border-b border-emerald-900/50 pb-1 mb-2 text-emerald-400 flex items-center gap-2">
+            <span className="relative flex h-2 w-2 shadow-[0_0_8px_rgba(52,211,153,0.8)]">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Live Discovered Sources ({uniqueSources.length})
+          </h4>
+          {uniqueSources.slice(0, 50).map((item, i) => (
+            <div key={`rt-${i}`} className="border border-emerald-900/40 bg-emerald-950/20 p-2.5 mb-2 text-xs rounded transition-all hover:bg-emerald-900/30">
+              <p className="font-semibold mb-0.5 text-slate-100">[{i + 1}] {item.title || item.url || 'Live Source'}</p>
+              {item.domain && <p className="text-emerald-500 font-medium mb-1 text-[11px]">Source: {item.domain}</p>}
+              {item.abstract && (
+                <p className="text-slate-300 mb-1 leading-relaxed">
+                  {item.abstract.slice(0, 250)}...
+                </p>
+              )}
+              {item.url && (
+                <a href={item.url} target="_blank" rel="noopener noreferrer"
+                  className="text-emerald-400 hover:text-emerald-300 underline text-[11px]">
+                  Open →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
 
   for (const [key, label, listKey] of SOURCE_AGENTS) {
     const agent = findings[key];
@@ -135,13 +182,16 @@ function SourcesPanel({ resultJson }: { resultJson: ResearchResult | null }) {
           <h4 className="text-sm font-semibold border-b border-gray-100 pb-1 mb-2">{label} ({items.length})</h4>
           {items.slice(0, 15).map((item, i) => (
             <div key={i} className="border border-gray-200 p-2.5 mb-2 text-xs">
-              <p className="font-semibold mb-0.5">[{i + 1}] {item.title || item.url || 'Item'}</p>
-              {item.authors && <p className="text-gray-500 mb-0.5">{String(item.authors).slice(0, 120)}</p>}
+              <p className="font-semibold mb-0.5 text-slate-100">[{i + 1}] {item.title || item.url || 'Item'}</p>
+              {item.domain && <p className="text-emerald-400 font-medium mb-1 text-[11px]">Domain: {item.domain}</p>}
+              {item.authors && <p className="text-slate-400 mb-0.5">{String(item.authors).slice(0, 120)}</p>}
+              {item.novelty_angle && <p className="text-indigo-300 mb-1 leading-relaxed">Angle: {item.novelty_angle}</p>}
               {(item.abstract || item.summary || item.content || item.snippet) && (
-                <p className="text-gray-600 mb-1">
+                <p className="text-slate-300 mb-1 leading-relaxed">
                   {(item.abstract || item.summary || item.content || item.snippet || '').slice(0, 250)}...
                 </p>
               )}
+              {item.estimated_complexity && <span className="inline-block px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] mt-1 border border-slate-700">Complexity: {item.estimated_complexity}</span>}
               {item.url && (
                 <a href={item.url} target="_blank" rel="noopener noreferrer"
                   className="text-blue-700 underline text-[11px]">
@@ -463,7 +513,22 @@ export default function WorkspacePage() {
           
           if (s.status === 'waiting') {
             setStatusText('Waiting for Topic Selection');
-            if (s.result_json?.topic_suggestions) setResultJson(s.result_json);
+            
+            // Extract topics from final payload
+            const finalState: any = s.result_json?.final_state;
+            const suggestions = finalState?.topic_suggestions || finalState?.findings?.topic_discovery?.topic_suggestions || [];
+            let outlineMsg = 'I have discovered multiple potential research angles. Please review them in the **Sources** tab and reply with `/deepresearch <Your Chosen Topic>` to lock in your topic and proceed.';
+            
+            if (suggestions && suggestions.length > 0) {
+              const topicsList = suggestions.map((t: any, i: number) => `**${i+1}. ${t.title || 'Topic'}**\n*${t.novelty_angle || t.domain || ''}*`).join('\n\n');
+              outlineMsg = `I have discovered multiple potential research angles:\n\n${topicsList}\n\nPlease reply with \`/deepresearch <Your Chosen Topic>\` to lock in your topic and proceed.`;
+            }
+            
+            addMsg(outlineMsg, 'bot');
+            
+            if (finalState?.topic_suggestions || finalState?.findings?.topic_discovery) {
+              setResultJson(s.result_json || null);
+            }
             break; 
           }
 

@@ -502,6 +502,10 @@ class MultiStageReportAgent:
         self.name = "MultiStageReport"
         self.pipeline = ReportPipeline()
     
+    async def arun(self, state: dict) -> dict:
+        import asyncio
+        return await asyncio.to_thread(self.run, state)
+
     def run(self, state: dict) -> dict:
         """Run the multi-stage report generation with live event emission."""
         findings = state.get("findings", {})
@@ -549,3 +553,6 @@ class MultiStageReportAgent:
                 "raw": f"Report generation failed: {e}",
                 "agent": self.name
             }
+
+
+

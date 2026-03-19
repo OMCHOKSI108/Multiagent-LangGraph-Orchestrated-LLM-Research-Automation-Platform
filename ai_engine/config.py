@@ -88,14 +88,32 @@ MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")            # Prose
 MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:1.5b")     # Code/JSON
 MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")          # Critique
 
+# Active Groq fallback models used when ONLINE/HYBRID routing selects Groq.
+DEPRECATED_GROQ_MODELS = {
+    "llama3-70b-8192",
+    "llama3-8b-8192",
+    "mixtral-8x7b-32768",
+    "llama-3.1-70b-versatile",
+    "gemma2-9b-it",
+}
+_raw_groq_models = os.getenv("GROQ_ACTIVE_MODELS", "").strip()
+DEFAULT_MODELS = [
+    model.strip()
+    for model in _raw_groq_models.split(",")
+    if model.strip() and model.strip() not in DEPRECATED_GROQ_MODELS
+] or [
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
+]
+
 # Model Mapping for Cloud Providers (when ONLINE)
 # Maps local Ollama aliases to valid cloud model IDs for each provider.
 CLOUD_MODEL_MAPPINGS = {
     "groq": {
-        "phi3:mini": "llama3-8b-8192",
-        "gemma2:2b": "gemma2-9b-it",
-        "qwen2.5-coder:1.5b": "mixtral-8x7b-32768", # Reliable reasoning/coding fallback
-        "default": "llama3-70b-8192"
+        "phi3:mini": "llama-3.1-8b-instant",
+        "gemma2:2b": "llama-3.1-8b-instant",
+        "qwen2.5-coder:1.5b": "llama-3.3-70b-versatile",
+        "default": "llama-3.3-70b-versatile"
     },
     "openrouter": {
         "phi3:mini": "microsoft/phi-3-mini-128k-instruct",
@@ -197,3 +215,8 @@ SEARCH_PROVIDERS = {
         }
     }
 }
+
+
+
+
+

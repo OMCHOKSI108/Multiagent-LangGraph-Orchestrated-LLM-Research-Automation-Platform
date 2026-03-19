@@ -175,7 +175,8 @@ async function processQueue() {
 
             // Determine final status based on AI engine state
             let status = 'completed';
-            if (finalResult.topic_suggestions && !finalResult.topic_locked) {
+            const state = finalResult.final_state || {};
+            if (state.topic_suggestions && state.topic_suggestions.length > 0 && !state.topic_locked) {
                 status = 'waiting'; // Waiting for user to select a topic
             }
 

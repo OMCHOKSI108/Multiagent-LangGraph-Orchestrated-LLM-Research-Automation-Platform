@@ -83,6 +83,14 @@ Output JSON with keys:
                     response["next_step"] = "paper_analysis"
                 elif "liter" in ns.lower() or "review" in ns.lower():
                     response["next_step"] = "literature_review"
+                    
+                # Strict override: Cannot do paper analysis without a paper
+                paper_url = state.get("paper_url")
+                if response["next_step"] == "paper_analysis" and not paper_url:
+                    task = state.get("task", "")
+                    if "http://" not in task and "https://" not in task:
+                        logger.warning(f"[{self.name}] LLM suggested paper_analysis, but no paper URL was found. Forcing literature_review.")
+                        response["next_step"] = "literature_review"
                 
                 # Update state with routing decision
                 return {**state, "next_step": response["next_step"], **result}

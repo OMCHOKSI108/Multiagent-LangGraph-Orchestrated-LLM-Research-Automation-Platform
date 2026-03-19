@@ -1,7 +1,6 @@
 from typing import Dict, Any, Optional
 import logging
 import importlib
-
 try:
     import config
 except ImportError:
