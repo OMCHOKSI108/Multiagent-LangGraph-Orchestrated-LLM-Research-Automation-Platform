@@ -15,6 +15,7 @@ import {
 } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import PremiumCharts from '@/components/PremiumCharts';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -32,10 +33,12 @@ type TabId = 'feed' | 'sources' | 'report' | 'raw' | 'chat';
 type MsgRole = 'user' | 'bot' | 'system';
 
 interface Msg {
-  id: string;
+  id: string | number;
   role: MsgRole;
   text: string;
   ts: number;
+  sources?: any[];
+  search_mode?: string;
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -98,6 +101,7 @@ const SOURCE_AGENTS: [string, string, string | null][] = [
   ['visualization',       '📈 Visualization', null],
   ['innovation',          '💡 Innovation', null],
   ['technical_verification', '🔬 Technical Verification', null],
+  ['chat_sources',        '💬 Chat References', 'sources'],
 ];
 
 interface SourceItem {
@@ -108,6 +112,7 @@ interface SourceItem {
   summary?: string;
   content?: string;
   snippet?: string;
+  relevance?: number;
 }
 
 function SourcesPanel({ resultJson }: { resultJson: ResearchResult | null }) {
@@ -168,79 +173,74 @@ function SourcesPanel({ resultJson }: { resultJson: ResearchResult | null }) {
 
 // ─── Chat with AI panel ──────────────────────────────────────────────────────
 
-function AiChatPanel({ sessionId }: { sessionId: number | null }) {
-  const [msgs, setMsgs] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+// AI Chat Panel removed as it is now integrated into the main chat area
 
-  useEffect(() => {
-    if (!sessionId) return;
-    chatApi.history(sessionId)
-      .then(d => { setMsgs(d.messages || []); setLoaded(true); })
-      .catch(() => setLoaded(true));
-  }, [sessionId]);
+// ─── Section Editor ─────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [msgs]);
+function SectionEditor({ 
+  section, 
+  wsId, 
+  onUpdate 
+}: { 
+  section: any; 
+  wsId: string; 
+  onUpdate: () => void 
+}) {
+  const [editing, setEditing] = useState(false);
+  const [instruction, setInstruction] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  async function sendMsg() {
-    if (!input.trim() || !sessionId || sending) return;
-    const text = input.trim();
-    setInput('');
-    setMsgs(prev => [...prev, { id: Date.now(), role: 'user', content: text, created_at: new Date().toISOString() }]);
-    setSending(true);
+  async function handleEdit() {
+    if (!instruction.trim() || busy) return;
+    setBusy(true);
     try {
-      const res = await chatApi.send(sessionId, text);
-      setMsgs(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: res.reply, created_at: new Date().toISOString() }]);
-    } catch (e: unknown) {
-      setMsgs(prev => [...prev, { id: Date.now() + 1, role: 'assistant', content: `Error: ${e instanceof Error ? e.message : 'Failed'}`, created_at: new Date().toISOString() }]);
+      await wsApi.editSection(wsId, section.research_id, section.id, instruction);
+      setEditing(false);
+      setInstruction('');
+      onUpdate();
+    } catch (e: any) {
+      alert("Edit failed: " + e.message);
     } finally {
-      setSending(false);
+      setBusy(false);
     }
   }
 
-  if (!sessionId) return <p className="text-sm text-gray-400 p-4">Select or start a research session to chat.</p>;
-
   return (
-    <div className="flex flex-col h-full bg-slate-950/40 border-l border-slate-800/80">
-      <div className="flex-1 overflow-y-auto p-3">
-        {!loaded ? (
-          <p className="text-xs text-slate-400">Loading...</p>
-        ) : msgs.length === 0 ? (
-          <p className="text-xs text-slate-400">No chat history. Ask a question about the research.</p>
-        ) : (
-          msgs.map(m => (
-            <div key={m.id} className={`mb-2 text-xs ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-              <div className={`inline-block max-w-[90%] px-2.5 py-1.5 border text-left leading-relaxed rounded-lg shadow-sm
-                ${m.role === 'user'
-                  ? 'bg-emerald-500/10 border-emerald-400/60 text-emerald-100'
-                  : 'bg-slate-900/80 border-slate-700 text-slate-100'}`}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-              </div>
-            </div>
-          ))
-        )}
-        <div ref={bottomRef} />
+    <div className="group relative border-b border-slate-800/60 pb-8 mb-8 last:border-0 last:mb-0">
+      <div className="prose-research mb-4">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
       </div>
-      <div className="border-t border-slate-800/80 p-2 flex gap-2 bg-slate-950/80">
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }}
-          placeholder="Ask AI about this research..."
-          rows={2}
-          className="flex-1 input-field px-2 py-1.5 text-sm resize-none"
-        />
-        <button
-          onClick={sendMsg}
-          disabled={sending || !input.trim()}
-          className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40 whitespace-nowrap self-end"
-        >
-          {sending ? '...' : 'Send'}
-        </button>
+
+      <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+        {!editing ? (
+          <button 
+            onClick={() => setEditing(true)}
+            className="text-[10px] bg-slate-900 border border-slate-700 px-2 py-1 rounded hover:bg-slate-800 text-slate-300"
+          >
+            Edit with AI
+          </button>
+        ) : (
+          <div className="w-full bg-slate-900/80 border border-emerald-500/30 p-3 rounded-lg mt-2">
+            <p className="text-[10px] text-emerald-400 mb-2 font-mono uppercase tracking-wider">AI Edit Instruction</p>
+            <textarea
+              value={instruction}
+              onChange={e => setInstruction(e.target.value)}
+              placeholder="e.g., 'Make this section more technical' or 'Add a table about...'"
+              className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-xs text-slate-200 mb-2 focus:border-emerald-500/50 outline-none"
+              rows={2}
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setEditing(false)} className="text-[10px] text-slate-400 hover:text-slate-200">Cancel</button>
+              <button 
+                onClick={handleEdit} 
+                className="btn-primary px-3 py-1 text-[10px]"
+                disabled={busy || !instruction.trim()}
+              >
+                {busy ? 'Processing...' : 'Refine Section'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -275,6 +275,7 @@ export default function WorkspacePage() {
   const [feedEvents, setFeedEvents] = useState<ResearchEvent[]>([]);
   const [resultJson, setResultJson] = useState<ResearchResult | null>(null);
   const [reportMd, setReportMd] = useState('');
+  const [sections_data, setSectionsData] = useState<any[]>([]);
   const feedRef = useRef<HTMLDivElement>(null);
   const chatLogRef = useRef<HTMLDivElement>(null);
 
@@ -305,8 +306,8 @@ export default function WorkspacePage() {
 
   // ─── Add message to chat ────────────────────────────────────────────────────
 
-  function addMsg(text: string, role: MsgRole) {
-    setMsgs(prev => [...prev, { id: crypto.randomUUID(), role, text, ts: Date.now() }]);
+  function addMsg(text: string, role: MsgRole, id?: string) {
+    setMsgs(prev => [...prev, { id: id || crypto.randomUUID(), role, text, ts: Date.now() }]);
   }
 
   // ─── Clear right panels ──────────────────────────────────────────────────────
@@ -315,6 +316,7 @@ export default function WorkspacePage() {
     setFeedEvents([]);
     setResultJson(null);
     setReportMd('');
+    setSectionsData([]);
   }
 
   // ─── Load a previous session ─────────────────────────────────────────────────
@@ -339,6 +341,12 @@ export default function WorkspacePage() {
         if (full.report_markdown) setReportMd(full.report_markdown);
         setStatusText('✓ Completed');
 
+        // Load granular sections
+        try {
+          const sres = await wsApi.getSections(wsId, s.id);
+          setSectionsData(sres.sections || []);
+        } catch { /* ignore */ }
+
         // Load event history
         try {
           const evts = await eventsApi.list(s.id);
@@ -349,10 +357,29 @@ export default function WorkspacePage() {
       } else if (full.status === 'running' || full.status === 'queued') {
         addMsg('This research is still running. Reconnecting to live updates...', 'system');
         setStatusText('Running...');
+        
+        // Load existing chat history if any
+        try {
+          const ch = await chatApi.history(s.id);
+          if (ch.messages && ch.messages.length > 0) {
+            ch.messages.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'bot', String(m.id)));
+          }
+        } catch { /* ignore */ }
+
         await pollResearch(s.id);
       } else if (full.status === 'failed') {
         addMsg('This research session failed.', 'bot');
         setStatusText('Failed');
+      }
+
+      // Always load chat history if available
+      if (full.status === 'completed') {
+        try {
+          const ch = await chatApi.history(s.id);
+          if (ch.messages && ch.messages.length > 0) {
+            ch.messages.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'bot', String(m.id)));
+          }
+        } catch { /* ignore */ }
       }
     } catch (e: unknown) {
       addMsg('Error loading session: ' + (e instanceof Error ? e.message : 'Unknown'), 'bot');
@@ -391,7 +418,7 @@ export default function WorkspacePage() {
   // ─── Poll research status ────────────────────────────────────────────────────
 
   async function pollResearch(sid: number) {
-    if (running) return; // Prevent double polling
+    if (running) return; 
     setRunning(true);
     abortRef.current = false;
     setAbort(false);
@@ -400,43 +427,58 @@ export default function WorkspacePage() {
     setTab('feed');
 
     let lastStage = '';
+    let consecutiveErrors = 0;
+
     try {
-      for (let i = 0; i < 150; i++) {
+      for (let i = 0; i < 200; i++) {
         if (abortRef.current) break;
         await sleep(4000);
         if (abortRef.current) break;
 
         try {
           const s = await wsApi.getResearchStatus(wsId, sid);
+          consecutiveErrors = 0; // Reset on success
+
           if (s.current_stage && s.current_stage !== lastStage) {
             lastStage = s.current_stage;
             setStatusText(lastStage);
           }
           
           if (s.status === 'completed') {
-            addMsg(s.report_markdown || 'Research completed. See Report tab.', 'bot');
+            const report = s.report_markdown || 'Research completed. See Report tab.';
+            addMsg(report, 'bot');
             if (s.result_json) setResultJson(s.result_json);
             if (s.report_markdown) setReportMd(s.report_markdown);
             setStatusText('✓ Completed');
+            
+            // Fetch sections
+            try {
+              const sres = await wsApi.getSections(wsId, sid);
+              setSectionsData(sres.sections || []);
+            } catch { /* ignore */ }
+
             setTab('report');
             break;
           }
           
           if (s.status === 'waiting') {
             setStatusText('Waiting for Topic Selection');
-            // Check if we have suggestions to show
-            if (s.result_json?.topic_suggestions) {
-              setResultJson(s.result_json);
-            }
-            break; // Stop status polling, wait for user action
+            if (s.result_json?.topic_suggestions) setResultJson(s.result_json);
+            break; 
           }
 
           if (s.status === 'failed') {
-            addMsg('Research failed.', 'bot');
+            addMsg('Research failed. Please check the logs or try again.', 'bot');
             setStatusText('Failed');
             break;
           }
-        } catch { /* ignore polling error */ }
+        } catch (err) { 
+          consecutiveErrors++;
+          if (consecutiveErrors > 5) {
+            addMsg('Connection lost. Please refresh the page.', 'system');
+            break;
+          }
+        }
       }
     } finally {
       stopEventPolling();
@@ -451,23 +493,21 @@ export default function WorkspacePage() {
     clearPanels();
     setStatusText('Submitting...');
     setTab('feed');
-
+    setTab('feed');
+    setRunning(true);
+    setStatusText('Analyzing intent...');
     const processingMsgId = crypto.randomUUID();
-    setMsgs(prev => [...prev, {
-      id: processingMsgId,
-      role: 'system' as MsgRole,
-      text: '⏳ Sending to AI...',
-      ts: Date.now(),
-    }]);
+    addMsg('Analyzing query...', 'bot', processingMsgId);
 
     try {
-      const res = await wsApi.startResearch(wsId, topic, depth);
-
+      const res = await wsApi.startResearch(wsId, topic, depth, curSession?.id);
+      
       // ── Backend detected a non-research intent (greeting, help, etc.) ──
       if (res.instant_reply) {
         setMsgs(prev => prev.filter(m => m.id !== processingMsgId));
         addMsg(res.instant_reply!, 'bot');
         setStatusText('');
+        setRunning(false);
         return;
       }
 
@@ -517,7 +557,44 @@ export default function WorkspacePage() {
       return;
     }
 
-    // All messages go to backend — it decides: instant reply or research job
+    // If a session is active and NOT a slash command, it's a chat message
+    if (curSession && curSession.status === 'completed' && !slash) {
+      addMsg('Thinking...', 'bot', 'thinking-' + q.length);
+      try {
+        const res = await chatApi.send(curSession.id, q);
+        setMsgs(prev => prev.filter(m => m.id !== 'thinking-' + q.length));
+        
+        // Add message with sources
+        setMsgs(prev => [...prev, { 
+          id: res.message_id || crypto.randomUUID(), 
+          role: 'bot', 
+          text: res.reply, 
+          ts: Date.now(),
+          sources: res.sources,
+          search_mode: res.search_mode as any
+        }]);
+
+        // Integrate chat sources into Sources Panel
+        if (res.sources && res.sources.length > 0) {
+          setResultJson(prev => {
+            const next = prev ? { ...prev } : {};
+            const findings = next.findings || {};
+            findings.chat_sources = {
+              agent: 'chatbot',
+              response: { sources: res.sources }
+            };
+            next.findings = findings;
+            return next as any;
+          });
+        }
+      } catch (e: any) {
+        setMsgs(prev => prev.filter(m => m.id !== 'thinking-' + q.length));
+        addMsg('Chat Error: ' + e.message, 'bot');
+      }
+      return;
+    }
+
+    // All other messages go to backend — it decides: instant reply or research job
     await dispatchResearch(q, 'standard');
   }
 
@@ -545,7 +622,6 @@ export default function WorkspacePage() {
     { id: 'sources', label: 'Sources' },
     { id: 'report', label: 'Report' },
     { id: 'raw', label: 'Raw Data' },
-    { id: 'chat', label: 'AI Chat' },
   ];
 
   const findings = resultJson?.final_state?.findings || resultJson?.findings || {};
@@ -715,9 +791,58 @@ export default function WorkspacePage() {
 
             {/* Report */}
             {tab === 'report' && (
-              reportMd
-                ? <div className="prose-research"><ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd}</ReactMarkdown></div>
-                : <p className="text-sm text-slate-400">Report appears after research completes.</p>
+              <div className="space-y-6">
+                {findings.visualization?.echarts_config && (
+                  <PremiumCharts 
+                    config={findings.visualization.echarts_config} 
+                    title="Data Analysis & Patterns" 
+                    description={findings.visualization.description}
+                  />
+                )}
+                
+                {sections_data.length > 0 ? (
+                  <div className="report-sections-container">
+                    {sections_data.map(sec => (
+                      <SectionEditor 
+                        key={sec.id} 
+                        section={sec} 
+                        wsId={wsId} 
+                        onUpdate={() => {
+                          // Refresh sections and main report markdown
+                          wsApi.getSections(wsId, curSession!.id).then(res => setSectionsData(res.sections));
+                          wsApi.getResearchStatus(wsId, curSession!.id).then(res => setReportMd(res.report_markdown || ''));
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : reportMd ? (
+                  <div className="prose-research">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-400">Report appears after research completes.</p>
+                )}
+
+                {findings.visualization?.images_metadata && findings.visualization.images_metadata.length > 0 && (
+                  <div className="mt-8 pt-8 border-t border-slate-800/80">
+                    <h3 className="text-lg font-bold text-slate-100 mb-4 italic underline decoration-emerald-500/30">Visual Intelligence Gallery</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {findings.visualization.images_metadata.map((img: any, i: number) => (
+                        <div key={i} className="group relative rounded-xl overflow-hidden border border-slate-800 bg-slate-900/40 hover:border-emerald-500/40 transition-all">
+                          <img 
+                            src={img.original} 
+                            alt={`Insight ${i+1}`}
+                            className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
+                          />
+                          <div className="p-2 bg-slate-950/80 text-[10px] text-slate-400 truncate backdrop-blur-sm">
+                            Source: {new URL(img.original).hostname}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Raw Data */}
@@ -743,12 +868,6 @@ export default function WorkspacePage() {
                 )
             )}
 
-            {/* AI Chat */}
-            {tab === 'chat' && (
-              <div className="h-full -m-4">
-                <AiChatPanel sessionId={curSession?.id ?? null} />
-              </div>
-            )}
           </div>
         </div>
       </div>

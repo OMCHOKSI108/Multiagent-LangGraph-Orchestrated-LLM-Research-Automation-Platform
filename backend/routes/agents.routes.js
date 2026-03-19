@@ -86,7 +86,7 @@ router.post('/providers/test', async (req, res) => {
         
         const response = await axios.post(`${AI_ENGINE_URL}/providers/test`, null, {
             params: { provider, query },
-            timeout: 30000
+            timeout: 60000
         });
 
         res.json(response.data);

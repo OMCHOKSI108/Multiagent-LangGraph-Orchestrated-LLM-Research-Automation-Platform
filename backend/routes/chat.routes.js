@@ -4,14 +4,12 @@ const db = require('../config/db');
 const axios = require('axios');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
+const sessionKeyAuth = require('../middleware/sessionKeyAuth');
 const auth = require('../middleware/auth');
-const jwt = require('jsonwebtoken');
-
-const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 
 /**
- * Fetch RAG context from workspace vector store.
- * Returns a string of relevant chunks for the given query.
+ * Enhanced fetch RAG context from workspace vector store.
  */
 async function fetchVectorContext(workspaceId, query) {
     if (!workspaceId) return '';
@@ -19,8 +17,8 @@ async function fetchVectorContext(workspaceId, query) {
         const resp = await axios.post(`${AI_ENGINE_URL}/vectorstore/search`, {
             workspace_id: workspaceId,
             query: query,
-            top_k: 5
-        }, { timeout: 5000 });
+            top_k: 8 // Increased for better depth
+        }, { timeout: 8000 });
         const results = resp.data?.results || [];
         if (results.length === 0) return '';
         return results.map((r, i) =>
@@ -33,70 +31,14 @@ async function fetchVectorContext(workspaceId, query) {
 }
 
 /**
- * Resolve workspace_id for a research_id by checking research_sessions.
+ * Unified request authenticator - handles JWT and API Key.
  */
-async function resolveWorkspaceId(researchId) {
-    try {
-        const result = await db.query(
-            'SELECT workspace_id FROM research_sessions WHERE id = $1',
-            [researchId]
-        );
-        if (result.rows.length > 0) return result.rows[0].workspace_id;
-    } catch (e) { /* table may not exist */ }
-    return null;
-}
-
-function getAuthTokenFromRequest(req) {
-    let token = req.header('x-auth-token');
-    if (!token) {
-        const authHeader = req.header('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring(7);
-        }
+async function authenticateRequest(req, res, next) {
+    const token = req.header('x-auth-token') || req.header('Authorization');
+    if (token) {
+        return auth(req, res, next);
     }
-    return token;
-}
-
-async function resolveRequesterUserId(req) {
-    const { api_key } = req.body || {};
-
-    if (api_key) {
-        const keyCheck = await db.query("SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE", [api_key]);
-        if (keyCheck.rows.length === 0) {
-            const err = new Error('Invalid API Key');
-            err.statusCode = 403;
-            throw err;
-        }
-        return keyCheck.rows[0].user_id;
-    }
-
-    const token = getAuthTokenFromRequest(req);
-    if (!token) {
-        const err = new Error('API Key or auth token required');
-        err.statusCode = 401;
-        throw err;
-    }
-
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-        const err = new Error('Authentication is not configured');
-        err.statusCode = 500;
-        throw err;
-    }
-
-    try {
-        const decoded = jwt.verify(token, jwtSecret);
-        if (!decoded || !decoded.id) {
-            const err = new Error('Token is not valid');
-            err.statusCode = 401;
-            throw err;
-        }
-        return decoded.id;
-    } catch (e) {
-        const err = new Error('Token is not valid');
-        err.statusCode = 401;
-        throw err;
-    }
+    return apiKeyAuth(req, res, next);
 }
 
 async function getResearchContextForUser(researchId, userId) {
@@ -125,22 +67,19 @@ async function getResearchContextForUser(researchId, userId) {
 }
 
 // Send Message to Chatbot
-// Input: { research_id, message, api_key, session_id (optional) }
-router.post('/message', async (req, res) => {
+// Input: { research_id, message, session_id (optional) }
+router.post('/message', authenticateRequest, async (req, res) => {
     try {
         const { research_id, message } = req.body;
         let { session_id } = req.body;
+        const user_id = req.user.id;
 
         if (!research_id || !message) return res.status(400).json({ error: "Research ID and Message required" });
-
-        // 1. Resolve requester from API key OR JWT token
-        const user_id = await resolveRequesterUserId(req);
 
         // 2. Fetch Research Context — supports both legacy and workspace flow
         const researchRow = await getResearchContextForUser(research_id, user_id);
 
         if (!researchRow) return res.status(404).json({ error: "Research not found" });
-        if (researchRow.user_id !== user_id) return res.status(403).json({ error: "Unauthorized access to this research" });
 
         const context = researchRow.result_json || {};
 
@@ -209,21 +148,18 @@ router.post('/message', async (req, res) => {
 });
 
 // Streaming Chat via SSE
-// Input: { research_id, message, api_key, session_id (optional) }
-router.post('/stream', async (req, res) => {
+// Input: { research_id, message, session_id (optional) }
+router.post('/stream', authenticateRequest, async (req, res) => {
     try {
         const { research_id, message } = req.body;
         let { session_id } = req.body;
+        const user_id = req.user.id;
 
         if (!research_id || !message) return res.status(400).json({ error: "Research ID and Message required" });
-
-        // 1. Resolve requester from API key OR JWT token
-        const user_id = await resolveRequesterUserId(req);
 
         // 2. Fetch Research Context — supports both legacy and workspace flow
         const researchRow = await getResearchContextForUser(research_id, user_id);
         if (!researchRow) return res.status(404).json({ error: "Research not found" });
-        if (researchRow.user_id !== user_id) return res.status(403).json({ error: "Unauthorized access" });
 
         const context = researchRow.result_json || {};
 
@@ -338,7 +274,7 @@ router.post('/stream', async (req, res) => {
 });
 
 // Get Chat History
-router.get('/history/:session_id', auth, async (req, res) => {
+router.get('/history/:session_id', authenticateRequest, async (req, res) => {
     try {
         const { session_id } = req.params;
         const userId = req.user?.id;
@@ -360,6 +296,83 @@ router.get('/history/:session_id', auth, async (req, res) => {
         res.json({ messages });
     } catch (err) {
         logger.error(err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+/**
+ * @route   POST /api/chat/fast
+ * @desc    Fast high-speed chat for general queries (Conversational Mode)
+ * @access  Private (JWT or API Key)
+ */
+router.post('/fast', authenticateRequest, async (req, res) => {
+    try {
+        const { message } = req.body;
+        let { session_id } = req.body;
+        const user_id = req.user.id;
+
+        if (!message) return res.status(400).json({ error: "Message required" });
+
+        // 1. Setup Session
+        if (!session_id) session_id = uuidv4();
+
+        // 2. Fetch recent history for context
+        const historyResult = await db.query(
+            "SELECT role, message as content FROM chat_history WHERE session_id = $1 ORDER BY created_at DESC LIMIT 10",
+            [session_id]
+        );
+        const history = historyResult.rows.reverse();
+
+        // 3. Save User Message
+        await db.query(
+            "INSERT INTO chat_history (session_id, user_id, role, message) VALUES ($1, $2, $3, $4)",
+            [session_id, user_id, 'user', message]
+        );
+
+        // 4. Call Python AI Engine fast-chat
+        logger.info(`[FastChat] Sending message to AI for Session ${session_id}`);
+        try {
+            const aiResponse = await axios.post(`${AI_ENGINE_URL}/chatbot/fast-chat`, {
+                query: message,
+                history: history,
+                context: "" // General chat
+            }, {
+                headers: {
+                    'X-API-Key': process.env.AI_ENGINE_SECRET || ""
+                },
+                timeout: 65000 
+            });
+
+            const payload = aiResponse?.data || {};
+            const replyText = payload?.response || payload?.reply || payload;
+            const sources = payload?.sources || [];
+            const searchMode = payload?.search_mode || 'direct';
+
+            if (!replyText || typeof replyText !== 'string') {
+                throw new Error("Invalid response from AI Engine");
+            }
+
+            // 5. Save Bot Response
+            await db.query(
+                "INSERT INTO chat_history (session_id, user_id, role, message) VALUES ($1, $2, $3, $4)",
+                [session_id, user_id, 'assistant', replyText]
+            );
+
+            res.json({
+                session_id,
+                reply: replyText,
+                agent: "ConversationalAgent",
+                sources: sources,
+                search_mode: searchMode
+            });
+
+        } catch (aiErr) {
+            logger.error(`[FastChat] AI Error: ${aiErr.message}`);
+            res.status(502).json({ error: "Conversational Service Unavailable" });
+        }
+
+    } catch (err) {
+        logger.error(`[FastChat] Route error: ${err.message}`);
         res.status(500).json({ error: "Server error" });
     }
 });

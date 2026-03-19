@@ -6,12 +6,15 @@ langchain>=0.2
 langchain-core
 langchain-community
 langgraph>=0.1
+langgraph-checkpoint-sqlite
 langchain-google-genai
 langchain-groq
 langchain-huggingface
 langchain-ollama
 langchain-openai
 ollama
+nest_asyncio
+httpx
 requests>=2.31
 beautifulsoup4>=4.12
 duckduckgo-search
@@ -28,6 +31,7 @@ scikit-learn
 numpy
 chromadb>=0.4
 langchain-text-splitters
+python-docx
 
 # =========================
 # Diffusion & Vision

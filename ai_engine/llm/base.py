@@ -72,6 +72,46 @@ class LLMProvider(ABC):
         """
         return ""
 
+    def invoke_with_retry(self, messages: list) -> Any:
+        """
+        Synchronous LLM invocation with retry logic for rate limits.
+        """
+        import time
+        max_retries = 3
+        backoff = 1.0
+
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                llm = self.get_langchain_llm()
+                return llm.invoke(messages)
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = (
+                    "429" in error_str
+                    or "rate_limit" in error_str
+                    or "rate limit" in error_str
+                    or "too many requests" in error_str
+                    or "quota" in error_str
+                )
+
+                if is_rate_limit:
+                    logger.warning(
+                        f"[{self.provider_name}] Rate limit hit. "
+                        f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s."
+                    )
+                    self.rotate_key()
+                    time.sleep(backoff)
+                    backoff *= 2.0
+                    last_exception = e
+                    continue
+                else:
+                    raise e
+
+        logger.error(f"[{self.provider_name}] All {max_retries} sync retry attempts exhausted.")
+        raise last_exception or RuntimeError(f"All {self.provider_name} sync API retries exhausted")
+
     async def ainvoke_with_retry(self, messages: list) -> Any:
         """
         Asynchronous version of invoke_with_retry.

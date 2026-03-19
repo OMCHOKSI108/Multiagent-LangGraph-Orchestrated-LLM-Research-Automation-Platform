@@ -130,15 +130,24 @@ export const workspaces = {
 
   delete: (id: string) => req<{ message: string }>('DELETE', `/workspaces/${id}`),
 
-  startResearch: (workspaceId: string, topic: string, depth: string) =>
-    req<{ session_id: number | null; message?: string; intent?: string; instant_reply?: string }>(
-      'POST',
-      `/workspaces/${workspaceId}/research/start`,
-      { topic, depth }
-    ),
+  startResearch: (wid: string, topic: string, depth: string, session_id?: number) =>
+    req<{ session_id: number; instant_reply?: string; message?: string }>('POST', `/workspaces/${wid}/research/start`, { 
+      topic, 
+      depth,
+      session_id
+    }),
 
   getResearchStatus: (workspaceId: string, sessionId: number) =>
     req<ResearchSession>('GET', `/workspaces/${workspaceId}/research/${sessionId}/status`),
+
+  getSections: (workspaceId: string, sessionId: number) =>
+    req<{ sections: any[] }>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/sections`),
+
+  editSection: (workspaceId: string, sessionId: number, sectionId: number, instruction: string) =>
+    req<{ message: string; new_content: string }>('POST', `/workspaces/${workspaceId}/sessions/${sessionId}/sections/${sectionId}/edit`, { instruction }),
+
+  getFullReport: (workspaceId: string, sessionId: number) =>
+    req<{ markdown: string }>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/full-report`),
 };
 
 // ─── Research (legacy direct API) ────────────────────────────────────────────
@@ -159,11 +168,32 @@ export interface TopicSuggestion {
   estimated_complexity: string;
 }
 
+export interface ImageMetadata {
+  original: string;
+  thumbnail: string;
+  description?: string;
+  source_url?: string;
+  title?: string;
+}
+
 export interface AgentFinding {
-  response?: unknown;
+  response?: Record<string, any> | string;
   raw?: string;
   agent?: string;
   execution_time?: number;
+  echarts_config?: Record<string, any>; // Complex ECharts object
+  description?: string;
+  images_metadata?: ImageMetadata[];
+}
+
+export interface ResearchSection {
+  id: number;
+  research_id: number;
+  title: string;
+  content: string;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export const research = {
@@ -176,9 +206,10 @@ export interface ResearchEvent {
   id: number;
   message: string;
   stage?: string;
-  severity?: string;
+  severity?: 'info' | 'warning' | 'error';
   created_at: string;
   category?: string;
+  details?: Record<string, any>;
 }
 
 export const events = {
@@ -191,19 +222,30 @@ export const events = {
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
+export interface ChatSource {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
 export interface ChatMessage {
-  id: number;
+  id: number | string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;
+  sources?: ChatSource[];
+  search_mode?: 'direct' | 'search' | 'keyword';
 }
 
 export const chat = {
   send: (research_id: number, message: string) =>
-    req<{ reply: string; message_id?: number }>('POST', '/chat/message', {
+    req<{ reply: string; sources?: ChatSource[]; search_mode?: string; message_id?: number }>('POST', '/chat/message', {
       research_id,
       message,
     }),
+
+  fast: (message: string, history: ChatMessage[]) =>
+    req<{ reply: string; sources?: ChatSource[]; search_mode?: string }>('POST', '/chat/fast', { message, history }),
 
   history: (session_id: number) =>
     req<{ messages: ChatMessage[] }>('GET', `/chat/history/${session_id}`),

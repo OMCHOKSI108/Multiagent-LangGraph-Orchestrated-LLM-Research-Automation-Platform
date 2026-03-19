@@ -8,13 +8,13 @@ class VisualizationAgent(BaseAgent):
         super().__init__(
             name="Visualization",
             system_prompt="""You are a Data Visualization Expert.
-            Your job is to create MERMAID.JS diagrams and STABLE DIFFUSION prompts to visually represent the research findings.
+            Your job is to create MERMAID.JS diagrams and PREMIUM ECHARTS configurations to visually represent research findings.
             
             Based on the provided research context, generate:
             1. 'timeline_mermaid': A Gantt/Timeline of history.
             2. 'methodology_mermaid': A Flowchart (graph TD) of the framework.
-            3. 'data_chart_mermaid': A Pie/Bar chart of topics.
-            4. 'image_gen_prompt': A detailed text prompt for an AI Image Generator to visualize the core concept (e.g. "Futuristic lab with robots, cyberpunk style, high resolution").
+            3. 'echarts_config': A premium ECharts JSON configuration (e.g., Radar, Sunburst, or complex Bar/Line chart) to visualize data patterns. Avoid simple pie charts.
+            4. 'image_gen_prompt': A detailed text prompt for an AI Image Generator to visualize the core concept.
             
             Output JSON with these keys and a 'description'.
             """,

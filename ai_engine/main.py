@@ -595,6 +595,7 @@ async def test_agent(agent_slug: str, request: AgentTestRequest):
         state = {
             "task": request.task,
             "options": request.options,
+            "history": request.history, # Pass history from the request
             "_job_id": "test",
             "findings": {}
         }
@@ -795,8 +796,6 @@ async def run_research(request: ResearchRequest):
                         embedded_count += count
 
                 logger.info(f"[Job #{job_id}] Embedded {embedded_count} chunks into vector store")
-            except ImportError:
-                logger.info(f"[Job #{job_id}] chromadb not installed — skipping vector embedding")
             except Exception as e:
                 logger.error(f"[Job #{job_id}] Vector embedding failed (non-fatal): {e}")
 
@@ -822,6 +821,165 @@ async def run_research(request: ResearchRequest):
         logger.error(f"[Job #{job_id}] Research failed: {str(e)}")
         if research_id:
             emit_event("failed", f"Pipeline failed: {str(e)}", severity="error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chatbot/fast-chat")
+async def chatbot_fast_chat(request: Dict[str, Any]):
+    """
+    ⚡ **Chatbot Fast Chat (Backend Compatible)**
+    
+    Smart routing: uses QueryPlanner to decide if web search is needed.
+    Returns sources alongside the response for right-panel display.
+    """
+    from agents.registry import AGENTS
+    from utils.search_service import SearchService
+    
+    query = request.get("query", "") or request.get("task", "")
+    history = request.get("history", [])
+    context = request.get("context", "")
+    
+    if not query:
+        raise HTTPException(status_code=400, detail="Query or task is required")
+        
+    try:
+        # 1. PLAN: Decide if we need search (with robust fallback)
+        mode = "direct"
+        search_terms = [query]
+        
+        try:
+            planner = AGENTS.get("query_planner")
+            if planner:
+                plan_result = await planner.arun({"task": query})
+                plan = plan_result.get("response", {})
+                if isinstance(plan, dict):
+                    mode = plan.get("mode", "direct")
+                    search_terms = plan.get("search_terms", [query])
+        except Exception as plan_err:
+            logger.warning(f"[FastChat] Planner failed, using keyword fallback: {plan_err}")
+            # Keyword-based fallback when planner LLM fails
+            q_lower = query.lower()
+            search_keywords = {"how many", "latest", "current", "recent", "today", "news",
+                               "what is", "who is", "where is", "when did", "price of",
+                               "top ", "best ", "list of", "nuclear", "countries", "2024", "2025", "2026"}
+            if any(kw in q_lower for kw in search_keywords):
+                mode = "search"
+        
+        # 2. SEARCH (if needed)
+        search_context = ""
+        sources = []
+        if mode == "search":
+            logger.info(f"[FastChat] Smart search triggered for: {search_terms}")
+            try:
+                search_svc = SearchService()
+                search_results = await search_svc.search(query=search_terms[0] if search_terms else query, max_results=5)
+                results = search_results.get("results", [])
+                
+                for r in results:
+                    sources.append({
+                        "title": r.get("title", ""),
+                        "url": r.get("url", ""),
+                        "description": r.get("description", ""),
+                        "favicon": r.get("favicon", ""),
+                        "source": r.get("source", "web"),
+                    })
+                
+                search_context = "\n".join([
+                    f"[Source: {r['title']}] ({r.get('url','')})\n{r['description']}" 
+                    for r in results
+                ])
+                logger.info(f"[FastChat] Found {len(results)} search results")
+            except Exception as search_err:
+                logger.warning(f"[FastChat] Search failed: {search_err}")
+        
+        # 3. RESPOND with ConversationalAgent
+        agent = AGENTS.get("conversational")
+        combined_context = f"{context}\n\n--- Web Search Results ---\n{search_context}" if search_context else context
+        
+        state = {
+            "task": query,
+            "history": history,
+            "fast_context": combined_context
+        }
+        
+        result = await agent.arun(state)
+        
+        # 4. Attach sources to response for frontend right-panel
+        if isinstance(result, dict):
+            result["sources"] = sources
+            result["search_mode"] = mode
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Chatbot fast chat failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/research/fast-chat", tags=["Research"], dependencies=[Depends(verify_internal_key)])
+async def fast_chat(request: ResearchRequest):
+    """
+    ⚡ **Fast Conversational Q&A**
+
+    Provides immediate, high-quality answers using a single agent and multi-source
+    context retrieval without triggering the full research pipeline.
+    """
+    from agents.registry import AGENTS
+
+    agent = AGENTS.get("conversational")
+    if not agent:
+        raise HTTPException(status_code=404, detail="Conversational agent not found")
+
+    # Prepare basic context (can be expanded with vector search results)
+    state = {
+        "task": request.task,
+        "fast_context": "Direct conversational request.",
+        "findings": request.findings or {}
+    }
+
+    try:
+        # Run in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            executor,
+            lambda: agent.run(state)
+        )
+        return {"status": "success", "response": result.get("refined_content") or result.get("response")}
+    except Exception as e:
+        logger.error(f"Fast-chat failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/research/edit-section", tags=["Research"], dependencies=[Depends(verify_internal_key)])
+async def edit_section(request: Dict[str, Any]):
+    """
+    🖋️ **Gridded Document Editing**
+    
+    Edits a specific section of a report based on natural language instructions.
+    """
+    from agents.registry import AGENTS
+    
+    agent = AGENTS.get("editor")
+    if not agent:
+        raise HTTPException(status_code=404, detail="Editor agent not found")
+        
+    # Prepare state for editor
+    state = {
+        "section_title": request.get("section_title"),
+        "current_content": request.get("current_content"),
+        "instruction": request.get("instruction"),
+        "context": request.get("context", {})
+    }
+    
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            executor,
+            lambda: agent.run(state)
+        )
+        return {"status": "success", "refined_content": result.get("refined_content")}
+    except Exception as e:
+        logger.error(f"Section edit failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================

@@ -74,9 +74,11 @@ services:
       - "8000:8000"
 
     volumes:
+      - ./ai_engine:/app
       - ai_output:/output
       - ai_logs:/app/logs
       - ai_cache:/app/cache
+    command: ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"]
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
@@ -115,11 +117,13 @@ services:
 
       # PERFORMANCE
       QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-4}
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-300000}
 
       # CORS
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,10 +131,8 @@ services:
         condition: service_healthy
       ai_engine:
         condition: service_healthy
-
     ports:
       - "5000:5000"
-
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/api/health', r => process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 15s
@@ -147,6 +149,7 @@ services:
     environment:
       NODE_ENV: production
       AI_ENGINE_URL: http://ai_engine:8000
+      AI_ENGINE_SECRET: ${AI_ENGINE_SECRET}
       REDIS_URL: redis://redis:6379/0
 
       DB_HOST: postgres
@@ -155,8 +158,10 @@ services:
       DB_USER: ${DB_USER:-research}
       DB_PASSWORD: ${DB_PASSWORD:-research_password}
 
-      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
-
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-300000}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy

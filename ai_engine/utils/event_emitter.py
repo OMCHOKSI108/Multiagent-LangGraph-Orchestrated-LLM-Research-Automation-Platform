@@ -4,16 +4,43 @@ Event Emitter for Live Execution Transparency.
 Emits structured events to the Node.js backend for real-time streaming.
 """
 import os
-import requests
+import httpx
 import logging
 import uuid
+import asyncio
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 logger = logging.getLogger("ai_engine.events")
 
 # Backend URL for event submission
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:5000")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:5000/api")
+
+# Shared httpx client for efficiency
+_client = httpx.AsyncClient(timeout=5.0)
+
+async def _emit_async(url: str, payload: dict):
+    """Internal helper for async emission."""
+    try:
+        response = await _client.post(url, json=payload)
+        if response.status_code != 200:
+            logger.warning(f"[EventEmitter] Failed to emit (HTTP {response.status_code}): {response.text[:200]}")
+    except Exception as e:
+        logger.warning(f"[EventEmitter] Async emission failed: {e}")
+
+def _fire_and_forget(url: str, payload: dict):
+    """Helper to run async emission in a fire-and-forget manner from sync code."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(_emit_async(url, payload))
+        else:
+            asyncio.run(_emit_async(url, payload))
+    except RuntimeError:
+        # Fallback for threads without an event loop
+        new_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(new_loop)
+        new_loop.run_until_complete(_emit_async(url, payload))
 
 # Store current job context
 _current_job_id: Optional[int] = None
@@ -48,20 +75,11 @@ def emit_event(
     research_id: Optional[int] = None
 ):
     """
-    Emit an execution event to the backend.
-    
-    Args:
-        stage: Current execution stage
-        message: Human-readable message
-        severity: 'info', 'warn', 'error', 'success'
-        category: 'stage', 'source', 'agent', 'error'
-        details: Optional additional data
-        research_id: Override job ID if needed
+    Emit an execution event to the backend (Non-blocking).
     """
     job_id = research_id or _current_job_id
     
     if not job_id:
-        logger.debug(f"[EventEmitter] No job context, skipping event: {message}")
         return
     
     stage = _sanitize_text(stage, 80) or "unknown"
@@ -81,25 +99,7 @@ def emit_event(
         "details": details or {}
     }
     
-    try:
-        response = requests.post(
-            f"{BACKEND_URL}/events",
-            json=payload,
-            timeout=5  # Allow enough time for DB insert
-        )
-        if response.status_code != 200:
-            logger.warning(f"[EventEmitter] Failed to emit event (HTTP {response.status_code}): {response.text[:200]}")
-        else:
-            # Use INFO for user_action_required events so they always show in logs
-            if category == "user_action_required":
-                logger.info(f"[EventEmitter] Emitted user_action_required: {stage} - {message[:80]}")
-            else:
-                logger.debug(f"[EventEmitter] Emitted: {stage} - {message[:60]}")
-    except requests.ConnectionError as e:
-        logger.warning(f"[EventEmitter] Cannot reach backend at {BACKEND_URL}: {e}")
-    except Exception as e:
-        # Don't fail the pipeline if event emission fails
-        logger.warning(f"[EventEmitter] Could not emit event: {type(e).__name__}: {e}")
+    _fire_and_forget(f"{BACKEND_URL}/events", payload)
 
 def emit_source(
     source_type: str,
@@ -162,18 +162,7 @@ def emit_source(
         "citation_text": citation_text,
     }
 
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/events/source",
-            json=payload,
-            timeout=5
-        )
-        if resp.status_code != 200:
-            logger.warning(f"[EventEmitter] Source emit failed (HTTP {resp.status_code}): {resp.text[:200]}")
-    except requests.ConnectionError as e:
-        logger.warning(f"[EventEmitter] Cannot reach backend for source emit: {e}")
-    except requests.RequestException as e:
-        logger.warning(f"[EventEmitter] Source emit error: {e}")
+    _fire_and_forget(f"{BACKEND_URL}/events/source", payload)
 
 
 def emit_agent_start(agent_name: str, research_id: Optional[int] = None):

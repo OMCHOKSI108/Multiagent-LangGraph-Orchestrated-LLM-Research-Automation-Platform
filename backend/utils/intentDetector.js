@@ -25,6 +25,7 @@ const PATTERNS = {
   identity: /^(who\s+are\s+you|what\s+are\s+you|your\s+name|tell\s+me\s+about\s+you(rself)?|about\s+(you|this\s+(app|system|platform|assistant|bot))|what\s+is\s+this)\s*[!?.]*$/i,
   farewell: /^(bye+|goodbye|good\s*bye|see\s*ya|later|cya|take\s*care|farewell|exit|quit|adios)\s*[!?.]*$/i,
   smalltalk: /^(how\s+are\s+(you|things?)|you\s+ok|all\s+good|what'?s?\s*(new|going\s*on)|how'?s?\s+(it\s+going|life|things?)|nice\s+to\s+meet|good\s+to\s+be\s+here|i'?m\s+(back|here|ready)|are\s+you\s+(there|ready|awake|alive))\s*[!?.]*$/i,
+  general_query: /^(who|what|where|why|how|tell|show|explain|describe|define|is|was|are|does|can|tell\s+me\s+more\s+about|what's|everything\s+about|give\s+me|list|provide|show\s+me|find|search\s+for|can\s+you|please|I\s+want\s+to\s+know)\s+(.*)/i,
 };
 
 // ─── Response Templates ───────────────────────────────────────────────────────
@@ -137,6 +138,11 @@ function detectIntent(message, userName = 'there') {
   }
   if (PATTERNS.smalltalk.test(trimmed)) {
     return { intent: 'smalltalk', reply: smalltalkReply(name), isResearch: false };
+  }
+  if (PATTERNS.general_query.test(trimmed)) {
+    // general_query returns isResearch: false BUT reply: null 
+    // to signal the caller to use the fast-chat AI Engine route instead of a static reply
+    return { intent: 'general_query', reply: null, isResearch: false };
   }
 
   // Very short messages that don't match patterns — likely typos or casual

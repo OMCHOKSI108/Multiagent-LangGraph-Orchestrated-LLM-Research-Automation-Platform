@@ -144,4 +144,8 @@ AGENTS: Dict[str, Any] = {
     # IEEE Paper Generator — full academic paper + conversational editing
     "ieee_paper": _lazy(".report.ieee_paper", "IEEEPaperAgent",
                         model_name=config.MODEL_WRITING),
+
+    # ── Conversational & Fast Chat ──────────────────────────────────────────
+    "conversational": _lazy(".chatbot.conversational", "ConversationalAgent"),
+    "editor": _lazy(".report.editor", "EditorAgent"),
 }

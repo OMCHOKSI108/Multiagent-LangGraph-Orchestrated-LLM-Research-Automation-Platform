@@ -58,7 +58,7 @@ router.post('/scrape', async (req, res) => {
         const aiResponse = await axios.post(
             `${AI_ENGINE_URL}/scrape`,
             { url },
-            { headers: { 'X-API-Key': AI_ENGINE_SECRET }, timeout: 30000 }
+            { headers: { 'X-API-Key': AI_ENGINE_SECRET }, timeout: 60000 }
         );
         const scraped = aiResponse.data;
 

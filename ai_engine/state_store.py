@@ -24,6 +24,11 @@ _redis_client = None
 _redis_available = False
 STATE_TTL_SECONDS = 86400  # 24 hours
 
+
+def _key(session_id: int) -> str:
+    """Build a stable storage key for a research session state."""
+    return f"research:{int(session_id)}:state"
+
 def _init_redis():
     """Lazily initialize Redis connection."""
     global _redis_client, _redis_available

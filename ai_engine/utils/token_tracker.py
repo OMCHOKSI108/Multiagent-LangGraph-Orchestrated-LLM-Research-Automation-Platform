@@ -74,18 +74,24 @@ class TokenTracker:
                 self.usage_records = []
     
     def _save_to_disk(self):
-        """Persist usage data to disk"""
-        try:
-            os.makedirs(os.path.dirname(self.persist_path), exist_ok=True)
-            data = {
-                'last_updated': datetime.now(timezone.utc).isoformat(),
-                'records': [asdict(record) for record in self.usage_records]
-            }
-            with open(self.persist_path, 'w') as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"[TokenTracker] Warning: Could not save data: {e}")
-    
+        """Persist usage data to disk asynchronously in a background thread."""
+        def save():
+            try:
+                os.makedirs(os.path.dirname(self.persist_path), exist_ok=True)
+                with self._lock:
+                    data = {
+                        'last_updated': datetime.now(timezone.utc).isoformat(),
+                        'records': [asdict(record) for record in self.usage_records]
+                    }
+                with open(self.persist_path, 'w') as f:
+                    json.dump(data, f, indent=2)
+            except Exception as e:
+                print(f"[TokenTracker] Warning: Could not save data: {e}")
+        
+        # Start a one-off thread for saving. For extreme concurrency, 
+        # a dedicated worker thread with a queue would be better.
+        threading.Thread(target=save, daemon=True).start()
+
     def estimate_tokens(self, text: str) -> int:
         """Estimate token count (4 chars ≈ 1 token for English)"""
         return max(1, len(text) // 4)

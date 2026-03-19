@@ -70,7 +70,7 @@ async def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     agent = AGENTS.get(agent_key)
     job_id = state.get("_job_id", "?")
     
-    from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_stage_change, emit_error
+    from utils.event_emitter import emit_error
 
     if not agent:
         try:
@@ -85,19 +85,10 @@ async def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         logger.info(f"[Job #{job_id}] Running agent: {agent_key} (Async)")
         
-        emit_agent_start(agent.name, research_id=research_id)
-        
         start_time = __import__("time").time()
-        # USE ASYNC RUN
+        # USE ASYNC RUN (BaseAgent.arun handles self.run in executor)
         result = await agent.arun(state)
         elapsed = __import__("time").time() - start_time
-        elapsed_ms = int(elapsed * 1000)
-        
-        if isinstance(result, dict) and "error" in result:
-             emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
-             emit_error(f"Agent {agent.name} reported error: {result['error']}", research_id=research_id)
-        else:
-             emit_agent_complete(agent.name, elapsed_ms, success=True, research_id=research_id)
         
         findings_update = {}
         if isinstance(result, dict) and "response" in result:
@@ -115,18 +106,10 @@ async def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"[Job #{job_id}] Agent {agent_key} failed: {e}")
-        elapsed_ms = 0 
-        emit_agent_complete(agent.name, elapsed_ms, success=False, research_id=research_id)
-        
         error_msg = str(e)
-        if "ECONNREFUSED" in error_msg:
-             safe_error = "Connection failed to internal service. Retrying..."
-        else:
-             safe_error = f"Internal Error: {type(e).__name__}"
-
         emit_error(error_msg, research_id=research_id)
         
-        history_update = [f"{agent.name}: FAILED - {safe_error}"]
+        history_update = [f"{agent.name}: FAILED - {type(e).__name__}"]
         return {"history": history_update}
 
 
@@ -255,12 +238,13 @@ def topic_gate(state):
     if state.get("topic_locked"):
         return "orchestrator"
     else:
-        # Topic not locked - loop back (in practice, this waits for user input)
-        return "topic_discovery"
+        # Topic not locked - END the graph and wait for user selection
+        return END
 
 workflow.add_conditional_edges("topic_lock", topic_gate, {
     "orchestrator": "orchestrator",
-    "topic_discovery": "topic_discovery"
+    "topic_discovery": "topic_discovery",
+    END: END
 })
 
 def route_strategy(state):

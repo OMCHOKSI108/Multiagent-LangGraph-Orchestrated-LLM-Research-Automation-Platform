@@ -8,6 +8,7 @@ const logger = require('./utils/logger');
 
 const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 const AI_ENGINE_SECRET = process.env.AI_ENGINE_SECRET || "";
+const { splitMarkdownIntoSections } = require('./utils/markdown');
 const STALE_JOB_TIMEOUT_MINUTES = 30;
 const MAX_RETRIES = 3;
 const AI_REQUEST_TIMEOUT_MS = parseInt(process.env.AI_REQUEST_TIMEOUT_MS || "1800000", 10);
@@ -23,14 +24,24 @@ const LEGACY_TABLE = 'research_logs';
 let useNewTable = false; // Will be detected on startup
 
 async function detectTable() {
-    try {
-        await db.query(`SELECT 1 FROM ${SESSIONS_TABLE} LIMIT 0`);
-        useNewTable = true;
-        logger.info(`[Worker] Using new '${SESSIONS_TABLE}' table`);
-    } catch {
-        useNewTable = false;
-        logger.info(`[Worker] Falling back to legacy '${LEGACY_TABLE}' table`);
+    let retries = 0;
+    const maxRetries = 10;
+    while (retries < maxRetries) {
+        try {
+            await db.query(`SELECT 1 FROM ${SESSIONS_TABLE} LIMIT 0`);
+            useNewTable = true;
+            logger.info(`[Worker] Using new '${SESSIONS_TABLE}' table`);
+            return;
+        } catch {
+            retries++;
+            if (retries < maxRetries) {
+                logger.warn(`[Worker] '${SESSIONS_TABLE}' not found, retrying... (${retries}/${maxRetries})`);
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
     }
+    useNewTable = false;
+    logger.info(`[Worker] Falling back to legacy '${LEGACY_TABLE}' table`);
 }
 
 function getTable() {
@@ -179,6 +190,28 @@ async function processQueue() {
                  WHERE id = $4`,
                 [status, finalResult, finalResult.report_markdown || "", job.id]
             );
+
+            // === NEW: Split and save report sections if status is completed ===
+            if (status === 'completed' && useNewTable) {
+                try {
+                    const sections = splitMarkdownIntoSections(finalResult.report_markdown || "");
+                    
+                    if (sections.length > 0) {
+                        logger.info(`[Worker] Splitting report into ${sections.length} sections for Job #${job.id}`);
+                        
+                        for (const section of sections) {
+                            await db.query(
+                                `INSERT INTO document_sections 
+                                 (session_id, section_title, content_markdown, section_order, section_type)
+                                 VALUES ($1, $2, $3, $4, $5)`,
+                                [job.id, section.title, section.content, section.order, 'general']
+                            );
+                        }
+                    }
+                } catch (splitErr) {
+                    logger.error(`[Worker] Failed to split report sections: ${splitErr.message}`);
+                }
+            }
 
             logger.info(`[Worker] Job #${job.id} marked as ${status}.`);
 

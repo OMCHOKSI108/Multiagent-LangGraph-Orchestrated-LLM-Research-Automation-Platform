@@ -1,3 +1,4 @@
+import asyncio
 from typing import Dict, Any, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -201,79 +202,21 @@ class BaseAgent:
 
     async def arun(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Asynchronous version of run().
-        Prevents blocking the FastAPI event loop during LLM inference.
+        Asynchronous entry point.
+        By default, it runs the synchronous run() in an executor.
+        Subclasses can override this for native async execution.
         """
-        job_id = state.get("_job_id", "?")
-        research_id = int(job_id) if str(job_id).isdigit() else None
-        
-        logger.info(f"[{self.name}] Job #{job_id} - Running (Async)...")
-        start_time = time.time()
-        
-        emit_agent_start(self.name, research_id=research_id)
-        
-        context = self._truncate_context(state, self.max_context_tokens)
-        input_signature = f"{self.system_prompt}:{self.model_name}:{context}"
-        input_hash = self._compute_hash(input_signature)
-        
-        cached_result = self._get_from_cache(input_hash)
-        if cached_result:
-            logger.info(f"[{self.name}] Cache HIT (Async).")
-            emit_agent_complete(self.name, 0, success=True, research_id=research_id)
-            return cached_result
-
-        messages = [
-            SystemMessage(content=self.system_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=context)
-        ]
-        
-        try:
-            # NON-BLOCKING ASYNC CALL
-            response = await self.llm.ainvoke(messages)
-            raw_content = response.content
-            
-            parsed_json = self._extract_json(raw_content)
-            
-            elapsed = time.time() - start_time
-            elapsed_ms = int(elapsed * 1000)
-            logger.info(f"[{self.name}] Job #{job_id} - Completed (Async) in {elapsed:.2f}s")
-            
-            output_hash = self._compute_hash(raw_content)
-
-            try:
-                track_agent_usage(
-                    agent_name=self.name,
-                    model_name=self.model_name,
-                    prompt_text=context,
-                    completion_text=raw_content,
-                    execution_time_ms=elapsed_ms,
-                    job_id=str(job_id),
-                    success=True
-                )
-            except: pass
-            
-            result = {
-                "response": parsed_json,
-                "raw": raw_content,
-                "agent": self.name,
-                "execution_time": elapsed,
-                "input_hash": input_hash,
-                "output_hash": output_hash
-            }
-
-            self._save_to_cache(input_hash, result)
-            emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
-            
-            return result
-        except Exception as e:
-            elapsed = time.time() - start_time
-            elapsed_ms = int(elapsed * 1000)
-            logger.error(f"[{self.name}] Job #{job_id} - Failed (Async): {e}")
-            
-            emit_agent_complete(self.name, elapsed_ms, success=False, research_id=research_id)
-            emit_error(f"Agent {self.name}: {str(e)}", recoverable=True, research_id=research_id)
-            
-            return {"error": str(e), "raw": "Error during execution", "agent": self.name}
+        # If the subclass has overridden arun but not run, we should 
+        # let the overridden arun handle it. However, BaseAgent defines arun.
+        # We check if the current instance's arun is the same as BaseAgent.arun
+        if self.__class__.arun == BaseAgent.arun:
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, self.run, state)
+        else:
+            # This should theoretically not be hit if the subclass overrides arun,
+            # as the subclass's arun would be called directly.
+            # But we include it for clarity.
+            return await self.arun(state)
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """

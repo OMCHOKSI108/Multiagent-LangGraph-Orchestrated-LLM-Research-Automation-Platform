@@ -27,17 +27,24 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "develo
 # ============================
 # LLM_STATUS controls which provider is used:
 #   OFFLINE → Ollama (local models)
-#   ONLINE  → Groq (cloud API with key rotation)
+#   ONLINE  → Cloud providers only (Groq/OpenRouter/Gemini)
+#   HYBRID  → Prefer cloud providers, fallback to Ollama
 #
 # Backward compatibility: falls back to LLM_MODE if LLM_STATUS is not set.
 _raw_status = os.getenv("LLM_STATUS", os.getenv("LLM_MODE", "ONLINE"))
 LLM_STATUS = _raw_status.upper().strip()
+_INVALID_LLM_STATUS = None
 
 # Backward compat: map old values to new
 if LLM_STATUS in ("OFFLINE", "OFF"):
     LLM_STATUS = "OFFLINE"
 elif LLM_STATUS in ("ONLINE", "ON"):
     LLM_STATUS = "ONLINE"
+elif LLM_STATUS in ("HYBRID", "AUTO", "MIXED"):
+    LLM_STATUS = "HYBRID"
+else:
+    _INVALID_LLM_STATUS = LLM_STATUS
+    LLM_STATUS = "OFFLINE"
 
 # Also keep LLM_MODE for any code that still references it
 LLM_MODE = "offline" if LLM_STATUS == "OFFLINE" else "online"
@@ -76,11 +83,33 @@ GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else None
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Specialized Models (optimized for low storage / efficient performance)
-# 'phi3:mini' is already installed and excellent for reasoning.
-MODEL_REASONING = os.getenv("MODEL_REASONING", "phi3:mini")        # Logic, reasoning (Existing)
-MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")            # Prose (Small, 1.6GB)
-MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:1.5b")     # Code/JSON (Tiny, 1GB)
-MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")          # Critique (Reuse reasoning model) 
+MODEL_REASONING = os.getenv("MODEL_REASONING", "phi3:mini")        # Logic, reasoning
+MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")            # Prose
+MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:1.5b")     # Code/JSON
+MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")          # Critique
+
+# Model Mapping for Cloud Providers (when ONLINE)
+# Maps local Ollama aliases to valid cloud model IDs for each provider.
+CLOUD_MODEL_MAPPINGS = {
+    "groq": {
+        "phi3:mini": "llama3-8b-8192",
+        "gemma2:2b": "gemma2-9b-it",
+        "qwen2.5-coder:1.5b": "mixtral-8x7b-32768", # Reliable reasoning/coding fallback
+        "default": "llama3-70b-8192"
+    },
+    "openrouter": {
+        "phi3:mini": "microsoft/phi-3-mini-128k-instruct",
+        "gemma2:2b": "google/gemma-2-9b-it",
+        "qwen2.5-coder:1.5b": "qwen/qwen-2.5-coder-32b-instruct",
+        "default": "anthropic/claude-3.5-sonnet"
+    },
+    "gemini": {
+        "phi3:mini": "gemini-1.5-flash",
+        "gemma2:2b": "gemini-1.5-flash",
+        "qwen2.5-coder:1.5b": "gemini-1.5-pro",
+        "default": "gemini-1.5-flash"
+    }
+}
 
 # Common Settings
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", 4096))
@@ -108,12 +137,21 @@ def validate_env():
             if GROQ_API_KEYS:
                 print(f"[Config] Groq API keys loaded: {len(GROQ_API_KEYS)} key(s)")
 
+    elif LLM_STATUS == "HYBRID":
+        if GROQ_API_KEYS:
+            print(f"[Config] Groq API keys loaded: {len(GROQ_API_KEYS)} key(s)")
+        if not (GROQ_API_KEYS or OPENROUTER_API_KEYS or GEMINI_API_KEYS):
+            warnings.append(
+                "LLM_STATUS=HYBRID but no cloud LLM API keys found. "
+                "Proceeding with OFFLINE fallback (Ollama)."
+            )
+
     elif LLM_STATUS == "OFFLINE":
         print(f"[Config] Ollama base URL: {OLLAMA_BASE_URL}")
 
-    else:
+    elif _INVALID_LLM_STATUS:
         warnings.append(
-            f"Unknown LLM_STATUS='{LLM_STATUS}'. Expected 'OFFLINE' or 'ONLINE'. "
+            f"Unknown LLM_STATUS='{_INVALID_LLM_STATUS}'. Expected 'OFFLINE', 'ONLINE', or 'HYBRID'. "
             f"Defaulting to OFFLINE."
         )
 

@@ -68,6 +68,11 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
 
     # Determine the target mode
     llm_status = getattr(cfg, "LLM_STATUS", "OFFLINE").upper()
+    if llm_status not in ("OFFLINE", "ONLINE", "HYBRID"):
+        logger.warning(
+            f"[Factory] Unknown LLM_STATUS='{llm_status}'. Defaulting to OFFLINE (Ollama)."
+        )
+        llm_status = "OFFLINE"
 
     # Cache key
     cache_key = f"{llm_status}:{model_name}"
@@ -103,6 +108,16 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
             )
             provider = _create_ollama_provider(cfg, model_name)
 
+    elif llm_status == "HYBRID":
+        provider = _resolve_online_provider(cfg, model_name)
+
+        if provider is None or not provider.is_available():
+            logger.info(
+                "[Factory] HYBRID mode: no available cloud provider for "
+                f"{model_name}. Falling back to Ollama (OFFLINE)."
+            )
+            provider = _create_ollama_provider(cfg, model_name)
+
     else:
         logger.warning(
             f"[Factory] Unknown LLM_STATUS='{llm_status}'. "
@@ -120,26 +135,39 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
 
 
 def _resolve_online_provider(cfg, model_name: str) -> LLMProvider:
-    """Intelligently routes the model string to the correct provider."""
+    """Intelligently routes the model string to the correct provider and translates for cloud."""
+    mappings = getattr(cfg, "CLOUD_MODEL_MAPPINGS", {})
+
     # 1. Explicit routing via prefix
     if model_name.startswith("openrouter/"):
-        return _create_openrouter_provider(cfg, model_name)
+        target_model = model_name.replace("openrouter/", "", 1)
+        # Apply mapping for OpenRouter if it's a known alias
+        final_model = mappings.get("openrouter", {}).get(target_model, target_model)
+        return _create_openrouter_provider(cfg, final_model)
+
     if model_name.startswith("gemini/"):
-        return _create_gemini_provider(cfg, model_name)
+        target_model = model_name.replace("gemini/", "", 1)
+        final_model = mappings.get("gemini", {}).get(target_model, target_model)
+        return _create_gemini_provider(cfg, final_model)
+
     if model_name.startswith("groq/"):
-        # Strip the prefix for Groq (if needed) or pass it along
-        return _create_groq_provider(cfg, model_name.replace("groq/", ""))
+        target_model = model_name.replace("groq/", "", 1)
+        final_model = mappings.get("groq", {}).get(target_model, target_model)
+        return _create_groq_provider(cfg, final_model)
 
     # 2. Implicit routing / Fallback cascade
-    if "gemma" in model_name.lower() or "llama" in model_name.lower() and getattr(cfg, "GROQ_API_KEYS", []):
-        return _create_groq_provider(cfg, model_name)
+    # Default selection based on keys available
+    if getattr(cfg, "GROQ_API_KEYS", []):
+        final_model = mappings.get("groq", {}).get(model_name, model_name)
+        return _create_groq_provider(cfg, final_model)
         
     if getattr(cfg, "OPENROUTER_API_KEYS", []):
-        return _create_openrouter_provider(cfg, model_name)
-    if getattr(cfg, "GROQ_API_KEYS", []):
-        return _create_groq_provider(cfg, model_name)
+        final_model = mappings.get("openrouter", {}).get(model_name, model_name)
+        return _create_openrouter_provider(cfg, final_model)
+
     if getattr(cfg, "GEMINI_API_KEYS", []):
-        return _create_gemini_provider(cfg, model_name)
+        final_model = mappings.get("gemini", {}).get(model_name, model_name)
+        return _create_gemini_provider(cfg, final_model)
         
     return None
 
@@ -193,7 +221,7 @@ def get_llm_status() -> Dict[str, Any]:
 
     Returns:
         {
-            "mode": "OFFLINE" | "ONLINE",
+            "mode": "OFFLINE" | "ONLINE" | "HYBRID",
             "provider": { ... provider-specific status ... },
             "config": {
                 "model_reasoning": "...",

@@ -1,9 +1,13 @@
 const express = require('express');
+const axios = require('axios');
 const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger');
 const { detectIntent } = require('../utils/intentDetector');
+
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://ai_engine:8000';
+const AI_ENGINE_SECRET = process.env.AI_ENGINE_SECRET || '';
 
 // ============================================
 // GET /workspaces — List all workspaces for user
@@ -224,7 +228,54 @@ router.post('/:wid/research/start', auth, async (req, res) => {
         const { intent, reply: instantReply, isResearch } = detectIntent(trimmedTopic, userName);
 
         if (!isResearch) {
-            logger.info(`[Workspace] Intent "${intent}" detected for user #${userId} — returning instant reply`);
+            logger.info(`[Workspace] Intent "${intent}" detected for user #${userId}`);
+            
+            // If it's a general query, call AI Engine for a fast real-time response
+            if (intent === 'general_query' && !instantReply) {
+                try {
+                    
+                    // Fetch recent history if a session_id was optionally provided in the request
+                    let history = [];
+                    const { session_id } = req.body;
+                    if (session_id) {
+                        const historyResult = await db.query(
+                            "SELECT role, message as content FROM chat_history WHERE session_id = $1 ORDER BY created_at DESC LIMIT 6",
+                            [session_id]
+                        );
+                        history = historyResult.rows.reverse().map(m => ({
+                            role: m.role === 'assistant' ? 'ai' : m.role,
+                            content: m.content
+                        }));
+                    }
+
+                    const aiRes = await axios.post(`${AI_ENGINE_URL}/chatbot/fast-chat`, {
+                        query: trimmedTopic,
+                        history: history,
+                        context: ""
+                    }, {
+                        headers: { 'X-API-Key': AI_ENGINE_SECRET },
+                        timeout: 60000
+                    });
+                    
+                    const replyText = aiRes.data?.response || "I couldn't generate a fast response. Try /research.";
+
+                    // Optional: Save this interaction even if it's "instant" if session_id exists
+                    if (session_id) {
+                        await db.query("INSERT INTO chat_history (session_id, user_id, role, message) VALUES ($1, $2, $3, $4)", [session_id, userId, 'user', trimmedTopic]);
+                        await db.query("INSERT INTO chat_history (session_id, user_id, role, message) VALUES ($1, $2, $3, $4)", [session_id, userId, 'assistant', replyText]);
+                    }
+
+                    return res.status(200).json({
+                        intent,
+                        instant_reply: replyText,
+                        session_id: session_id || null,
+                    });
+                } catch (aiErr) {
+                    logger.error(`[Workspace] Fast-chat failed: ${aiErr.message}`);
+                    return res.status(502).json({ error: 'Conversational engine unavailable' });
+                }
+            }
+
             return res.status(200).json({
                 intent,
                 instant_reply: instantReply,
@@ -321,7 +372,6 @@ router.post('/:wid/research/:sid/topic', auth, async (req, res) => {
         }
 
         // Notify AI Engine
-        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
         try {
             const axios = require('axios');
             await axios.post(`${AI_ENGINE_URL}/research/update-state`, {
@@ -349,7 +399,6 @@ router.get('/:wid/research/:sid/suggestions', auth, async (req, res) => {
     try {
         const sessionId = Number.parseInt(req.params.sid, 10);
 
-        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
         const axios = require('axios');
         const aiRes = await axios.get(`${AI_ENGINE_URL}/research/${sessionId}/suggestions`, {
             timeout: 5000
@@ -471,7 +520,6 @@ router.post('/:wid/upload', auth, upload.single('file'), async (req, res) => {
         }
 
         // Send to AI Engine for chunking and embedding
-        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
         const AI_ENGINE_API_KEY = process.env.AI_ENGINE_API_KEY || '';
 
         try {
@@ -483,7 +531,7 @@ router.post('/:wid/upload', auth, upload.single('file'), async (req, res) => {
                 source_type: 'upload',
             }, {
                 headers: { 'X-API-Key': AI_ENGINE_API_KEY },
-                timeout: 30000
+                timeout: 60000
             });
 
             const chunksAdded = ingestResp.data?.chunks_added || 0;
@@ -517,6 +565,117 @@ router.post('/:wid/upload', auth, upload.single('file'), async (req, res) => {
     } catch (err) {
         logger.error(`[Upload] Error: ${err.message}`);
         res.status(500).json({ error: err.message || 'Server error' });
+    }
+});
+
+/**
+ * @route   GET /api/workspaces/:wid/sessions/:id/sections
+ * @desc    Get all sections for a research report
+ * @access  Private
+ */
+router.get('/:wid/sessions/:id/sections', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query(
+            'SELECT * FROM document_sections WHERE session_id = $1 ORDER BY section_order ASC',
+            [id]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('[Sections] Fetch error:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @route   POST /api/workspaces/:wid/sessions/:id/sections/:sectionId/edit
+ * @desc    Edit a specific section of a research report
+ * @access  Private
+ */
+router.post('/:wid/sessions/:id/sections/:sectionId/edit', auth, async (req, res) => {
+    try {
+        const { wid, id, sectionId } = req.params;
+        const { instruction } = req.body;
+
+        if (!instruction) {
+            return res.status(400).json({ error: 'Instruction is required' });
+        }
+
+        // 1. Get current section content
+        const sectionResult = await db.query(
+            'SELECT * FROM document_sections WHERE id = $1 AND session_id = $2',
+            [sectionId, id]
+        );
+
+        if (sectionResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Section not found' });
+        }
+
+        const section = sectionResult.rows[0];
+
+        // 2. Call AI Engine for editing
+
+        try {
+            const aiResponse = await axios.post(`${AI_ENGINE_URL}/research/edit-section`, {
+                section_title: section.section_title,
+                current_content: section.content_markdown,
+                instruction: instruction,
+                context: {} // Optional: add workspace context here
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(AI_ENGINE_SECRET ? { 'X-API-Key': AI_ENGINE_SECRET } : {})
+                }
+            });
+
+            const refinedContent = aiResponse.data.refined_content;
+
+            // 3. Update section in database
+            await db.query(
+                'UPDATE document_sections SET content_markdown = $1, last_edited_by = $2, updated_at = NOW() WHERE id = $3',
+                [refinedContent, req.user.id, sectionId]
+            );
+
+            res.json({
+                message: 'Section updated successfully',
+                refined_content: refinedContent
+            });
+
+        } catch (aiErr) {
+            console.error('[Editor] AI Engine error:', aiErr.message);
+            res.status(502).json({ error: 'Failed to process edit instruction' });
+        }
+
+    } catch (err) {
+        console.error('[Editor] Route error:', err.message);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+/**
+ * @route   GET /api/workspaces/:wid/sessions/:id/full-report
+ * @desc    Reconstruct the full report from sections
+ * @access  Private
+ */
+router.get('/:wid/sessions/:id/full-report', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query(
+            'SELECT content_markdown FROM document_sections WHERE session_id = $1 ORDER BY section_order ASC',
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            // Fallback to the session's monolithic report if no sections exist yet
+            const sessionResult = await db.query('SELECT report_markdown FROM research_sessions WHERE id = $1', [id]);
+            return res.json({ report: sessionResult.rows[0]?.report_markdown || "" });
+        }
+
+        const fullReport = result.rows.map(r => r.content_markdown).join('\n\n');
+        res.json({ report: fullReport });
+    } catch (err) {
+        console.error('[FullReport] Compilation error:', err.message);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 

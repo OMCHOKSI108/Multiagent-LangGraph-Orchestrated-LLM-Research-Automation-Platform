@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../config/db');
 const axios = require('axios');
 const auth = require('../middleware/auth');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
+const sessionKeyAuth = require('../middleware/sessionKeyAuth');
 const { v4: uuidv4 } = require('uuid');
 const winston = require('winston');
 
@@ -11,26 +13,13 @@ const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
 const logger = require('../utils/logger');
 
 // Start Research (Async Queue)
-// User must provide: { task, depth, api_key }
-router.post('/start', async (req, res) => {
+// User must provide: { task, depth }
+router.post('/start', apiKeyAuth, async (req, res) => {
   try {
-    const { task, depth, api_key } = req.body;
+    const { task, depth } = req.body;
+    const user_id = req.userId;
 
-    if (!api_key) return res.status(401).json({ error: "API Key Required" });
     if (!task) return res.status(400).json({ error: "Task Required" });
-
-    // 1. Validate API Key
-    const keyCheck = await db.query(
-      "SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE",
-      [api_key]
-    );
-
-    if (keyCheck.rows.length === 0) {
-      logger.warn(`Invalid API Key attempt: ${api_key}`);
-      return res.status(403).json({ error: "Invalid or Inactive API Key" });
-    }
-
-    const user_id = keyCheck.rows[0].user_id;
 
     // 2. Insert into Queue
     const log = await db.query(
@@ -38,9 +27,6 @@ router.post('/start', async (req, res) => {
       [user_id, task, task]
     );
     const jobId = log.rows[0].id;
-
-    // 3. Update Usage
-    await db.query("UPDATE api_keys SET usage_count = usage_count + 1 WHERE id = $1", [keyCheck.rows[0].id]);
 
     logger.info(`[Node] Queued Job #${jobId} for User #${user_id}`);
 
@@ -99,29 +85,18 @@ router.get('/status/:id', auth, async (req, res) => {
 
 // Unified Web Search (Proxy to AI Engine)
 // Requires API Key for authentication
-router.post('/search', async (req, res) => {
+router.post('/search', apiKeyAuth, async (req, res) => {
   try {
-    const { query, providers, max_results, api_key } = req.body;
+    const { query, providers, max_results } = req.body;
 
-    if (!api_key) return res.status(401).json({ error: "API Key Required" });
     if (!query) return res.status(400).json({ error: "Query Required" });
-
-    // Validate API Key
-    const keyCheck = await db.query(
-      "SELECT * FROM api_keys WHERE key_value = $1 AND is_active = TRUE",
-      [api_key]
-    );
-
-    if (keyCheck.rows.length === 0) {
-      return res.status(403).json({ error: "Invalid or Inactive API Key" });
-    }
 
     // Proxy to AI Engine
     const aiResponse = await axios.post(`${AI_ENGINE_URL}/search`, {
       query,
       providers: providers || null,
       max_results: max_results || 10
-    }, { timeout: 15000 });
+    }, { timeout: 30000 });
 
     res.json(aiResponse.data);
 

@@ -5,7 +5,7 @@ This report details the multi-agent system structure, including a census of all 
 ## Agent Registry Analysis
 
 There are **36 specialized AI agents** registered in the system (defined in [ai_engine/agents/registry.py](file:///d:/SEM%206/AIML317_PROJECT_III/project_sgp/ai_engine/agents/registry.py)). These agents are categorized by their role in the research pipeline.
-
+a
 ### Agents List
 
 | Phase / Category | Agent Keys |
