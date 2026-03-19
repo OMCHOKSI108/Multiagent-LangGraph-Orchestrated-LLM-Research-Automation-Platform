@@ -5,6 +5,8 @@ import subprocess
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
 from .domain_templates import detect_domain, get_template
+from .latex_sanitizer import sanitize_llm_latex, sanitize_latex, check_balance
+
 
 class ScientificWritingAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -116,45 +118,39 @@ class LaTeXGenerationAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(
             name="LaTeXGeneration",
-            system_prompt="""Your Role: LaTeX Patch Engineer (Editor Agent)
+            system_prompt=r"""You are an expert IEEE research paper LaTeX writer and editor. Follow these rules STRICTLY with ZERO exceptions.
 
-ABSOLUTE RULE: You are the ONLY agent allowed to modify LaTeX documents.
+=== MANDATORY RULES ===
+1. Use ONLY \documentclass[conference]{IEEEtran} — no other document class is ever acceptable.
+2. Output ONLY raw LaTeX code. NO markdown, NO backticks (```), NO explanations before or after the code.
+3. Your output MUST start with \documentclass and end with \end{document}. Nothing else.
+4. Every \begin{ENV} MUST have a matching \end{ENV}. Never leave any environment unclosed.
+5. All citations MUST use \cite{key} where 'key' exactly matches a \bibitem{key} in the bibliography.
+6. NEVER invent or hallucinate references. Only cite sources explicitly given to you.
+7. Use \includegraphics{placeholder_fig1} for figures when no actual image file is provided.
+8. Use \section{}, \subsection{} — NEVER \chapter{}.
+9. Escape ALL special characters: & → \&  |  % → \%  |  # → \#  |  _ → \_  (outside math mode)
+10. Use \textbf{} for bold, \textit{} for italic, \texttt{} for code — NEVER ** or * markdown.
 
-Mode Selection:
-- FULL_GEN: Only if NO existing LaTeX document exists
-- PATCH: Always prefer diff-based patches for existing documents
+=== REQUIRED PREAMBLE ===
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
 
-Critical Constraints (from prompt.json):
-1. NEVER regenerate full LaTeX documents unless none exists
-2. All edits MUST be diff-based (unified diff or search/replace blocks)
-3. PRESERVE all labels, refs, citations, and numbering
-4. NO auto-renumbering of figures, tables, or equations
-5. Escape all special LaTeX characters
+=== SECTION ORDER (mandatory) ===
+Abstract → Introduction → Related Work → Methodology → Results → Discussion → Conclusion → References
 
-Diff Output Format:
-```diff
---- original
-+++ modified
-@@ -line,count +line,count @@
--removed line
-+added line
- unchanged context
-```
+=== DIFF/PATCH MODE (when editing existing LaTeX) ===
+- ONLY modify the specific section instructed. All other sections stay word-for-word identical.
+- Return the FULL updated LaTeX document from \documentclass to \end{document}.
 
-OR Search/Replace Format:
-<<<<<<< SEARCH
-exact text to find
-=======
-replacement text
->>>>>>> REPLACE
-
-Version Tracking:
-- Increment document version after each successful edit
-- Log all changes with timestamps
-
-Confirmation Required:
-- List all affected references before applying
-- Wait for explicit approval before modifying
+Your output is piped directly into: pdflatex -interaction=nonstopmode paper.tex
+Any non-LaTeX content in your output will cause a compile failure and break the pipeline.
 """,
             **kwargs
         )
@@ -231,55 +227,71 @@ Confirmation Required:
         try:
             response = self.llm.invoke(messages)
             result_content = response.content
-            
-            # Post-process
-            final_latex = result_content
-            
-            # If patch, apply it (simplistic application for now, or just return the patch)
-            # Real patch application is complex. For now, we assume the LLM output IS the new file if FULL_GEN
-            # If PATCH, we might need a patch applier. 
-            # Given constraints, I'll assume FULL_GEN returns full file, PATCH returns diff.
-            # For this step, I'll persist the result.
-            
-            if "diff" in result_content.lower() and mode == "PATCH":
-                 # In a real system we'd apply the patch. 
-                 # Here we just save the patch description for the user/orchestrator
-                 final_latex = existing_latex # No change applied automatically without an applier
-                 print(f"[{self.name}] Patch generated (not auto-applied).")
-            else:
-                 # Cleanup code blocks
-                 final_latex = re.sub(r'^```latex\s*', '', final_latex, flags=re.MULTILINE)
-                 final_latex = re.sub(r'^```\s*$', '', final_latex, flags=re.MULTILINE)
-                 final_latex = final_latex.strip()
 
-            # Save
+            # ── Post-processing pipeline (Fix 2) ─────────────────────────
+            # Step 1: Strip fences, fix escaping, anchor to \documentclass
+            final_latex = sanitize_llm_latex(result_content)
+
+            # Step 2: Deep sanitization (unicode, math envs, special chars, balance)
+            final_latex = sanitize_latex(final_latex)
+
+            # Step 3: Balance check — warn but don't block
+            balanced, balance_msg = check_balance(final_latex)
+            print(f"[{self.name}] {balance_msg}")
+
+            # ── Save .tex file ────────────────────────────────────────────
             output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "output"))
             os.makedirs(output_dir, exist_ok=True)
             tex_filename = f"research_{job_id}.tex"
             tex_path = os.path.join(output_dir, tex_filename)
-            
+
             with open(tex_path, "w", encoding="utf-8") as f:
                 f.write(final_latex)
-            
-            # Compiling PDF... (same as before)
+
+            # ── Compile PDF (Fix 4): pdflatex × 2, bibtex, pdflatex × 1 ─
             pdf_path = None
+            compile_log = ""
             try:
+                def _run_pdflatex():
+                    return subprocess.run(
+                        ["pdflatex", "-interaction=nonstopmode", "-output-directory", output_dir, tex_path],
+                        capture_output=True, text=True, timeout=90, cwd=output_dir
+                    )
+
+                r1 = _run_pdflatex()
+                compile_log = r1.stdout[-3000:] if r1.stdout else ""
+
+                # Run bibtex for bibliography resolution
+                base_name = tex_filename.replace(".tex", "")
                 subprocess.run(
-                    ["pdflatex", "-interaction=nonstopmode", "-output-directory", output_dir, tex_path],
-                    capture_output=True, text=True, timeout=60, cwd=output_dir
+                    ["bibtex", base_name],
+                    capture_output=True, text=True, timeout=30, cwd=output_dir
                 )
+
+                # Second and third pdflatex pass for cross-references
+                _run_pdflatex()
+                r3 = _run_pdflatex()
+                compile_log += r3.stdout[-1000:] if r3.stdout else ""
+
                 pdf_filename = f"research_{job_id}.pdf"
                 if os.path.exists(os.path.join(output_dir, pdf_filename)):
                     pdf_path = os.path.join(output_dir, pdf_filename)
-            except:
-                pass
+                    print(f"[{self.name}] PDF compiled successfully: {pdf_filename}")
+                else:
+                    print(f"[{self.name}] pdflatex ran but PDF not found — check compile log")
+            except FileNotFoundError:
+                print(f"[{self.name}] pdflatex not found — skipping compilation")
+            except Exception as compile_err:
+                print(f"[{self.name}] Compilation error: {compile_err}")
 
             return {
                 "response": {
                     "latex_source": final_latex,
                     "tex_path": tex_path,
                     "pdf_path": pdf_path,
-                    "mode": mode
+                    "mode": mode,
+                    "balance_ok": balanced,
+                    "balance_msg": balance_msg,
                 },
                 "raw": result_content,
                 "agent": self.name

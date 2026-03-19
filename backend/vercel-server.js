@@ -77,6 +77,7 @@ app.use('/usage', auth, require('./routes/usage.routes'));
 
 // Static files (if needed)
 app.use('/generated_images', express.static('generated_images'));
+app.use('/research_images', express.static(process.env.RESEARCH_IMAGES_DIR || '/shared/research_images'));
 
 // Health endpoint
 app.get('/health', (req, res) => {

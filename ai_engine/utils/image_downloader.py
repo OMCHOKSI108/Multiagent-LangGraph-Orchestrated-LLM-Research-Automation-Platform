@@ -10,9 +10,10 @@ def download_image(url: str, job_id: str, base_dir: str = None) -> str:
     """
     try:
         # Determine output directory
-        # Default: ProjectRoot/frontend/public/research_images/{job_id}/
+        # Default: shared docker volume mounted in both ai_engine and backend
+        # so backend can serve images at /research_images/*
         if not base_dir:
-            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "public", "research_images"))
+            base_dir = os.getenv("RESEARCH_IMAGES_DIR", "/shared/research_images")
         
         job_dir = os.path.join(base_dir, str(job_id))
         os.makedirs(job_dir, exist_ok=True)

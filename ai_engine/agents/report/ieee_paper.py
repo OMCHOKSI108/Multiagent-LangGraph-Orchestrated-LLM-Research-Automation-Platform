@@ -18,40 +18,99 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 logger = logging.getLogger("ai_engine.agents.report.ieee_paper")
 
-IEEE_SYSTEM_PROMPT = """You are an expert IEEE research paper writer.
-Generate complete, properly structured IEEE-format academic papers.
+IEEE_REFERENCE_TEMPLATE = r"""
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
-IEEE PAPER STRUCTURE:
-1. Title (descriptive, max 12 words)
-2. Abstract (150-250 words: motivation, methods, results, conclusions)
-3. Keywords (5-8 terms)
-4. I. Introduction (background, motivation, problem statement, contributions)
-5. II. Related Work (compare 5-8 relevant works with citations)
-6. III. Methodology (detailed approach, algorithms, system design)
-7. IV. Results (quantitative outcomes, tables, figures descriptions)
-8. V. Discussion (interpretation, limitations, implications)
-9. VI. Conclusion (summary, future work)
-10. References (IEEE format: [1] Author, "Title," Journal, vol, pp, year.)
+\begin{document}
 
-FORMATTING RULES:
-- Use IEEE citation style: [1], [2], etc.
-- Include Figure captions as: Fig. 1. Description
-- Include Table captions as: TABLE I. Description
-- Use formal academic language
-- Each section: 200-400 words minimum
+\title{PAPER TITLE HERE}
 
-Output the complete paper in Markdown with proper ## headers.
+\author{
+  \IEEEauthorblockN{Author Name}
+  \IEEEauthorblockA{\textit{Department} \\
+  \textit{Institution}\\
+  City, Country \\
+  email@example.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Abstract text here (150-250 words).
+\end{abstract}
+
+\begin{IEEEkeywords}
+keyword1, keyword2, keyword3
+\end{IEEEkeywords}
+
+\section{Introduction}
+Introduction text.
+
+\section{Related Work}
+Related work text.
+
+\section{Methodology}
+Methodology text.
+
+\section{Results}
+Results text.
+
+\section{Conclusion}
+Conclusion text.
+
+\begin{thebibliography}{00}
+\bibitem{b1} Author, ``Title,'' \textit{Journal}, vol. X, pp. Y--Z, Year.
+\end{thebibliography}
+
+\end{document}
 """
 
-EXPAND_SYSTEM_PROMPT = """You are an IEEE paper section editor.
-You will receive an existing paper and must expand or improve one specific section.
-Keep all other sections unchanged. Return the FULL updated paper.
+IEEE_SYSTEM_PROMPT = f"""You are an expert IEEE research paper LaTeX writer. Follow these rules STRICTLY with no exceptions.
 
-When expanding:
-- Add more technical depth
-- Include additional citations [n]
-- Add relevant equations or algorithms if appropriate
-- Maintain IEEE formatting throughout
+=== MANDATORY RULES ===
+1. Use ONLY \\documentclass[conference]{{IEEEtran}} — no other document class is permitted.
+2. Output ONLY raw LaTeX code. NO markdown, NO backticks, NO explanations before or after the code.
+3. Your output MUST begin with \\documentclass and end with \\end{{document}}.
+4. Every \\begin{{X}} MUST have a matching \\end{{X}} — never leave environments open.
+5. All citations MUST use \\cite{{key}} where key matches a \\bibitem{{key}} in the bibliography.
+6. Do NOT invent or hallucinate references. Only cite sources provided to you.
+7. Keep figures as \\includegraphics{{placeholder}} if no image path is provided.
+8. Use \\section, \\subsection — never \\chapter.
+9. Escape all special characters: & → \\&, % → \\%, # → \\#, _ → \\_
+
+=== SECTION ORDER (mandatory) ===
+Abstract → Introduction → Related Work → Methodology → Results → Discussion → Conclusion → References
+
+=== REFERENCE TEMPLATE (replicate this structure EXACTLY) ===
+{IEEE_REFERENCE_TEMPLATE}
+=== END TEMPLATE ===
+
+Your output is piped directly into pdflatex. Any non-LaTeX output will cause a compile failure.
+"""
+
+EXPAND_SYSTEM_PROMPT = """You are an IEEE paper LaTeX section editor.
+You will receive an existing IEEE LaTeX paper and must expand or improve one specific section.
+
+RULES:
+1. Keep ALL other sections unchanged — word for word.
+2. Output ONLY raw LaTeX. No markdown, no backticks, no explanations.
+3. Maintain \\documentclass[conference]{IEEEtran} and all existing \\bibitem keys.
+4. Do not add new \\bibitem entries unless you also add the \\cite{} call in the text.
+5. Return the FULL updated LaTeX document from \\documentclass to \\end{document}.
+
+When expanding a section:
+- Add more technical depth with specific details from the research findings.
+- Add relevant equations using \\begin{equation}...\\end{equation}.
+- Add figures as \\includegraphics{placeholder} with descriptive captions.
+- Maintain formal academic IEEE language throughout.
 """
 
 

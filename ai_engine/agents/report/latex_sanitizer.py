@@ -2,15 +2,67 @@
 LaTeX Sanitizer Module
 
 Post-processes LaTeX content to fix common LLM output issues:
-1. Remove Markdown artifacts (##, **, *, ```)
+1. Strip markdown code fences and chatter before \documentclass
 2. Fix broken math environments
 3. Sanitize Unicode corruption
-4. Validate structure balance
-5. Remove meta-instructions
+4. Validate and auto-fix structure balance
+5. Remove meta-instructions and hallucination markers
+6. Fix common LLM escaping mistakes
 """
 
 import re
 from typing import Tuple, List
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: sanitize_llm_latex  — strip fences, fix escaping, anchor to \documentclass
+# ---------------------------------------------------------------------------
+
+def sanitize_llm_latex(raw_output: str) -> str:
+    """
+    Pre-process raw LLM output before passing it to the full sanitize_latex pipeline.
+
+    Steps:
+      1. Strip markdown code fences (```latex, ```tex, ```)
+      2. Fix common LLM double-escaping mistakes
+      3. Ensure output starts at \\documentclass (drop preamble chatter)
+    """
+    # 1. Strip markdown code fences
+    raw_output = re.sub(r"```(?:latex|tex)?", "", raw_output).strip()
+    raw_output = raw_output.replace("```", "")
+
+    # 2. Fix common LLM double-escaping
+    raw_output = raw_output.replace("\\\\n", "\n")
+    raw_output = raw_output.replace("\\'", "'")
+    raw_output = raw_output.replace("\\\\textbf", "\\textbf")
+    raw_output = raw_output.replace("\\\\textit", "\\textit")
+    raw_output = raw_output.replace("\\\\section", "\\section")
+    raw_output = raw_output.replace("\\\\begin", "\\begin")
+    raw_output = raw_output.replace("\\\\end", "\\end")
+
+    # 3. Drop any chatter before \documentclass
+    match = re.search(r"\\documentclass", raw_output)
+    if match:
+        raw_output = raw_output[match.start():]
+
+    return raw_output.strip()
+
+
+def check_balance(latex: str) -> Tuple[bool, str]:
+    """
+    Quick balance check — count \\begin{ vs \\end{ pairs.
+
+    Returns:
+        (is_balanced, message)
+    """
+    begins = len(re.findall(r"\\begin\{", latex))
+    ends = len(re.findall(r"\\end\{", latex))
+    if begins != ends:
+        msg = f"⚠️  WARNING: {begins} \\begin vs {ends} \\end — LaTeX WILL fail"
+        return False, msg
+    msg = f"✅ begin/end balanced ({begins} pairs)"
+    return True, msg
+
 
 
 # Problematic patterns that indicate meta-instructions or hallucinations

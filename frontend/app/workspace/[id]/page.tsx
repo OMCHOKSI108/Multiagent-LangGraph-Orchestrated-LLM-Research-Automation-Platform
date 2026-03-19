@@ -3,11 +3,13 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useTheme } from '@/components/ThemeProvider';
 import {
   workspaces as wsApi,
   events as eventsApi,
   chat as chatApi,
   exportApi,
+  API_ROOT,
   type ResearchSession,
   type ResearchEvent,
   type ResearchResult,
@@ -30,6 +32,13 @@ function formatDuration(totalSec: number): string {
   const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
   const s = Math.floor(totalSec % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
+}
+
+function normalizeImageUrl(url?: string): string {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith('/')) return `${API_ROOT}${url}`;
+  return `${API_ROOT}/${url}`;
 }
 
 function summarizeResearch(markdown?: string, fallbackTitle?: string): string {
@@ -376,6 +385,7 @@ function SectionEditor({
 
 export default function WorkspacePage() {
   const { user, loading: authLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const params = useParams();
   const wsId = params.id as string;
@@ -542,28 +552,80 @@ export default function WorkspacePage() {
   // ─── SSE / Event polling ──────────────────────────────────────────────────────
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const stopEventPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
   }, []);
 
   const startEventPolling = useCallback((sid: number) => {
     stopEventPolling();
-    let lastCount = 0;
+    let lastEventId = 0;
     let lastSourceCount = 0;
+
+    // Try true SSE stream first (realtime), keep polling as fallback/hydration.
+    (async () => {
+      try {
+        const tok = await eventsApi.getSSEToken(sid);
+        if (!tok?.token || abortRef.current) return;
+        const streamUrl = `${API_ROOT}/api/events/stream-public/${sid}?token=${encodeURIComponent(tok.token)}`;
+        const es = new EventSource(streamUrl);
+        eventSourceRef.current = es;
+
+        es.onmessage = (evt) => {
+          try {
+            const payload = JSON.parse(evt.data);
+            if (payload.type === 'event') {
+              setFeedEvents(prev => [...prev, {
+                id: payload.id || Date.now(),
+                message: payload.message || payload.category || 'Event',
+                stage: payload.stage,
+                severity: payload.severity,
+                category: payload.category,
+                details: payload.details,
+                created_at: payload.timestamp || new Date().toISOString(),
+              } as any]);
+            } else if (payload.type === 'sources' && Array.isArray(payload.sources)) {
+              setLiveSources(prev => {
+                const merged = [...prev, ...payload.sources];
+                return Array.from(new Map(merged.map((s: any) => [s.url || `${s.domain}-${s.title}`, s])).values());
+              });
+            } else if (payload.type === 'status' && payload.current_stage) {
+              setStatusText(payload.current_stage);
+            } else if (payload.type === 'done') {
+              try { es.close(); } catch { }
+            }
+          } catch { /* ignore malformed stream chunks */ }
+        };
+
+        es.onerror = () => {
+          try { es.close(); } catch { }
+          eventSourceRef.current = null;
+        };
+      } catch {
+        // fallback polling below will continue
+      }
+    })();
+
     pollingIntervalRef.current = setInterval(async () => {
       if (abortRef.current) { stopEventPolling(); return; }
       try {
         const evts = await eventsApi.list(sid);
-        if (Array.isArray(evts) && evts.length > lastCount) {
+        if (Array.isArray(evts) && evts.length > 0) {
           setFeedEvents(prev => {
-            const newOnes = evts.slice(lastCount);
+            const newOnes = evts.filter((e: any) => Number(e.id) > lastEventId);
+            if (newOnes.length > 0) {
+              lastEventId = Number(newOnes[newOnes.length - 1].id || lastEventId);
+            }
             return [...prev, ...newOnes];
           });
-          lastCount = evts.length;
         }
         const src = await eventsApi.sources(sid);
         if (Array.isArray(src) && src.length > lastSourceCount) {
@@ -868,7 +930,7 @@ export default function WorkspacePage() {
       : (liveSources || [])
           .filter((s: any) => s?.thumbnail || s?.favicon)
           .map((s: any) => ({
-            original: s.thumbnail || s.favicon,
+            original: normalizeImageUrl(s.thumbnail || s.favicon),
             source_url: s.url,
             title: s.title || s.domain || 'Source',
           }))
@@ -877,10 +939,10 @@ export default function WorkspacePage() {
   return (
     <div
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-      className="flex flex-col workspace-root bg-slate-50 text-slate-900"
+      className="flex flex-col workspace-root"
     >
       {/* Workspace header */}
-      <div className="border-b border-slate-200 h-11 px-4 flex items-center justify-between flex-shrink-0 bg-white backdrop-blur-xl z-10">
+      <div className="border-b border-slate-200 h-11 px-4 flex items-center justify-between flex-shrink-0 backdrop-blur-xl z-10">
         <div className="flex items-center gap-3 text-sm text-slate-700">
           <button
             onClick={() => router.push('/dashboard')}
@@ -891,6 +953,14 @@ export default function WorkspacePage() {
           <span className="font-semibold text-slate-900">{wsName}</span>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-600">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="border border-slate-300 px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 text-xs text-slate-700"
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </button>
           {running && <><Spinner /> <span>{statusText || 'Running'}</span> <span className="font-semibold text-emerald-700">Elapsed {formatDuration(elapsedSec)}</span></>}
           {!running && statusText && <span>{statusText}</span>}
           {curSession && !running && (
@@ -1130,7 +1200,7 @@ export default function WorkspacePage() {
                       {galleryImages.map((img: any, i: number) => (
                         <div key={i} className="group relative rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-emerald-500/40 transition-all">
                           <img 
-                            src={img.original} 
+                            src={normalizeImageUrl(img.original)} 
                             alt={`Insight ${i+1}`}
                             className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
                           />

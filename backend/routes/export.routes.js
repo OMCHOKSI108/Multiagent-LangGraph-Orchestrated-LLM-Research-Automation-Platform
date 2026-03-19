@@ -372,6 +372,14 @@ router.post('/compile', auth, async (req, res) => {
             const result = await db.query('SELECT title, task FROM research_logs WHERE id = $1 AND user_id = $2', [researchId, req.user.id]);
             if (result.rows.length > 0) {
                 title = result.rows[0].title || result.rows[0].task || title;
+            } else {
+                const sess = await db.query(
+                    'SELECT title, topic FROM research_sessions WHERE id = $1 AND user_id = $2',
+                    [researchId, req.user.id]
+                );
+                if (sess.rows.length > 0) {
+                    title = sess.rows[0].title || sess.rows[0].topic || title;
+                }
             }
         }
 

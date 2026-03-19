@@ -5,7 +5,8 @@ function normalizeApiBase(baseUrl: string): string {
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
 
-const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+export const API_ROOT = API_BASE.replace(/\/api$/, '');
 
 function getToken(): string {
   if (typeof window === 'undefined') return '';

@@ -71,7 +71,7 @@ require('./config/passport');
 app.use(passport.initialize());
 
 app.use('/generated_images', express.static('generated_images'));
-app.use('/research_images', express.static(path.join(__dirname, '..', 'frontend', 'public', 'research_images')));
+app.use('/research_images', express.static(process.env.RESEARCH_IMAGES_DIR || '/shared/research_images'));
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 

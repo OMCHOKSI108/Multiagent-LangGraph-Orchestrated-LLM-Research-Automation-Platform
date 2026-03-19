@@ -48,6 +48,119 @@ async function getResearchStatus(researchId) {
     return null;
 }
 
+function startResearchStream(req, res, research_id) {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    req.setTimeout(0);
+    res.setTimeout(0);
+
+    logger.info(`[SSE] Client connected for research #${research_id}`);
+
+    let lastEventId = 0;
+    let lastSourceId = 0;
+    let isCompleted = false;
+
+    res.write(`data: ${JSON.stringify({ type: 'connected', research_id })}\n\n`);
+
+    const heartbeatInterval = setInterval(() => {
+        if (isCompleted) return;
+        try { res.write(': heartbeat\n\n'); } catch (e) { }
+    }, 15000);
+
+    const pollEvents = async () => {
+        if (isCompleted) return;
+
+        try {
+            const eventsResult = await db.query(
+                `SELECT id, event_id, stage, severity, category, message, details, created_at
+                 FROM execution_events
+                 WHERE research_id = $1 AND id > $2
+                 ORDER BY created_at ASC`,
+                [research_id, lastEventId]
+            );
+
+            for (const event of eventsResult.rows) {
+                const eventData = {
+                    type: 'event',
+                    event_id: event.event_id,
+                    stage: event.stage,
+                    severity: event.severity,
+                    category: event.category,
+                    message: event.message,
+                    details: event.details,
+                    timestamp: event.created_at
+                };
+                res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+                lastEventId = event.id;
+            }
+
+            const sourcesResult = await db.query(
+                `SELECT id, source_type, domain, url, status, items_found, title, description, favicon, thumbnail, published_date, citation_text
+                 FROM data_sources
+                 WHERE research_id = $1 AND id > $2
+                 ORDER BY id ASC`,
+                [research_id, lastSourceId]
+            );
+
+            if (sourcesResult.rows.length > 0) {
+                const sourcesPayload = sourcesResult.rows.map((row) => ({
+                    source_type: row.source_type,
+                    domain: row.domain,
+                    url: row.url,
+                    status: row.status,
+                    items_found: row.items_found,
+                    title: row.title,
+                    description: row.description,
+                    favicon: row.favicon,
+                    thumbnail: row.thumbnail,
+                    published_date: row.published_date,
+                    citation_text: row.citation_text
+                }));
+                res.write(`data: ${JSON.stringify({ type: 'sources', sources: sourcesPayload })}\n\n`);
+                lastSourceId = sourcesResult.rows[sourcesResult.rows.length - 1].id;
+            }
+
+            const status = await getResearchStatus(research_id);
+            if (status) {
+                res.write(`data: ${JSON.stringify({
+                    type: 'status',
+                    status: status.status,
+                    current_stage: status.current_stage,
+                    started_at: status.started_at,
+                    completed_at: status.completed_at,
+                    title: status.title
+                })}\n\n`);
+
+                if (status.status === 'completed' || status.status === 'failed') {
+                    res.write(`data: ${JSON.stringify({ type: 'done', status: status.status })}\n\n`);
+                    isCompleted = true;
+                    setTimeout(() => {
+                        try { res.end(); } catch (e) { }
+                    }, 500);
+                    return;
+                }
+            }
+        } catch (err) {
+            logger.error(`[SSE Poll] ${err.message}`);
+        }
+    };
+
+    const pollInterval = setInterval(pollEvents, 2000);
+    pollEvents();
+
+    req.on('close', () => {
+        isCompleted = true;
+        clearInterval(pollInterval);
+        clearInterval(heartbeatInterval);
+        logger.info(`[SSE] Client disconnected for research #${research_id}`);
+    });
+}
+
 // Generate a short-lived SSE token for EventSource clients.
 // GET /events/token/:research_id
 router.get('/token/:research_id', auth, async (req, res) => {
@@ -93,127 +206,32 @@ router.get('/stream/:research_id', auth, async (req, res) => {
     if (!tableName) {
         return res.status(403).json({ error: 'Not authorized' });
     }
+    startResearchStream(req, res, research_id);
+});
 
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx buffering
-    res.flushHeaders();
-
-    // Disable Node.js request timeout for long-lived SSE connections
-    req.setTimeout(0);
-    res.setTimeout(0);
-
-    logger.info(`[SSE] Client connected for research #${research_id}`);
-
-    let lastEventId = 0;
-    let lastSourceId = 0;
-    let isCompleted = false;
-
-    // Send initial connection event
-    res.write(`data: ${JSON.stringify({ type: 'connected', research_id })}\n\n`);
-
-    // Heartbeat every 15s to keep the connection alive through proxies/browsers
-    const heartbeatInterval = setInterval(() => {
-        if (isCompleted) return;
-        try { res.write(': heartbeat\n\n'); } catch (e) { /* connection may be closed */ }
-    }, 15000);
-
-    // Polling function to check for new events
-    const pollEvents = async () => {
-        if (isCompleted) return;
-
-        try {
-            // Get new events since last fetch
-            const eventsResult = await db.query(
-                `SELECT id, event_id, stage, severity, category, message, details, created_at
-                 FROM execution_events 
-                 WHERE research_id = $1 AND id > $2
-                 ORDER BY created_at ASC`,
-                [research_id, lastEventId]
-            );
-
-            for (const event of eventsResult.rows) {
-                const eventData = {
-                    type: 'event',
-                    event_id: event.event_id,
-                    stage: event.stage,
-                    severity: event.severity,
-                    category: event.category,
-                    message: event.message,
-                    details: event.details,
-                    timestamp: event.created_at
-                };
-                res.write(`data: ${JSON.stringify(eventData)}\n\n`);
-                lastEventId = event.id;
-            }
-
-            // Stream newly discovered data sources
-            const sourcesResult = await db.query(
-                `SELECT id, source_type, domain, url, status, items_found, title, description, favicon, thumbnail, published_date, citation_text
-                 FROM data_sources
-                 WHERE research_id = $1 AND id > $2
-                 ORDER BY id ASC`,
-                [research_id, lastSourceId]
-            );
-
-            if (sourcesResult.rows.length > 0) {
-                const sourcesPayload = sourcesResult.rows.map((row) => ({
-                    source_type: row.source_type,
-                    domain: row.domain,
-                    url: row.url,
-                    status: row.status,
-                    items_found: row.items_found,
-                    title: row.title,
-                    description: row.description,
-                    favicon: row.favicon,
-                    thumbnail: row.thumbnail,
-                    published_date: row.published_date,
-                    citation_text: row.citation_text
-                }));
-                res.write(`data: ${JSON.stringify({ type: 'sources', sources: sourcesPayload })}\n\n`);
-                lastSourceId = sourcesResult.rows[sourcesResult.rows.length - 1].id;
-            }
-
-            // Get current research status from whichever table has it
-            const status = await getResearchStatus(research_id);
-
-            if (status) {
-                res.write(`data: ${JSON.stringify({
-                    type: 'status',
-                    status: status.status,
-                    current_stage: status.current_stage,
-                    started_at: status.started_at,
-                    completed_at: status.completed_at,
-                    title: status.title
-                })}\n\n`);
-
-                if (status.status === 'completed' || status.status === 'failed') {
-                    res.write(`data: ${JSON.stringify({ type: 'status', status: status.status, current_stage: status.current_stage, completed_at: status.completed_at })}\n\n`);
-                    res.write(`data: ${JSON.stringify({ type: 'done', status: status.status })}\n\n`);
-                    isCompleted = true;
-                    setTimeout(() => {
-                        try { res.end(); } catch (e) { }
-                    }, 500);
-                    return;
-                }
-            }
-        } catch (err) {
-            logger.error(`[SSE Poll] ${err.message}`);
+// Token-auth SSE endpoint for browser EventSource (no custom headers support)
+router.get('/stream-public/:research_id', async (req, res) => {
+    try {
+        const { research_id } = req.params;
+        const token = String(req.query.token || '');
+        const tok = global.SSE_TOKENS?.get(token);
+        if (!tok) return res.status(401).json({ error: 'Invalid SSE token' });
+        if (tok.expiresAt && Date.now() > tok.expiresAt) {
+            global.SSE_TOKENS.delete(token);
+            return res.status(401).json({ error: 'Expired SSE token' });
         }
-    };
+        if (String(tok.researchId) !== String(research_id)) {
+            return res.status(403).json({ error: 'Token research mismatch' });
+        }
 
-    // Start polling and keep it running until client disconnects or research completes
-    const pollInterval = setInterval(pollEvents, 2000);
-    pollEvents();
+        const tableName = await verifyResearchOwnership(research_id, tok.userId);
+        if (!tableName) return res.status(403).json({ error: 'Not authorized' });
 
-    req.on('close', () => {
-        isCompleted = true;
-        clearInterval(pollInterval);
-        clearInterval(heartbeatInterval);
-        logger.info(`[SSE] Client disconnected for research #${research_id}`);
-    });
+        startResearchStream(req, res, research_id);
+    } catch (err) {
+        logger.error(`[SSE Public] ${err.message}`);
+        res.status(500).json({ error: 'Server error' });
+    }
 });
 
 /**

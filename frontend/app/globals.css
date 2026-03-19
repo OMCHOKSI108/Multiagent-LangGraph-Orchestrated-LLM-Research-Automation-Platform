@@ -244,4 +244,16 @@ h3 { @apply text-xl mb-2; }
   color: var(--workspace-text);
 }
 
+/* Workspace dark-mode overrides for hardcoded slate utility classes */
+:root[data-theme='dark'] .workspace-root .bg-white { background-color: #0f172a !important; }
+:root[data-theme='dark'] .workspace-root .bg-slate-50 { background-color: #020617 !important; }
+:root[data-theme='dark'] .workspace-root .bg-slate-100 { background-color: #111827 !important; }
+:root[data-theme='dark'] .workspace-root .text-slate-900 { color: #f8fafc !important; }
+:root[data-theme='dark'] .workspace-root .text-slate-800 { color: #e2e8f0 !important; }
+:root[data-theme='dark'] .workspace-root .text-slate-700 { color: #cbd5e1 !important; }
+:root[data-theme='dark'] .workspace-root .text-slate-600 { color: #94a3b8 !important; }
+:root[data-theme='dark'] .workspace-root .text-slate-500 { color: #94a3b8 !important; }
+:root[data-theme='dark'] .workspace-root .border-slate-200 { border-color: #334155 !important; }
+:root[data-theme='dark'] .workspace-root .border-slate-300 { border-color: #475569 !important; }
+
 

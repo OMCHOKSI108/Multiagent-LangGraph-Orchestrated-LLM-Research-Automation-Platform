@@ -279,7 +279,7 @@ class ReportPipeline:
         section_num = 1
         for section_name in template["sections"]:
             if section_name in sections:
-                content = sections[section_name]
+                content = self._sanitize_section_content(str(sections[section_name] or ""))
                 
                 # Get title (use numbered title or default)
                 title = section_titles.get(section_name, section_name.replace("_", " ").title())
@@ -295,6 +295,40 @@ class ReportPipeline:
                 parts.append("")  # Empty line between sections
         
         return "\n".join(parts)
+
+    def _sanitize_section_content(self, text: str) -> str:
+        """
+        Deterministic cleanup for noisy LLM output before markdown->LaTeX conversion.
+        Keeps academic prose while removing prompt leakage and chat artifacts.
+        """
+        if not text:
+            return ""
+
+        lines = text.splitlines()
+        cleaned = []
+        noise_prefixes = ("user:", "assistant:", "ai:", "prompt", "instruction", "system:")
+
+        for raw in lines:
+            line = raw.strip()
+            lower = line.lower()
+            if not line:
+                cleaned.append("")
+                continue
+            if lower.startswith(noise_prefixes):
+                continue
+            if lower.startswith("```") or lower.startswith("~~~"):
+                continue
+            if "<|end" in lower or "</analysis>" in lower:
+                continue
+            if "i'm sorry" in lower or "as an ai language model" in lower:
+                continue
+            if re.match(r"^\s*#\s*(input|output|instruction|prompt)\b", lower):
+                continue
+            cleaned.append(raw)
+
+        merged = "\n".join(cleaned)
+        merged = re.sub(r"\n{3,}", "\n\n", merged)
+        return merged.strip()
     
     def _convert_to_latex(self, markdown: str, task: str, template: DomainTemplate) -> str:
         """Convert markdown report to LaTeX source."""
