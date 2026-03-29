@@ -13,20 +13,19 @@ class SectionWriterBase(BaseAgent):
     """Base class for all section writers with common functionality."""
     
     # Anti-hallucination rules appended to all prompts
-    # Strict Academic Guidelines from TASK_AGENT.md
+    # Strict Academic Guidelines from MASTER FIX TABLE
     ANTI_HALLUCINATION_RULES = """
     
     CRITICAL QUALITY RULES (Senior NLP Research Scientist Standards):
     1. ROLE: Act as a Senior NLP Research Scientist. Your goal is high academic rigor.
-    2. CITATIONS: Use ONLY verifiable sources provided in the context. NO hallucinated citations.
-    3. TONE: Formal, objective, precise. No "game-changing", "revolutionary" hype.
-    4. CONSTRAINTS: 
-       - No blog-style writing.
-       - No speculative claims without explicit labeling.
-       - Mark assumptions clearly.
-    5. MATH: Use proper LaTeX for all formulas.
-    6. UNCERTAINTY: If data is missing, state it explicitly. Do not invent.
-    7. STRUCTURE: Follow standard academic structure (IMRAD).
+    2. CONCEPT LOCK: Do NOT confuse 'Claude' (Anthropic's LLM) with 'Clausewitz' (Prussian Military Theorist) unless specifically comparing the two. Maintain precise terminology.
+    3. TEMPORAL LOGIC: Research regarding future years (2025+) MUST be framed as 'Strategic Simulations', 'Future Projections', or 'predictive Analysis'. Do not present future events as historical facts.
+    4. CITATIONS: Use ONLY verifiable sources provided in the context. NO hallucinated citations (e.g., Author_1, 2026).
+    5. DATA INTEGRITY: If no real dataset is provided, convert to a 'Simulation Study' or 'Theoretical Framework' section. Do not invent data points.
+    6. TONE: Formal, objective, precise. No "game-changing" or "market-disrupting" hype.
+    7. MATH RIGOR: For Methodology/Results, use actual statistical tests (t-test, regression) if data permits; otherwise, maintain logical rigor. Use proper LaTeX for all formulas.
+    8. UNCERTAINTY: If data is missing, state it explicitly. Acknowledge limitations early.
+    9. STRUCTURE: Follow standard academic structure (IEEE format).
     """
     
     def __init__(self, section_name: str, word_target: str, **kwargs):

@@ -55,7 +55,7 @@ class ReportPipeline:
         self.model_name = model_name  # Will use default if None
         os.makedirs(self.output_dir, exist_ok=True)
         
-    def generate_report(self, findings: dict, task: str, job_id: str = "unknown") -> dict:
+    def generate_report(self, findings: dict, task: str, job_id: str = "unknown", depth: str = "deep") -> dict:
         """
         Generate a complete research report from findings.
         
@@ -67,7 +67,21 @@ class ReportPipeline:
         Returns:
             dict with markdown, latex, paths, and metadata
         """
-        print(f"[ReportPipeline] Starting multi-stage report generation for job {job_id}")
+        print(f"[ReportPipeline] Starting multi-stage report generation for job {job_id} (depth: {depth})")
+        
+        # Branch for simple findings report (depth=gather)
+        if depth == "gather":
+            emit_event("writing", "Generating data gathering report...", research_id=int(job_id) if str(job_id).isdigit() else None)
+            markdown_report = self._assemble_findings_report(findings, task)
+            md_path = os.path.join(self.output_dir, f"research_{job_id}.md")
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(markdown_report)
+            return {
+                "markdown_report": markdown_report,
+                "md_path": md_path,
+                "domain": "Data Discovery",
+                "template": "Findings"
+            }
         
         # Stage 1: Domain classification
         emit_event("analyzing", "Classifying research domain...", research_id=int(job_id) if str(job_id).isdigit() else None)
@@ -512,6 +526,57 @@ class ReportPipeline:
             print(f"[ReportPipeline] PDF error: {e}")
             return None
 
+    def _assemble_findings_report(self, findings: dict, task: str) -> str:
+        """Assemble a simplified bulleted layout for data gathering."""
+        parts = []
+        parts.append(f"# Data Gathering Report: {task}")
+        parts.append(f"*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n")
+        
+        parts.append("## 📌 Executive Summary")
+        parts.append("This report summarizes the raw data gathered and analyzed during this session.\n")
+        
+        # Section: Sources & Links
+        parts.append("## 🔗 Sources & Data Points")
+        sources = findings.get("slr", {}).get("sources", []) or findings.get("news", {}).get("sources", [])
+        if sources:
+            for s in sources[:10]:
+                parts.append(f"- **{s.get('title', 'Unknown Source')}**: {s.get('url')}")
+        else:
+            parts.append("*No external links found.*")
+        
+        # Section: Key Findings
+        parts.append("\n## 💡 Key Findings & Analysis")
+        for agent, output in findings.items():
+            if agent in ["visualization", "scoring", "writing", "latex"]: continue
+            
+            clean_name = agent.replace("_", " ").title()
+            parts.append(f"### {clean_name}")
+            
+            if isinstance(output, dict):
+                # Extract summary or key fields
+                resp = output.get("response", {})
+                if isinstance(resp, dict):
+                    if "summary" in resp: parts.append(resp["summary"])
+                    if "key_findings" in resp:
+                        for f in resp["key_findings"]: parts.append(f"- {f}")
+                else:
+                    parts.append(str(resp)[:1000])
+            else:
+                parts.append(str(output)[:1000])
+        
+        # Section: Image Analysis
+        vision = findings.get("vision_analysis", {})
+        if vision and "image_analysis" in vision.get("response", {}):
+            parts.append("\n## 🖼️ Image Analysis Insights")
+            for img in vision["response"]["image_analysis"]:
+                if img.get("success"):
+                    parts.append(f"#### Analysis for image: {img['url']}")
+                    parts.append(str(img["analysis"]))
+        
+        parts.append("\n## 🏁 Conclusion")
+        parts.append("Data gathering complete. The raw data provides a solid foundation for further deep research.")
+        
+        return "\n".join(parts)
 
 # ============================================
 # AGENT WRAPPER FOR PIPELINE INTEGRATION
@@ -554,7 +619,7 @@ class MultiStageReportAgent:
         emit_stage_change("report_generation", research_id=research_id)
         
         try:
-            result = self.pipeline.generate_report(findings, task, job_id)
+            result = self.pipeline.generate_report(findings, task, job_id, depth=state.get("depth", "deep"))
             
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)
@@ -565,11 +630,11 @@ class MultiStageReportAgent:
             return {
                 "response": {
                     "markdown_report": result["markdown_report"],
-                    "latex_source": result["latex_source"],
-                    "domain": result["domain"],
-                    "template": result["template"],
-                    "tex_path": result["tex_path"],
-                    "pdf_path": result["pdf_path"]
+                    "latex_source": result.get("latex_source", ""),
+                    "domain": result.get("domain", "General"),
+                    "template": result.get("template", "Findings"),
+                    "tex_path": result.get("tex_path"),
+                    "pdf_path": result.get("pdf_path")
                 },
                 "raw": result["markdown_report"],
                 "agent": self.name,

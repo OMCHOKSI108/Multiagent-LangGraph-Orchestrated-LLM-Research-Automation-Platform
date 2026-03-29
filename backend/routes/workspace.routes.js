@@ -225,7 +225,11 @@ router.post('/:wid/research/start', auth, async (req, res) => {
         const userRow = await db.query('SELECT username FROM users WHERE id = $1', [userId]);
         const userName = userRow.rows[0]?.username || 'there';
 
-        const { intent, reply: instantReply, isResearch } = detectIntent(trimmedTopic, userName);
+        // Fix: Bypass intent detection if a user-specified depth (slash command) is present.
+        // This ensures commands like /gatherdata always trigger research even if the query starts with conversational words.
+        const { intent, reply: instantReply, isResearch } = (depth && depth !== 'standard')
+            ? { intent: 'research', reply: null, isResearch: true }
+            : detectIntent(trimmedTopic, userName);
 
         if (!isResearch) {
             logger.info(`[Workspace] Intent "${intent}" detected for user #${userId}`);

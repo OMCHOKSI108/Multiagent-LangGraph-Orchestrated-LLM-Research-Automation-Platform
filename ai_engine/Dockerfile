@@ -29,7 +29,8 @@ COPY . .
 
 # Railway dynamically routes traffic to the $PORT environment variable
 ENV PORT=8000
+ENV PYTHONPATH=/app
 EXPOSE $PORT
 
 # MUST bind to 0.0.0.0
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "cd /app && python -m uvicorn ai_engine.main:app --host 0.0.0.0 --port $PORT"]

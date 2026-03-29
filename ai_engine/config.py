@@ -55,16 +55,18 @@ print(f"[Config] LLM_STATUS = {LLM_STATUS} (mode={LLM_MODE})")
 # API Keys (for Online Mode)
 # ============================
 
+
 def _parse_keys(prefix: str, legacy_key: str = None):
     """Helper to parse multi-keys like OPENROUTER_API_1,_2, etc."""
     raw = [
         os.getenv(f"{prefix}_1", ""),
         os.getenv(f"{prefix}_2", ""),
-        os.getenv(f"{prefix}_3", "")
+        os.getenv(f"{prefix}_3", ""),
     ]
     if legacy_key:
         raw.append(os.getenv(legacy_key, ""))
     return [k.strip() for k in raw if k and k.strip()]
+
 
 # Multi-key OpenRouter support
 OPENROUTER_API_KEYS = _parse_keys("OPENROUTER_API")
@@ -83,10 +85,10 @@ GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else None
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Specialized Models (optimized for low storage / efficient performance)
-MODEL_REASONING = os.getenv("MODEL_REASONING", "phi3:mini")        # Logic, reasoning
-MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")            # Prose
-MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:latest")     # Code/JSON
-MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")          # Critique
+MODEL_REASONING = os.getenv("MODEL_REASONING", "phi3:mini")  # Logic, reasoning
+MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")  # Prose
+MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:latest")  # Code/JSON
+MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")  # Critique
 
 # Active Groq fallback models used when ONLINE/HYBRID routing selects Groq.
 DEPRECATED_GROQ_MODELS = {
@@ -113,24 +115,37 @@ CLOUD_MODEL_MAPPINGS = {
         "phi3:mini": "llama-3.1-8b-instant",
         "gemma2:2b": "llama-3.1-8b-instant",
         "qwen2.5-coder:latest": "llama-3.3-70b-versatile",
-        "default": "llama-3.3-70b-versatile"
+        "default": "llama-3.3-70b-versatile",
     },
     "openrouter": {
         "phi3:mini": "microsoft/phi-3-mini-128k-instruct",
         "gemma2:2b": "google/gemma-2-9b-it",
         "qwen2.5-coder:latest": "qwen/qwen-2.5-coder-32b-instruct",
-        "default": "anthropic/claude-3.5-sonnet"
+        "default": "anthropic/claude-3.5-sonnet",
     },
     "gemini": {
         "phi3:mini": "gemini-1.5-flash",
         "gemma2:2b": "gemini-1.5-flash",
         "qwen2.5-coder:latest": "gemini-1.5-pro",
-        "default": "gemini-1.5-flash"
-    }
+        "default": "gemini-1.5-flash",
+    },
 }
 
+
 # Common Settings
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", 4096))
+def _parse_int(val, default):
+    """Safely parse integer from env var, extracting numeric part only."""
+    if val is None:
+        return default
+    import re
+
+    match = re.match(r"^(\d+)", str(val).strip())
+    if match:
+        return int(match.group(1))
+    return default
+
+
+MAX_TOKENS = _parse_int(os.getenv("MAX_TOKENS"), 4096)
 
 
 def validate_env():
@@ -185,38 +200,21 @@ validate_env()
 
 # Search Provider Configuration
 SEARCH_PROVIDERS = {
-    "available": [
-        "duckduckgo",
-        "google",
-        "arxiv", 
-        "wikipedia",
-        "openalex",
-        "pubmed"
-    ],
-    "default": [
-        "duckduckgo",
-        "arxiv"
-    ],
+    "available": ["duckduckgo", "google", "arxiv", "wikipedia", "openalex", "pubmed"],
+    "default": ["duckduckgo", "arxiv"],
     "descriptions": {
         "duckduckgo": "General web search with privacy focus",
         "google": "Google search (requires API key)",
         "arxiv": "Academic papers and preprints",
         "wikipedia": "Wikipedia encyclopedia articles",
-        "openalex": "Open access scientific literature", 
-        "pubmed": "Medical and life science literature"
+        "openalex": "Open access scientific literature",
+        "pubmed": "Medical and life science literature",
     },
     "config": {
         "google": {
             "api_key": os.getenv("GOOGLE_SEARCH_API_KEY"),
-            "cx": os.getenv("GOOGLE_SEARCH_CX")
+            "cx": os.getenv("GOOGLE_SEARCH_CX"),
         },
-        "pubmed": {
-            "email": os.getenv("PUBMED_EMAIL", "research@example.com")
-        }
-    }
+        "pubmed": {"email": os.getenv("PUBMED_EMAIL", "research@example.com")},
+    },
 }
-
-
-
-
-

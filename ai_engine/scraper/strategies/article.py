@@ -69,8 +69,24 @@ class ArticleScraper(BaseScraper):
             soup = BeautifulSoup(resp.text, "html.parser")
             for tag in soup(["script", "style", "nav", "footer", "ads"]):
                 tag.decompose()
+            
+            # Extract image URLs
+            image_urls = []
+            for img in soup.find_all("img"):
+                img_url = img.get("src")
+                if img_url and img_url.startswith("http"):
+                    image_urls.append(img_url)
+                elif img_url and img_url.startswith("//"):
+                    image_urls.append("https:" + img_url)
+            
             text = soup.get_text(separator=" ", strip=True)
             title = soup.title.string if soup.title else ""
-            return ScrapedContent(url=url, title=title, text=text, source_type="web")
+            return ScrapedContent(
+                url=url, 
+                title=title, 
+                text=text, 
+                source_type="web",
+                metadata={"image_urls": image_urls[:5]} # Top 5 images
+            )
         except Exception as e:
             raise RuntimeError(f"All article scrapers failed: {e}")

@@ -93,6 +93,14 @@ class WebScraperAgent(BaseAgent):
 
         analysis["sources"] = sources
         analysis["source_count"] = len(sources)
+        
+        # Aggregate image URLs for VisionAgent
+        image_urls = []
+        for s in sources:
+            urls = s.get("metadata", {}).get("image_urls", [])
+            if urls:
+                image_urls.extend(urls)
+        analysis["image_urls"] = list(set(image_urls))[:10] # Cap total unique images
 
         return {
             "response": analysis,

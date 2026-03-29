@@ -40,6 +40,7 @@ class ResearchState(TypedDict):
     findings: Annotated[Dict[str, Any], merge_dicts]
     failed_agents: Annotated[Dict[str, Any], merge_dicts]
     history: Annotated[List[str], operator.add]
+    depth: str
     _job_id: Optional[str]
 
 
@@ -161,6 +162,14 @@ async def critique_node(state): return await run_agent("hallucination_detection"
 async def visualization_node(state): return await run_agent("visualization", state)
 
 
+async def vision_node(state):
+    """
+    Node for multi-modal image analysis.
+    Only runs if image URLs were found by scrapers.
+    """
+    return await run_agent("vision_analysis", state)
+
+
 async def multi_stage_report_node(state):
     from utils.document_lock import document_lock
 
@@ -210,6 +219,7 @@ workflow.add_node("understanding", understanding_node)
 workflow.add_node("technical_verification", verify_node)
 workflow.add_node("critique", critique_node)
 workflow.add_node("visualization", visualization_node)
+workflow.add_node("vision", vision_node)
 workflow.add_node("scoring", scoring_node)
 workflow.add_node("multi_stage_report", multi_stage_report_node)
 workflow.add_node("writing", write_node)
@@ -247,8 +257,9 @@ workflow.add_edge("domain_intelligence", "historical_review")
 workflow.add_edge("domain_intelligence", "slr")
 workflow.add_edge("domain_intelligence", "news")
 workflow.add_edge("historical_review", "gap_synthesis")
-workflow.add_edge("slr", "gap_synthesis")
-workflow.add_edge("news", "gap_synthesis")
+workflow.add_edge("slr", "vision")
+workflow.add_edge("news", "vision")
+workflow.add_edge("vision", "gap_synthesis")
 workflow.add_edge("gap_synthesis", "innovation")
 workflow.add_edge("paper_decomposition", "understanding")
 workflow.add_edge("understanding", "technical_verification")

@@ -5,7 +5,7 @@ function normalizeApiBase(baseUrl: string): string {
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
 
-export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 export const API_ROOT = API_BASE.replace(/\/api$/, '');
 
 function getToken(): string {
@@ -136,8 +136,8 @@ export const workspaces = {
   delete: (id: string) => req<{ message: string }>('DELETE', `/workspaces/${id}`),
 
   startResearch: (wid: string, topic: string, depth: string, session_id?: number) =>
-    req<{ session_id: number; instant_reply?: string; message?: string }>('POST', `/workspaces/${wid}/research/start`, { 
-      topic, 
+    req<{ session_id: number; instant_reply?: string; message?: string }>('POST', `/workspaces/${wid}/research/start`, {
+      topic,
       depth,
       session_id
     }),
@@ -262,6 +262,35 @@ export const chat = {
 
   history: (session_id: number) =>
     req<{ messages: ChatMessage[] }>('GET', `/chat/history/${session_id}`),
+
+  stream: async function* (research_id: number, message: string) {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': token,
+      },
+      body: JSON.stringify({ research_id, message }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ error: 'Stream failed' }));
+      throw new Error(error.error || 'Stream failed');
+    }
+
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) return;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      yield chunk;
+    }
+  },
 };
 
 // ─── Export ──────────────────────────────────────────────────────────────────
@@ -324,8 +353,8 @@ export const memories = {
   list: () => req<{ memories: Memory[] }>('GET', '/memories'),
   create: (title: string, content: string, tags?: string[]) =>
     req<Memory>('POST', '/memories', {
-      content, 
-      metadata: { title, tags } 
+      content,
+      metadata: { title, tags }
     }),
   delete: (id: number) => req<{ success: boolean; id: number }>('DELETE', `/memories/${id}`),
 };
@@ -372,7 +401,7 @@ export const admin = {
   memories: () => req<{ memories: Memory[] }>('GET', '/admin/memories'),
   deleteMemory: (id: number) => req<{ success: boolean }>('DELETE', `/admin/memories/${id}`),
   apiKeys: () => req<{ keys: any[] }>('GET', '/admin/api-keys'),
-  generateApiKey: (user_email: string, key_name?: string) => 
+  generateApiKey: (user_email: string, key_name?: string) =>
     req<{ key: any }>('POST', '/admin/api-keys/generate', { user_email, key_name }),
   revokeApiKey: (id: number) => req<{ success: boolean }>('DELETE', `/admin/api-keys/${id}`),
 };

@@ -94,15 +94,15 @@ app.use('/api/sources', require('./routes/sources.routes'));
 if (process.env.REDIS_URL) {
     const { createClient } = require('redis');
     const redisUrl = process.env.REDIS_URL;
-    
+
     // Auto-detect TLS for Upstash or rediss:// protocol
     const useTls = redisUrl.startsWith('rediss://') || redisUrl.includes('upstash.io');
-    
-    const redisClient = createClient({ 
+
+    const redisClient = createClient({
         url: redisUrl,
         socket: useTls ? { tls: true, rejectUnauthorized: false } : {}
     });
-    
+
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
     redisClient.connect().then(() => {
         console.log('[Node] Connected to Redis' + (useTls ? ' (TLS enabled)' : ''));

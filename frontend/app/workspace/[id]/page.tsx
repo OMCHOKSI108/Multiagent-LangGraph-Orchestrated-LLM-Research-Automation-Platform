@@ -13,7 +13,6 @@ import {
   type ResearchSession,
   type ResearchEvent,
   type ResearchResult,
-  type ChatMessage,
 } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -87,7 +86,7 @@ function extractLatexFromResult(result: ResearchResult | null): string {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type TabId = 'feed' | 'sources' | 'report' | 'raw' | 'chat';
+type TabId = 'feed' | 'sources' | 'report' | 'raw';
 type MsgRole = 'user' | 'bot' | 'system';
 
 interface Msg {
@@ -99,77 +98,246 @@ interface Msg {
   search_mode?: string;
 }
 
+// ─── Icons (inline SVGs) ─────────────────────────────────────────────────────
+
+const Icons = {
+  back: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    </svg>
+  ),
+  chat: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  ),
+  feed: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ),
+  source: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+  ),
+  report: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  data: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+    </svg>
+  ),
+  send: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+    </svg>
+  ),
+  stop: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+    </svg>
+  ),
+  agent: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  ),
+  running: () => (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  ),
+  success: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    </svg>
+  ),
+  error: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
+  info: () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+};
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function Spinner() {
   return <span className="spinner" />;
 }
 
+// ─── Icons (additional) ─────────────────────────────────────────────────────
+
+const PanelIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+  </svg>
+);
+
+const MenuIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8m-8 6h16" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const RightPanelIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+  </svg>
+);
+
+// ─── Chat Bubble ─────────────────────────────────────────────────────────────
+
 function ChatBubble({ msg }: { msg: Msg }) {
   const isUser = msg.role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(msg.text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className={`mb-3 ${isUser ? 'text-right' : 'text-left'}`}>
+    <div className={`group mb-4 ${isUser ? 'text-right' : 'text-left'} animate-fadeIn`}>
       <div
-        className={`inline-block max-w-[88%] text-left px-3 py-2 border text-sm leading-relaxed rounded-lg shadow-sm
+        className={`relative inline-block max-w-[85%] text-left px-4 py-3 text-sm leading-relaxed
           ${isUser
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            ? 'bg-gradient-to-r from-[#00F5D4]/20 to-[#3B82F6]/10 border border-[#00F5D4]/30 text-[#F9FAFB]'
             : msg.role === 'system'
-              ? 'bg-amber-50 border-amber-200 text-amber-900'
-              : 'bg-white border-slate-200 text-slate-800'}`}
+              ? 'bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 text-[#9CA3AF]'
+              : 'bg-[#111827]/80 border border-[rgba(255,255,255,0.1)] text-[#9CA3AF]'}`}
+        style={{ borderRadius: '16px' }}
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose-chat">{msg.text}</ReactMarkdown>
+        
+        {/* Copy Button */}
+        {!isUser && msg.role !== 'system' && (
+          <button
+            onClick={handleCopy}
+            className="absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-white/5"
+            style={{ color: copied ? '#00F5D4' : '#6B7280' }}
+            title="Copy response"
+          >
+             {copied ? (
+               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+               </svg>
+             ) : (
+               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+               </svg>
+             )}
+          </button>
+        )}
       </div>
-      <div className="text-[10px] text-slate-500 mt-0.5">
-        {isUser ? 'You' : msg.role === 'system' ? 'System' : 'AI'} &middot;{' '}
+      <div className="text-[11px] mt-1" style={{ color: '#6B7280' }}>
+        {isUser ? 'You' : msg.role === 'system' ? 'System' : 'AI'} ·{' '}
         {new Date(msg.ts).toLocaleTimeString()}
       </div>
     </div>
   );
 }
 
-function FeedItem({ ev }: { ev: ResearchEvent }) {
+// ─── Feed Item ────────────────────────────────────────────────────────────────
+
+function FeedItem({ ev, index }: { ev: ResearchEvent; index: number }) {
   const sev = ev.severity || 'info';
-  const color = sev === 'error' ? 'text-rose-700' : sev === 'warning' ? 'text-amber-700' : 'text-slate-700';
-  const detailsPreview = ev.details ? flattenObjectPreview(ev.details) : '';
   const isSource = ev.category === 'source';
+  const detailsPreview = ev.details ? flattenObjectPreview(ev.details) : '';
+  
+  const statusConfig = {
+    error: { icon: 'error', color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)' },
+    warning: { icon: 'info', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
+    source: { icon: 'source', color: '#00F5D4', bg: 'rgba(0,245,212,0.1)', border: 'rgba(0,245,212,0.2)' },
+    agent: { icon: 'agent', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)' },
+    info: { icon: 'info', color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)' },
+  };
+  
+  const config = statusConfig[sev as keyof typeof statusConfig] || statusConfig.info;
+  
   return (
-    <div className={`py-1.5 border-b border-slate-200 text-xs leading-snug ${color}`}>
-      {isSource && (
-        <span className="inline-block bg-emerald-50 px-1.5 rounded text-[10px] mr-1.5 text-emerald-700 border border-emerald-200">
-          source
-        </span>
-      )}
-      {ev.stage && (
-        <span className="inline-block bg-slate-100 px-1.5 rounded text-[10px] mr-1.5 text-slate-700 border border-slate-200">
-          {ev.stage}
-        </span>
-      )}
-      {ev.message || ev.category || 'Event'}
-      <span className="text-slate-500 ml-2">{new Date(ev.created_at).toLocaleTimeString()}</span>
-      {detailsPreview && (
-        <pre className="mt-1 text-[10px] text-slate-400 whitespace-pre-wrap">{detailsPreview}</pre>
-      )}
+    <div 
+      className="p-3 mb-2 rounded-xl border transition-all duration-300 hover:scale-[1.01]"
+      style={{ 
+        backgroundColor: config.bg,
+        borderColor: config.border,
+        animationDelay: `${index * 50}ms`
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <div 
+          className="p-1.5 rounded-lg"
+          style={{ backgroundColor: config.border }}
+        >
+          <span style={{ color: config.color }}>
+            {sev === 'error' ? <Icons.error /> : sev === 'warning' ? <Icons.info /> : isSource ? <Icons.source /> : <Icons.agent />}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            {ev.stage && (
+              <span 
+                className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider"
+                style={{ backgroundColor: 'rgba(0,245,212,0.1)', color: '#00F5D4' }}
+              >
+                {ev.stage}
+              </span>
+            )}
+            <span className="text-xs font-medium" style={{ color: config.color }}>
+              {ev.message || ev.category || 'Event'}
+            </span>
+          </div>
+          <div className="text-[11px]" style={{ color: '#6B7280' }}>
+            {new Date(ev.created_at).toLocaleTimeString()}
+          </div>
+          {detailsPreview && (
+            <pre 
+              className="mt-2 text-[10px] p-2 rounded-lg overflow-x-auto"
+              style={{ backgroundColor: 'rgba(0,0,0,0.3)', color: '#9CA3AF' }}
+            >
+              {detailsPreview}
+            </pre>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Sources Panel ───────────────────────────────────────────────────────────
+// ─── Sources Panel ────────────────────────────────────────────────────────────
 
 const SOURCE_AGENTS: [string, string, string | null][] = [
-  ['literature_review',   '📚 Literature', 'papers'],
-  ['web_scraper',         '🌐 Web Sources', 'sources'],
-  ['data_scraper',        '🌐 Scraped Data', 'results'],
-  ['google_news',         '📰 News', 'results'],
-  ['domain_intelligence', '🧠 Domain Intelligence', null],
-  ['topic_discovery',     '🔎 Topic Discovery', 'topic_suggestions'],
-  ['gap_synthesis',       '🔍 Gap Analysis', null],
-  ['scoring',             '📊 Quality Score', null],
-  ['fact_check',          '✅ Fact Check', null],
-  ['bias_detection',      '⚖️ Bias Detection', null],
-  ['visualization',       '📈 Visualization', null],
-  ['innovation',          '💡 Innovation', null],
-  ['technical_verification', '🔬 Technical Verification', null],
-  ['chat_sources',        '💬 Chat References', 'sources'],
+  ['literature_review', 'Literature', 'papers'],
+  ['web_scraper', 'Web Sources', 'sources'],
+  ['data_scraper', 'Scraped Data', 'results'],
+  ['google_news', 'News', 'results'],
+  ['domain_intelligence', 'Domain Intelligence', null],
+  ['topic_discovery', 'Topic Discovery', 'topic_suggestions'],
+  ['gap_synthesis', 'Gap Analysis', null],
+  ['scoring', 'Quality Score', null],
+  ['fact_check', 'Fact Check', null],
+  ['bias_detection', 'Bias Detection', null],
+  ['visualization', 'Visualization', null],
+  ['innovation', 'Innovation', null],
+  ['technical_verification', 'Technical Verification', null],
+  ['chat_sources', 'Chat References', 'sources'],
 ];
 
 interface SourceItem {
@@ -196,13 +364,20 @@ function SourcesPanel({
   liveSources?: any[];
 }) {
   if (!resultJson && (!feedEvents || feedEvents.length === 0) && (!liveSources || liveSources.length === 0)) {
-    return <p className="text-slate-500 text-sm">No data yet.</p>;
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="w-16 h-16 rounded-full bg-[#111827] flex items-center justify-center mb-4 border border-[rgba(255,255,255,0.1)]">
+          <span style={{ color: '#6B7280' }}><Icons.source /></span>
+        </div>
+        <p className="text-sm" style={{ color: '#6B7280' }}>No sources discovered yet.</p>
+        <p className="text-xs mt-1" style={{ color: '#4B5563' }}>Sources will appear as agents discover them.</p>
+      </div>
+    );
   }
 
   const findings = resultJson?.final_state?.findings || resultJson?.findings || {};
   const sections: JSX.Element[] = [];
 
-  // Extract real-time sources from feedEvents + dedicated source endpoint
   if ((feedEvents && feedEvents.length > 0) || (liveSources && liveSources.length > 0)) {
     const realtimeSources = (feedEvents || []).filter(e => e.category === 'source').map(e => ({
       title: e.details?.title || e.message,
@@ -219,30 +394,46 @@ function SourcesPanel({
     const mergedSources = [...realtimeSources, ...structuredLiveSources];
 
     if (mergedSources.length > 0) {
-      // Deduplicate by URL or title
       const uniqueSources = Array.from(new Map(mergedSources.map(s => [s.url || s.title, s])).values());
       
       sections.push(
         <div key="realtime_sources" className="mb-6">
-          <h4 className="text-sm font-semibold border-b border-emerald-200 pb-1 mb-2 text-emerald-700 flex items-center gap-2">
-            <span className="relative flex h-2 w-2 shadow-[0_0_8px_rgba(52,211,153,0.8)]">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00F5D4] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00F5D4]"></span>
             </span>
-            Live Discovered Sources ({uniqueSources.length})
-          </h4>
+            <h4 className="text-sm font-semibold" style={{ color: '#F9FAFB' }}>
+              Live Discovered Sources ({uniqueSources.length})
+            </h4>
+          </div>
           {uniqueSources.slice(0, 50).map((item, i) => (
-            <div key={`rt-${i}`} className="border border-emerald-200 bg-emerald-50 p-2.5 mb-2 text-xs rounded transition-all hover:bg-emerald-100">
-              <p className="font-semibold mb-0.5 text-slate-900">[{i + 1}] {item.title || item.url || 'Live Source'}</p>
-              {item.domain && <p className="text-emerald-700 font-medium mb-1 text-[11px]">Source: {item.domain}</p>}
+            <div 
+              key={`rt-${i}`} 
+              className="p-4 mb-3 rounded-xl border transition-all duration-300 hover:border-[#00F5D4]/30"
+              style={{ backgroundColor: 'rgba(0,245,212,0.03)', borderColor: 'rgba(0,245,212,0.15)' }}
+            >
+              <p className="font-semibold mb-1 text-sm" style={{ color: '#F9FAFB' }}>
+                [{i + 1}] {item.title || item.url || 'Live Source'}
+              </p>
+              {item.domain && (
+                <p className="text-xs font-medium mb-2" style={{ color: '#00F5D4' }}>
+                  Source: {item.domain}
+                </p>
+              )}
               {item.abstract && (
-                <p className="text-slate-700 mb-1 leading-relaxed">
+                <p className="text-xs mb-2 leading-relaxed" style={{ color: '#9CA3AF' }}>
                   {item.abstract.slice(0, 250)}...
                 </p>
               )}
               {item.url && (
-                <a href={item.url} target="_blank" rel="noopener noreferrer"
-                  className="text-emerald-700 hover:text-emerald-800 underline text-[11px]">
+                <a 
+                  href={item.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium hover:underline"
+                  style={{ color: '#00F5D4' }}
+                >
                   Open →
                 </a>
               )}
@@ -264,22 +455,50 @@ function SourcesPanel({
       if (!items.length) continue;
       sections.push(
         <div key={key} className="mb-4">
-          <h4 className="text-sm font-semibold border-b border-slate-200 pb-1 mb-2">{label} ({items.length})</h4>
+          <h4 className="text-sm font-semibold mb-3 pb-2" style={{ color: '#F9FAFB', borderColor: 'rgba(255,255,255,0.08)' }}>
+            {label} ({items.length})
+          </h4>
           {items.slice(0, 15).map((item, i) => (
-            <div key={i} className="border border-slate-200 bg-white p-2.5 mb-2 text-xs rounded">
-              <p className="font-semibold mb-0.5 text-slate-900">[{i + 1}] {item.title || item.url || 'Item'}</p>
-              {item.domain && <p className="text-emerald-700 font-medium mb-1 text-[11px]">Domain: {item.domain}</p>}
-              {item.authors && <p className="text-slate-500 mb-0.5">{String(item.authors).slice(0, 120)}</p>}
-              {item.novelty_angle && <p className="text-indigo-700 mb-1 leading-relaxed">Angle: {item.novelty_angle}</p>}
+            <div 
+              key={i} 
+              className="p-3 mb-2 rounded-xl border transition-all duration-300 hover:border-[#3B82F6]/30"
+              style={{ backgroundColor: '#111827', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <p className="font-semibold mb-1 text-sm" style={{ color: '#F9FAFB' }}>
+                [{i + 1}] {item.title || item.url || 'Item'}
+              </p>
+              {item.domain && (
+                <p className="text-xs font-medium mb-1" style={{ color: '#3B82F6' }}>
+                  Domain: {item.domain}
+                </p>
+              )}
+              {item.authors && <p className="text-xs mb-1" style={{ color: '#6B7280' }}>{String(item.authors).slice(0, 120)}</p>}
+              {item.novelty_angle && (
+                <p className="text-xs mb-1 leading-relaxed" style={{ color: '#8B5CF6' }}>
+                  Angle: {item.novelty_angle}
+                </p>
+              )}
               {(item.abstract || item.summary || item.content || item.snippet) && (
-                <p className="text-slate-700 mb-1 leading-relaxed">
+                <p className="text-xs mb-1 leading-relaxed" style={{ color: '#9CA3AF' }}>
                   {(item.abstract || item.summary || item.content || item.snippet || '').slice(0, 250)}...
                 </p>
               )}
-              {item.estimated_complexity && <span className="inline-block px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] mt-1 border border-slate-200">Complexity: {item.estimated_complexity}</span>}
+              {item.estimated_complexity && (
+                <span 
+                  className="inline-block px-2 py-0.5 rounded text-[10px] mt-1"
+                  style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#8B5CF6' }}
+                >
+                  Complexity: {item.estimated_complexity}
+                </span>
+              )}
               {item.url && (
-                <a href={item.url} target="_blank" rel="noopener noreferrer"
-                  className="text-blue-700 underline text-[11px]">
+                <a 
+                  href={item.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs block mt-2 hover:underline"
+                  style={{ color: '#00F5D4' }}
+                >
                   Open →
                 </a>
               )}
@@ -292,8 +511,13 @@ function SourcesPanel({
       if (txt.length < 10) continue;
       sections.push(
         <div key={key} className="mb-4">
-          <h4 className="text-sm font-semibold border-b border-slate-200 pb-1 mb-2">{label}</h4>
-          <div className="border border-slate-200 bg-white p-2.5 text-xs text-slate-700 whitespace-pre-wrap leading-relaxed rounded">
+          <h4 className="text-sm font-semibold mb-2 pb-2" style={{ color: '#F9FAFB', borderColor: 'rgba(255,255,255,0.08)' }}>
+            {label}
+          </h4>
+          <div 
+            className="p-3 text-xs leading-relaxed rounded-xl"
+            style={{ backgroundColor: '#111827', borderColor: 'rgba(255,255,255,0.08)', color: '#9CA3AF' }}
+          >
             {txt.slice(0, 800)}{txt.length > 800 ? '...' : ''}
           </div>
         </div>
@@ -303,14 +527,10 @@ function SourcesPanel({
 
   return sections.length > 0
     ? <>{sections}</>
-    : <p className="text-slate-500 text-sm">No structured sources. See Report tab.</p>;
+    : <p className="text-sm" style={{ color: '#6B7280' }}>No structured sources. See Report tab.</p>;
 }
 
-// ─── Chat with AI panel ──────────────────────────────────────────────────────
-
-// AI Chat Panel removed as it is now integrated into the main chat area
-
-// ─── Section Editor ─────────────────────────────────────────────────────────
+// ─── Section Editor ──────────────────────────────────────────────────────────
 
 function SectionEditor({ 
   section, 
@@ -341,34 +561,51 @@ function SectionEditor({
   }
 
   return (
-    <div className="group relative border-b border-slate-200 pb-8 mb-8 last:border-0 last:mb-0">
+    <div className="group relative pb-8 mb-8 last:border-0 last:mb-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="prose-research mb-4">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
       </div>
 
-      <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         {!editing ? (
           <button 
             onClick={() => setEditing(true)}
-            className="text-[10px] bg-white border border-slate-300 px-2 py-1 rounded hover:bg-slate-50 text-slate-700"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-105"
+            style={{ backgroundColor: 'rgba(0,245,212,0.1)', color: '#00F5D4', border: '1px solid rgba(0,245,212,0.2)' }}
           >
             Edit with AI
           </button>
         ) : (
-          <div className="w-full bg-emerald-50 border border-emerald-200 p-3 rounded-lg mt-2">
-            <p className="text-[10px] text-emerald-700 mb-2 font-mono uppercase tracking-wider">AI Edit Instruction</p>
+          <div 
+            className="w-full p-4 rounded-xl mt-2"
+            style={{ backgroundColor: 'rgba(0,245,212,0.05)', border: '1px solid rgba(0,245,212,0.2)' }}
+          >
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: '#00F5D4' }}>
+              AI Edit Instruction
+            </p>
             <textarea
               value={instruction}
               onChange={e => setInstruction(e.target.value)}
               placeholder="e.g., 'Make this section more technical' or 'Add a table about...'"
-              className="w-full bg-white border border-slate-300 rounded p-2 text-xs text-slate-800 mb-2 focus:border-emerald-500/50 outline-none"
+              className="w-full p-3 rounded-lg text-sm mb-2 outline-none transition-all duration-300"
+              style={{ 
+                backgroundColor: '#111827', 
+                border: '1px solid rgba(255,255,255,0.1)', 
+                color: '#F9FAFB',
+              }}
               rows={2}
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setEditing(false)} className="text-[10px] text-slate-500 hover:text-slate-800">Cancel</button>
+              <button 
+                onClick={() => setEditing(false)} 
+                className="px-3 py-1.5 text-xs rounded-lg transition-colors"
+                style={{ color: '#6B7280' }}
+              >
+                Cancel
+              </button>
               <button 
                 onClick={handleEdit} 
-                className="btn-primary px-3 py-1 text-[10px]"
+                className="btn-primary px-3 py-1.5 text-xs"
                 disabled={busy || !instruction.trim()}
               >
                 {busy ? 'Processing...' : 'Refine Section'}
@@ -381,11 +618,10 @@ function SectionEditor({
   );
 }
 
-// ─── Main Workspace Page ─────────────────────────────────────────────────────
+// ─── Main Workspace Page ──────────────────────────────────────────────────────
 
 export default function WorkspacePage() {
   const { user, loading: authLoading } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const params = useParams();
   const wsId = params.id as string;
@@ -408,7 +644,7 @@ export default function WorkspacePage() {
   const abortRef = useRef(false);
   const [statusText, setStatusText] = useState('');
 
-  // Right panel
+  // Panels
   const [tab, setTab] = useState<TabId>('feed');
   const [feedEvents, setFeedEvents] = useState<ResearchEvent[]>([]);
   const [liveSources, setLiveSources] = useState<any[]>([]);
@@ -420,12 +656,33 @@ export default function WorkspacePage() {
   const feedRef = useRef<HTMLDivElement>(null);
   const chatLogRef = useRef<HTMLDivElement>(null);
 
-  // Redirect if not auth
+  // Drawer & Resizing state
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [rightPanelWidth, setRightPanelWidth] = useState(50); // percentage
+  const isResizingRef = useRef(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const percentage = (1 - (e.clientX / window.innerWidth)) * 100;
+      if (percentage > 15 && percentage < 85) {
+        setRightPanelWidth(percentage);
+      }
+    };
+    const handleMouseUp = () => { isResizingRef.current = false; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
 
-  // Load workspace + sessions
   const loadWorkspace = useCallback(async () => {
     try {
       const data = await wsApi.get(wsId);
@@ -436,7 +693,6 @@ export default function WorkspacePage() {
 
   useEffect(() => { if (user && wsId) loadWorkspace(); }, [user, wsId, loadWorkspace]);
 
-  // Scroll helpers
   useEffect(() => {
     chatLogRef.current?.scrollTo({ top: chatLogRef.current.scrollHeight, behavior: 'smooth' });
   }, [msgs]);
@@ -458,13 +714,9 @@ export default function WorkspacePage() {
     return () => clearInterval(id);
   }, [running, runStartedAt]);
 
-  // ─── Add message to chat ────────────────────────────────────────────────────
-
   function addMsg(text: string, role: MsgRole, id?: string) {
     setMsgs(prev => [...prev, { id: id || crypto.randomUUID(), role, text, ts: Date.now() }]);
   }
-
-  // ─── Clear right panels ──────────────────────────────────────────────────────
 
   function clearPanels() {
     setFeedEvents([]);
@@ -474,8 +726,6 @@ export default function WorkspacePage() {
     setLatexSource('');
     setSectionsData([]);
   }
-
-  // ─── Load a previous session ─────────────────────────────────────────────────
 
   async function loadSession(s: ResearchSession) {
     setCurSession(s);
@@ -498,13 +748,11 @@ export default function WorkspacePage() {
         if ((full as any).latex_source) setLatexSource((full as any).latex_source);
         setStatusText('Completed');
 
-        // Load granular sections
         try {
           const sres = await wsApi.getSections(wsId, s.id);
           setSectionsData(sres.sections || []);
         } catch { /* ignore */ }
 
-        // Load event history
         try {
           const evts = await eventsApi.list(s.id);
           setFeedEvents(Array.isArray(evts) ? evts : []);
@@ -521,7 +769,6 @@ export default function WorkspacePage() {
         setRunStartedAt(full.started_at ? new Date(full.started_at).getTime() : Date.now());
         setElapsedSec(0);
         
-        // Load existing chat history if any
         try {
           const ch = await chatApi.history(s.id);
           if (ch.messages && ch.messages.length > 0) {
@@ -535,7 +782,6 @@ export default function WorkspacePage() {
         setStatusText('Failed');
       }
 
-      // Always load chat history if available
       if (full.status === 'completed') {
         try {
           const ch = await chatApi.history(s.id);
@@ -548,8 +794,6 @@ export default function WorkspacePage() {
       addMsg('Error loading session: ' + (e instanceof Error ? e.message : 'Unknown'), 'bot');
     }
   }
-
-  // ─── SSE / Event polling ──────────────────────────────────────────────────────
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -570,7 +814,6 @@ export default function WorkspacePage() {
     let lastEventId = 0;
     let lastSourceCount = 0;
 
-    // Try true SSE stream first (realtime), keep polling as fallback/hydration.
     (async () => {
       try {
         const tok = await eventsApi.getSSEToken(sid);
@@ -602,16 +845,14 @@ export default function WorkspacePage() {
             } else if (payload.type === 'done') {
               try { es.close(); } catch { }
             }
-          } catch { /* ignore malformed stream chunks */ }
+          } catch { /* ignore */ }
         };
 
         es.onerror = () => {
           try { es.close(); } catch { }
           eventSourceRef.current = null;
         };
-      } catch {
-        // fallback polling below will continue
-      }
+      } catch { /* fallback */ }
     })();
 
     pollingIntervalRef.current = setInterval(async () => {
@@ -640,8 +881,6 @@ export default function WorkspacePage() {
     }, 3000);
   }, [stopEventPolling]);
 
-  // ─── Poll research status ────────────────────────────────────────────────────
-
   async function pollResearch(sid: number) {
     setRunning(true);
     if (!runStartedAt) setRunStartedAt(Date.now());
@@ -662,7 +901,7 @@ export default function WorkspacePage() {
 
         try {
           const s = await wsApi.getResearchStatus(wsId, sid);
-          consecutiveErrors = 0; // Reset on success
+          consecutiveErrors = 0;
 
           if (s.current_stage && s.current_stage !== lastStage) {
             lastStage = s.current_stage;
@@ -676,7 +915,6 @@ export default function WorkspacePage() {
             if ((s as any).latex_source) setLatexSource((s as any).latex_source);
             setStatusText('Completed');
             
-            // Fetch sections
             try {
               const sres = await wsApi.getSections(wsId, sid);
               setSectionsData(sres.sections || []);
@@ -693,7 +931,6 @@ export default function WorkspacePage() {
           if (s.status === 'waiting') {
             setStatusText('Waiting for Topic Selection');
             
-            // Extract topics from final payload
             const finalState: any = s.result_json?.final_state;
             const suggestions = finalState?.topic_suggestions || finalState?.findings?.topic_discovery?.topic_suggestions || [];
             let outlineMsg = 'I have discovered multiple potential research angles. Please review them in the **Sources** tab and reply with `/deepresearch <Your Chosen Topic>` to lock in your topic and proceed.';
@@ -719,7 +956,7 @@ export default function WorkspacePage() {
         } catch (err) { 
           consecutiveErrors++;
           if (consecutiveErrors > 20) {
-            addMsg('Connection is unstable. We will keep retrying in background. You do not need to log out.', 'system');
+            addMsg('Connection is unstable. We will keep retrying in background.', 'system');
             consecutiveErrors = 0;
           }
         }
@@ -732,8 +969,6 @@ export default function WorkspacePage() {
       await loadWorkspace();
     }
   }
-
-  // ─── Dispatch research ────────────────────────────────────────────────────────
 
   async function dispatchResearch(topic: string, depth: string) {
     clearPanels();
@@ -749,7 +984,6 @@ export default function WorkspacePage() {
     try {
       const res = await wsApi.startResearch(wsId, topic, depth, curSession?.id);
       
-      // ── Backend detected a non-research intent (greeting, help, etc.) ──
       if (res.instant_reply) {
         setMsgs(prev => prev.filter(m => m.id !== processingMsgId));
         addMsg(res.instant_reply!, 'bot');
@@ -761,7 +995,6 @@ export default function WorkspacePage() {
       const sid = res.session_id!;
       setCurSession({ id: sid, topic, status: 'queued', created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
 
-      // Update processing message
       setMsgs(prev => prev.map(m =>
         m.id === processingMsgId
           ? { ...m, text: `⏳ Job #${sid} created (${depth}). Agents working...` }
@@ -771,7 +1004,6 @@ export default function WorkspacePage() {
       await loadWorkspace();
       await pollResearch(sid);
 
-      // Remove processing message
       setMsgs(prev => prev.filter(m => m.id !== processingMsgId));
     } catch (e: unknown) {
       setMsgs(prev => prev.filter(m => m.id !== processingMsgId));
@@ -781,8 +1013,6 @@ export default function WorkspacePage() {
     }
   }
 
-  // ─── Send from chat ───────────────────────────────────────────────────────────
-
   async function handleSend() {
     const q = chatInput.trim();
     if (!q || running) return;
@@ -791,61 +1021,51 @@ export default function WorkspacePage() {
 
     addMsg(q, 'user');
 
-    // Slash commands — handle navigation ones locally, rest goes to backend
     const slash = parseSlashCommand(q);
     if (slash) {
       if (slash.cmd === 'history' || slash.cmd === 'profile') { router.push('/profile'); return; }
       const depthMap: Record<string, string> = { research: 'standard', deepresearch: 'deep', gatherdata: 'gather', help: 'standard' };
       const depth = depthMap[slash.cmd] || 'standard';
-      // For /help with no args, ask backend (it'll classify as help intent)
       const topic = slash.args || (slash.cmd === 'help' ? 'help' : '');
       if (!topic) { addMsg(`Please provide a topic. Usage: **/${slash.cmd} [your research topic]**`, 'bot'); return; }
       await dispatchResearch(topic, depth);
       return;
     }
 
-    // If a session is active and NOT a slash command, it's a chat message
     if (curSession && curSession.status === 'completed' && !slash) {
-      addMsg('Thinking...', 'bot', 'thinking-' + q.length);
+      const botMsgId = crypto.randomUUID();
+      addMsg('Thinking...', 'bot', botMsgId);
+      
       try {
-        const res = await chatApi.send(curSession.id, q);
-        setMsgs(prev => prev.filter(m => m.id !== 'thinking-' + q.length));
+        let fullChunk = '';
+        const stream = chatApi.stream(curSession.id, q);
         
-        // Add message with sources
-        setMsgs(prev => [...prev, { 
-          id: res.message_id || crypto.randomUUID(), 
-          role: 'bot', 
-          text: res.reply, 
-          ts: Date.now(),
-          sources: res.sources,
-          search_mode: res.search_mode as any
-        }]);
-
-        // Integrate chat sources into Sources Panel
-        if (res.sources && res.sources.length > 0) {
-          setResultJson(prev => {
-            const next = prev ? { ...prev } : {};
-            const findings = next.findings || {};
-            findings.chat_sources = {
-              agent: 'chatbot',
-              response: { sources: res.sources }
-            };
-            next.findings = findings;
-            return next as any;
-          });
+        for await (const chunk of stream) {
+           // Parse SSE format (data: ...)
+           const lines = chunk.split('\n');
+           for (const line of lines) {
+             if (line.startsWith('data: ')) {
+               const data = line.slice(6);
+               if (data === '[DONE]') continue;
+               if (data.startsWith('[ERROR]')) throw new Error(data.slice(7));
+               
+               fullChunk += data;
+               setMsgs(prev => prev.map(m => 
+                 m.id === botMsgId ? { ...m, text: fullChunk } : m
+               ));
+             }
+           }
         }
       } catch (e: any) {
-        setMsgs(prev => prev.filter(m => m.id !== 'thinking-' + q.length));
-        addMsg('Chat Error: ' + e.message, 'bot');
+        setMsgs(prev => prev.map(m => 
+          m.id === botMsgId ? { ...m, text: `Error: ${e.message}`, role: 'system' } : m
+        ));
       }
       return;
     }
 
-    // All other messages go to backend — it decides: instant reply or research job
     await dispatchResearch(q, 'standard');
   }
-
-  // ─── Export helper ────────────────────────────────────────────────────────────
 
   async function handleExport(format: 'markdown' | 'json') {
     if (!curSession) return;
@@ -911,11 +1131,11 @@ export default function WorkspacePage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
-  const TABS: { id: TabId; label: string }[] = [
-    { id: 'feed', label: 'Live Feed' },
-    { id: 'sources', label: 'Sources' },
-    { id: 'report', label: 'Report' },
-    { id: 'raw', label: 'Raw Data' },
+  const TABS: { id: TabId; label: string; icon: JSX.Element }[] = [
+    { id: 'feed', label: 'Live Feed', icon: <Icons.feed /> },
+    { id: 'sources', label: 'Sources', icon: <Icons.source /> },
+    { id: 'report', label: 'Report', icon: <Icons.report /> },
+    { id: 'raw', label: 'Raw Data', icon: <Icons.data /> },
   ];
 
   const findings = resultJson?.final_state?.findings || resultJson?.findings || {};
@@ -937,117 +1157,260 @@ export default function WorkspacePage() {
   );
 
   return (
-    <div
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-      className="flex flex-col workspace-root"
+    <div 
+      className="fixed inset-0 flex flex-col workspace-root overflow-hidden"
+      style={{ backgroundColor: '#0B0F1A' }}
     >
-      {/* Workspace header */}
-      <div className="border-b border-slate-200 h-11 px-4 flex items-center justify-between flex-shrink-0 backdrop-blur-xl z-10">
-        <div className="flex items-center gap-3 text-sm text-slate-700">
+      {/* Top Bar */}
+      <header 
+        className="h-14 px-4 flex items-center justify-between flex-shrink-0 z-20"
+        style={{ 
+          background: 'linear-gradient(180deg, rgba(11,15,26,0.95) 0%, rgba(11,15,26,0.85) 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)'
+        }}
+      >
+        <div className="flex items-center gap-3">
+          {/* Menu toggle button */}
+          <button
+            onClick={() => setShowDrawer(!showDrawer)}
+            className="p-2 rounded-lg transition-all duration-300 hover:bg-white/5"
+            style={{ color: showDrawer ? '#00F5D4' : '#9CA3AF' }}
+            title="Toggle Sessions"
+          >
+            <MenuIcon />
+          </button>
+          
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-slate-500 hover:text-slate-900 cursor-pointer border-none bg-transparent"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all duration-300 hover:bg-white/5"
+            style={{ color: '#9CA3AF' }}
           >
-            ← Back
+            <Icons.back />
+            <span className="hidden sm:inline">Back</span>
           </button>
-          <span className="font-semibold text-slate-900">{wsName}</span>
+          
+          <div className="h-5 w-px hidden sm:block" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
+          <h1 className="text-sm font-semibold hidden sm:block" style={{ color: '#F9FAFB' }}>{wsName}</h1>
+          {curSession && (
+            <span 
+              className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+              style={{ backgroundColor: 'rgba(0,245,212,0.1)', color: '#00F5D4' }}
+            >
+              {curSession.topic?.slice(0, 25) || 'Research Session'}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-slate-600">
+        
+        <div className="flex items-center gap-3">
+          {/* Right panel toggle */}
           <button
-            type="button"
-            onClick={toggleTheme}
-            className="border border-slate-300 px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 text-xs text-slate-700"
-            title="Toggle theme"
+            onClick={() => setShowRightPanel(!showRightPanel)}
+            className="p-2 rounded-lg transition-all duration-300 hover:bg-white/5"
+            style={{ color: showRightPanel ? '#00F5D4' : '#6B7280' }}
+            title="Toggle Panel"
           >
-            {theme === 'dark' ? 'Light' : 'Dark'}
+            <RightPanelIcon />
           </button>
-          {running && <><Spinner /> <span>{statusText || 'Running'}</span> <span className="font-semibold text-emerald-700">Elapsed {formatDuration(elapsedSec)}</span></>}
-          {!running && statusText && <span>{statusText}</span>}
+          
+          {running && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="animate-pulse" style={{ color: '#00F5D4' }}><Icons.running /></span>
+                <span className="text-xs font-medium hidden sm:inline" style={{ color: '#00F5D4' }}>{statusText || 'Running'}</span>
+              </div>
+              <span className="text-xs font-mono px-2 py-1 rounded-lg" style={{ backgroundColor: 'rgba(0,245,212,0.1)', color: '#00F5D4' }}>
+                {formatDuration(elapsedSec)}
+              </span>
+            </div>
+          )}
+          {!running && statusText && (
+            <span className="text-xs hidden sm:inline" style={{ color: '#6B7280' }}>{statusText}</span>
+          )}
           {curSession && !running && (
-            <div className="flex gap-1">
-              <button onClick={() => handleExport('markdown')}
-                className="border border-slate-300 px-2 py-0.5 hover:bg-slate-100 cursor-pointer bg-white text-xs text-slate-700 rounded-md">
-                ↓ MD
-              </button>
-              <button onClick={handlePdfExport}
-                className="border border-slate-300 px-2 py-0.5 hover:bg-slate-100 cursor-pointer bg-white text-xs text-slate-700 rounded-md">
-                ↓ PDF
-              </button>
-              <button onClick={handleLatexExport}
-                className="border border-slate-300 px-2 py-0.5 hover:bg-slate-100 cursor-pointer bg-white text-xs text-slate-700 rounded-md">
-                ↓ TEX
-              </button>
-              <button onClick={() => handleExport('json')}
-                className="border border-slate-300 px-2 py-0.5 hover:bg-slate-100 cursor-pointer bg-white text-xs text-slate-700 rounded-md">
-                ↓ JSON
-              </button>
+            <div className="flex gap-1 sm:gap-2">
+              {[
+                { label: 'MD', onClick: () => handleExport('markdown') },
+                { label: 'PDF', onClick: handlePdfExport },
+                { label: 'TEX', onClick: handleLatexExport },
+                { label: 'JSON', onClick: () => handleExport('json') },
+              ].map(({ label, onClick }) => (
+                <button 
+                  key={label}
+                  onClick={onClick}
+                  className="px-2 py-1 text-xs rounded-lg font-medium transition-all duration-300 hover:scale-105"
+                  style={{ 
+                    backgroundColor: 'rgba(59,130,246,0.1)', 
+                    color: '#3B82F6',
+                    border: '1px solid rgba(59,130,246,0.2)'
+                  }}
+                >
+                  ↓ {label}
+                </button>
+              ))}
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* Main panels */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left: sessions sidebar + chat */}
-        <div className="flex border-r border-slate-200" style={{ width: '55%' }}>
-          {/* Sessions sidebar */}
-          <div
-            className="border-r border-slate-200 bg-white flex flex-col flex-shrink-0"
-            style={{ width: 200 }}
-          >
-            <div className="px-3 py-2 text-[11px] font-semibold border-b border-slate-200 uppercase tracking-[0.16em] text-slate-500">Sessions</div>
-            <div className="flex-1 overflow-y-auto">
-              {sessions.length === 0 ? (
-                <p className="text-xs text-slate-500 px-3 pt-2">No sessions yet</p>
-              ) : (
-                sessions.map(s => {
-                  const label = s.topic || s.title || 'Untitled';
-                  const short = label.length > 30 ? label.slice(0, 28) + '…' : label;
-                  const isActive = curSession?.id === s.id;
-                  const stClr = s.status === 'completed' ? 'text-emerald-700' : s.status === 'running' ? 'text-amber-700' : s.status === 'failed' ? 'text-rose-700' : 'text-slate-500';
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => loadSession(s)}
-                      className={`px-3 py-2 cursor-pointer border-b border-slate-100 text-xs hover:bg-slate-50 ${isActive ? 'bg-slate-100 font-semibold text-slate-900' : 'text-slate-700'}`}
-                    >
-                      {short}
-                      <br />
-                      <span className={`text-[10px] ${stClr}`}>
-                        {s.status} &middot; {new Date(s.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+      {/* Main Layout - Chat + Right Panel */}
+      <div className="flex flex-1 min-h-0 relative">
+        
+        {/* LEFT DRAWER: Sessions Sidebar (Overlay) */}
+        {showDrawer && (
+          <>
+            {/* Overlay */}
+            <div 
+              className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+              onClick={() => setShowDrawer(false)}
+            />
+            
+            {/* Drawer */}
+            <aside 
+              className="fixed left-0 top-14 bottom-0 z-40 flex flex-col w-64 shadow-2xl"
+              style={{ 
+                backgroundColor: '#111827', 
+                borderRight: '1px solid rgba(255,255,255,0.08)',
+                animation: 'slideIn 0.3s ease-out'
+              }}
+            >
+              {/* Drawer Header */}
+              <div 
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#6B7280' }}>
+                  Sessions
+                </span>
+                <button
+                  onClick={() => setShowDrawer(false)}
+                  className="p-1 rounded hover:bg-white/5 transition-colors"
+                  style={{ color: '#6B7280' }}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              
+              {/* Sessions List */}
+              <div className="flex-1 overflow-y-auto py-2">
+                {sessions.length === 0 ? (
+                  <div className="px-4 py-8 text-center">
+                    <p className="text-xs" style={{ color: '#6B7280' }}>No sessions yet</p>
+                    <p className="text-[10px] mt-1" style={{ color: '#4B5563' }}>Start a research query below</p>
+                  </div>
+                ) : (
+                  sessions.map(s => {
+                    const label = s.topic || s.title || 'Untitled';
+                    const short = label.length > 30 ? label.slice(0, 28) + '…' : label;
+                    const isActive = curSession?.id === s.id;
+                    const statusColors = {
+                      completed: '#00F5D4',
+                      running: '#3B82F6',
+                      failed: '#EF4444',
+                      queued: '#8B5CF6'
+                    };
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => { loadSession(s); setShowDrawer(false); }}
+                        className="px-4 py-3 cursor-pointer transition-all duration-300 hover:bg-white/5"
+                        style={{ 
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          backgroundColor: isActive ? 'rgba(0,245,212,0.08)' : 'transparent',
+                          borderLeft: isActive ? '3px solid #00F5D4' : '3px solid transparent'
+                        }}
+                      >
+                        <p 
+                          className="text-sm font-medium truncate mb-1"
+                          style={{ color: isActive ? '#F9FAFB' : '#9CA3AF' }}
+                        >
+                          {short}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: statusColors[s.status as keyof typeof statusColors] || '#6B7280' }}
+                          />
+                          <span className="text-[10px]" style={{ color: '#6B7280' }}>
+                            {s.status} · {new Date(s.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+          </>
+        )}
 
-          {/* Chat area */}
-          <div className="flex flex-col flex-1 min-w-0 bg-white">
-            {/* Messages */}
-            <div ref={chatLogRef} className="flex-1 overflow-y-auto p-4">
-              {msgs.length === 0 && (
-                <div className="text-sm text-slate-600 leading-relaxed">
-                  <p className="mb-2">Welcome to <span className="font-semibold text-slate-900">{wsName}</span>.</p>
-                  <p className="mb-1">Ask a research question or trigger a pipeline with slash commands:</p>
-                  <p className="text-xs text-slate-600 mb-0.5 font-mono"><code>/research [topic]</code> - Standard research</p>
-                  <p className="text-xs text-slate-600 mb-0.5 font-mono"><code>/deepresearch [topic]</code> - Deep analysis</p>
-                  <p className="text-xs text-slate-600 font-mono"><code>/gatherdata [topic]</code> - Data gathering only</p>
+        {/* CENTER: Chat (Main Focus) */}
+        <main 
+          className="flex flex-col flex-1 min-w-0" 
+          style={{ backgroundColor: '#0B0F1A' }}
+        >
+          {/* Messages */}
+          <div ref={chatLogRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
+            {msgs.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <div 
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+                  style={{ backgroundColor: '#111827', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <svg className="w-10 h-10 text-[#00F5D4]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
-              )}
-              {msgs.map(m => <ChatBubble key={m.id} msg={m} />)}
-            </div>
-
-            {/* Slash hint */}
-            {showSlashHint && (
-              <div className="mx-4 mb-1 text-[11px] bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-slate-700">
-                <span className="font-semibold">Commands:</span> /research · /deepresearch · /gatherdata · /help
+                <h2 className="text-xl font-bold mb-2" style={{ color: '#F9FAFB' }}>
+                  Welcome to <span className="gradient-text">MARP</span>
+                </h2>
+                <p className="text-sm mb-6 max-w-md" style={{ color: '#9CA3AF' }}>
+                  Ask a research question or trigger a pipeline with slash commands.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg">
+                  {[
+                    { cmd: '/research', desc: 'Standard research' },
+                    { cmd: '/deepresearch', desc: 'Deep analysis' },
+                    { cmd: '/gatherdata', desc: 'Data gathering' },
+                  ].map(({ cmd, desc }) => (
+                    <div 
+                      key={cmd}
+                      className="p-3 rounded-xl text-left"
+                      style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.03)', 
+                        border: '1px solid rgba(255,255,255,0.06)'
+                      }}
+                    >
+                      <code className="text-sm font-mono" style={{ color: '#00F5D4' }}>{cmd}</code>
+                      <p className="text-[10px] mt-1" style={{ color: '#6B7280' }}>{desc}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
+            {msgs.map(m => <ChatBubble key={m.id} msg={m} />)}
+          </div>
 
-            {/* Input bar */}
-            <div className="border-t border-slate-200 p-2.5 flex gap-2 flex-shrink-0 bg-white">
+          {/* Slash hint */}
+          {showSlashHint && (
+            <div 
+              className="mx-4 sm:mx-6 mb-2 p-3 rounded-xl text-xs"
+              style={{ 
+                backgroundColor: 'rgba(0,245,212,0.05)', 
+                border: '1px solid rgba(0,245,212,0.15)',
+                color: '#9CA3AF'
+              }}
+            >
+              <span className="font-semibold" style={{ color: '#00F5D4' }}>Commands:</span>{' '}
+              /research · /deepresearch · /gatherdata · /help
+            </div>
+          )}
+
+          {/* Input bar */}
+          <div 
+            className="p-3 sm:p-4 flex gap-3 flex-shrink-0"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="flex-1 relative">
               <textarea
                 value={chatInput}
                 onChange={e => {
@@ -1058,189 +1421,274 @@ export default function WorkspacePage() {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                 }}
                 placeholder="Ask a question or type / for commands..."
-                rows={2}
+                rows={1}
                 disabled={running}
-                className="flex-1 input-field resize-none disabled:opacity-60"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all duration-300 resize-none disabled:opacity-50"
+                style={{ 
+                  backgroundColor: 'rgba(17,24,39,0.8)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#F9FAFB',
+                  boxShadow: '0 0 0 0 rgba(0,245,212,0)'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#00F5D4';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(0,245,212,0.15), 0 0 20px rgba(0,245,212,0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(255,255,255,0.1)';
+                  e.target.style.boxShadow = '0 0 0 0 rgba(0,245,212,0)';
+                }}
               />
-              {running ? (
-                <button
-                  onClick={() => { abortRef.current = true; setAbort(true); setRunning(false); setRunStartedAt(null); setElapsedSec(0); setStatusText('Stopped'); }}
-                  className="border border-rose-300 text-rose-700 px-3 py-1 text-xs rounded-lg hover:bg-rose-50 cursor-pointer bg-white self-end"
-                >
-                  Stop
-                </button>
-              ) : (
-                <button
-                  onClick={handleSend}
-                  disabled={!chatInput.trim()}
-                  className="btn-primary px-4 py-1.5 text-xs self-end disabled:opacity-40"
-                >
-                  Send
-                </button>
-              )}
             </div>
-          </div>
-        </div>
-
-        {/* Right: tabbed panels */}
-        <div className="flex flex-col flex-1 min-w-0 bg-white">
-          {/* Tab bar */}
-          <div className="flex border-b border-slate-200 flex-shrink-0 flex-wrap">
-            {TABS.map(t => (
+            {running ? (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-3 py-2 text-[11px] border-none bg-transparent cursor-pointer border-b-2 transition-colors
-                  ${tab === t.id ? 'border-b-emerald-500 text-emerald-700 font-semibold' : 'border-b-transparent text-slate-500 hover:bg-slate-100'}`}
+                onClick={() => { abortRef.current = true; setAbort(true); setRunning(false); setRunStartedAt(null); setElapsedSec(0); setStatusText('Stopped'); }}
+                className="px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 flex items-center gap-2"
+                style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
               >
-                {t.label}
+                <Icons.stop />
+                <span className="hidden sm:inline">Stop</span>
               </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto p-4 text-sm">
-            {/* Live Feed */}
-            {tab === 'feed' && (
-              <div ref={feedRef}>
-                {feedEvents.length === 0 ? (
-                  <p className="text-sm text-slate-500">Live agent activity will stream here.</p>
-                ) : (
-                  feedEvents.map((ev, i) => <FeedItem key={ev.id ?? i} ev={ev} />)
-                )}
-              </div>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!chatInput.trim()}
+                className="btn-primary px-4 sm:px-5 py-3 flex items-center gap-2"
+              >
+                <Icons.send />
+                <span className="hidden sm:inline">Send</span>
+              </button>
             )}
+          </div>
+        </main>
 
-            {/* Sources */}
-            {tab === 'sources' && <SourcesPanel resultJson={resultJson} feedEvents={feedEvents} liveSources={liveSources} />}
+        {/* RIGHT: Live Feed / Tabs Panel */}
+        {showRightPanel && (
+          <>
+            {/* Draggable Divider */}
+            <div 
+              className="w-1 cursor-col-resize hover:bg-teal-500/50 transition-colors z-10 flex-shrink-0"
+              onMouseDown={() => { isResizingRef.current = true; }}
+              style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
+            />
+            
+            <aside 
+              className="flex flex-col flex-shrink-0 min-w-0"
+              style={{ 
+                width: `${rightPanelWidth}%`,
+                backgroundColor: '#111827', 
+                borderLeft: '1px solid rgba(255,255,255,0.08)'
+              }}
+            >
+              {/* Tab bar */}
+              <div 
+                className="flex border-b flex-shrink-0"
+                style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+              >
+                {TABS.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className="flex-1 px-2 sm:px-3 py-3 text-xs flex items-center justify-center gap-1 sm:gap-2 transition-all duration-300"
+                    style={{ 
+                      color: tab === t.id ? '#00F5D4' : '#6B7280',
+                      backgroundColor: tab === t.id ? 'rgba(0,245,212,0.08)' : 'transparent',
+                      borderBottom: tab === t.id ? '2px solid #00F5D4' : '2px solid transparent'
+                    }}
+                  >
+                    {t.icon}
+                    <span className="hidden sm:inline">{t.label}</span>
+                  </button>
+                ))}
+              </div>
 
-            {/* Report */}
-            {tab === 'report' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <div className="border border-slate-200 rounded p-2 bg-white">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">Agents</p>
-                    <p className="text-sm font-semibold text-slate-900">{rawKeys.length}</p>
-                  </div>
-                  <div className="border border-slate-200 rounded p-2 bg-white">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">Live Sources</p>
-                    <p className="text-sm font-semibold text-emerald-300">{scrapedCount}</p>
-                  </div>
-                  <div className="border border-slate-200 rounded p-2 bg-white">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">Papers</p>
-                    <p className="text-sm font-semibold text-blue-300">{literatureCount}</p>
-                  </div>
-                  <div className="border border-slate-200 rounded p-2 bg-white">
-                    <p className="text-[10px] text-slate-400 uppercase tracking-wide">Status</p>
-                    <p className="text-sm font-semibold text-slate-900">{statusText || curSession?.status || 'ready'}</p>
-                  </div>
-                </div>
-
-                {findings.visualization?.echarts_config && (
-                  <PremiumCharts 
-                    config={findings.visualization.echarts_config} 
-                    title="Data Analysis & Patterns" 
-                    description={findings.visualization.description}
-                  />
-                )}
-                
-                {sections_data.length > 0 ? (
-                  <div className="report-sections-container">
-                    {sections_data.map(sec => (
-                      <SectionEditor 
-                        key={sec.id} 
-                        section={sec} 
-                        wsId={wsId} 
-                        onUpdate={() => {
-                          // Refresh sections and main report markdown
-                          wsApi.getSections(wsId, curSession!.id).then(res => setSectionsData(res.sections));
-                          wsApi.getResearchStatus(wsId, curSession!.id).then(res => setReportMd(res.report_markdown || ''));
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : reportMd ? (
-                  <div className="prose-research">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-400">Report appears after research completes.</p>
-                )}
-
-                {(latexSource || (resultJson as any)?.latex_source || (resultJson as any)?.final_state?.latex_source) && (
-                  <div className="mt-8 pt-6 border-t border-slate-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-slate-900">LaTeX Source</h3>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => navigator.clipboard.writeText(latexSource || (resultJson as any)?.latex_source || (resultJson as any)?.final_state?.latex_source || '')}
-                          className="border border-slate-300 px-2 py-0.5 text-[11px] rounded hover:bg-slate-100 text-slate-700"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={handleCompilePdf}
-                          disabled={compileBusy}
-                          className="border border-emerald-700/70 px-2 py-0.5 text-[11px] rounded hover:bg-emerald-950/40 text-emerald-300 disabled:opacity-50"
-                        >
-                          {compileBusy ? 'Compiling...' : 'Compile PDF'}
-                        </button>
-                      </div>
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar">
+              {tab === 'feed' && (
+                <div className="space-y-1">
+                  {feedEvents.length > 0 ? (
+                    feedEvents.map((e, idx) => (
+                      <FeedItem key={e.id || idx} ev={e} index={idx} />
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-center opacity-40">
+                      <Icons.feed />
+                      <p className="text-xs mt-2">Waiting for live activity...</p>
                     </div>
-                    <pre className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded p-3 overflow-x-auto whitespace-pre-wrap">
-                      {latexSource || (resultJson as any)?.latex_source || (resultJson as any)?.final_state?.latex_source}
-                    </pre>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
+              {tab === 'sources' && (
+                <div className="space-y-6">
+                  <SourcesPanel 
+                    resultJson={resultJson} 
+                    feedEvents={feedEvents} 
+                    liveSources={liveSources} 
+                  />
+                </div>
+              )}
+              {tab === 'report' && (
+                <div className="prose-research max-w-none text-sm">
+                  {reportMd ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd}</ReactMarkdown>
+                  ) : (
+                    <p className="text-center py-8 text-[#4B5563]">Report will appear here when completed.</p>
+                  )}
+                </div>
+              )}
+              {tab === 'raw' && (
+                <div className="space-y-6">
+                  {rawKeys.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 border border-white/10">
+                        <Icons.data />
+                      </div>
+                      <p className="text-sm text-[#6B7280]">No raw research data available yet.</p>
+                      <p className="text-[10px] text-[#4B5563] mt-1">Data will appear here as agents finish their analysis.</p>
+                    </div>
+                  ) : (
+                    rawKeys.map(k => {
+                      const data = findings[k];
+                      const isVision = k === 'vision_analysis';
+                      const isSLR = k === 'literature_review' || k === 'slr';
+                      const isNews = k === 'news_agent' || k === 'news';
+                      const cleanName = k.replace(/_/g, ' ').toUpperCase();
+                      
+                      return (
+                        <div key={k} className="p-5 rounded-2xl bg-[#111827]/50 border border-white/5 hover:border-white/10 transition-all duration-300">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00F5D4]">{cleanName}</h3>
+                            <span className="text-[10px] py-0.5 px-2 rounded-full bg-white/5 text-[#6B7280]">Agent Data</span>
+                          </div>
+                          
+                          {/* Vision Analysis Gallery */}
+                          {isVision && (data as any)?.response?.image_analysis && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                              {(data as any).response.image_analysis.map((img: any, idx: number) => (
+                                <div key={idx} className="rounded-xl overflow-hidden bg-black/40 border border-white/5 group">
+                                  <div className="aspect-video relative overflow-hidden">
+                                     <img 
+                                      src={img.url} 
+                                      alt="Analyzed"
+                                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                      onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/300x200?text=Image+Load+Error'; }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                      <a href={img.url} target="_blank" className="text-[10px] text-[#00F5D4] hover:underline">View Original →</a>
+                                    </div>
+                                  </div>
+                                  <div className="p-3">
+                                    <p className="text-xs text-[#F9FAFB] line-clamp-3 leading-relaxed">
+                                      {img.analysis}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
-                {galleryImages && galleryImages.length > 0 && (
-                  <div className="mt-8 pt-8 border-t border-slate-200">
-                    <h3 className="text-lg font-bold text-slate-900 mb-4 italic underline decoration-emerald-500/30">Visual Intelligence Gallery</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {galleryImages.map((img: any, i: number) => (
-                        <div key={i} className="group relative rounded-xl overflow-hidden border border-slate-200 bg-white hover:border-emerald-500/40 transition-all">
-                          <img 
-                            src={normalizeImageUrl(img.original)} 
-                            alt={`Insight ${i+1}`}
-                            className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
-                          />
-                          <div className="p-2 bg-slate-50 text-[10px] text-slate-600 truncate backdrop-blur-sm">
-                            Source: {img.source_url ? (() => { try { return new URL(img.source_url).hostname; } catch { return img.source_url; } })() : 'Generated'}
+                          {/* SLR / Papers List */}
+                          {isSLR && (data as any)?.response?.papers && (
+                            <div className="space-y-3 mb-4">
+                              {(data as any).response.papers.slice(0, 5).map((paper: any, idx: number) => (
+                                <div key={idx} className="p-3 rounded-xl bg-black/30 border border-white/5 hover:border-[#00F5D4]/20 transition-colors">
+                                  <h4 className="text-xs font-semibold text-[#F9FAFB] mb-1 leading-snug">{paper.title}</h4>
+                                  <div className="flex flex-wrap gap-2 items-center text-[10px] text-[#6B7280]">
+                                    <span className="text-[#00F5D4] opacity-80">{paper.authors?.[0] || 'Unknown Author'}</span>
+                                    <span>•</span>
+                                    <span>{paper.year || '2024'}</span>
+                                    {paper.url && (
+                                      <a href={paper.url} target="_blank" className="ml-auto text-[#3B82F6] hover:underline">View Source</a>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* News / Sources List */}
+                          {isNews && (data as any)?.response?.sources && (
+                            <div className="grid grid-cols-1 gap-3 mb-4">
+                               {(data as any).response.sources.slice(0, 6).map((src: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-black/20 border border-white/5">
+                                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[#00F5D4] text-[10px] font-bold">
+                                    {src.source?.slice(0, 2).toUpperCase() || 'WEB'}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[11px] text-[#F9FAFB] truncate font-medium">{src.title}</p>
+                                    <p className="text-[9px] text-[#4B5563] truncate">{src.url}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="relative group">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[9px] font-mono text-[#4B5563]">RAW JSON PAYLOAD</span>
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+                                }}
+                                className="text-[9px] font-medium text-[#00F5D4] hover:underline"
+                              >
+                                Copy JSON
+                              </button>
+                            </div>
+                            <pre className="text-[10px] font-mono overflow-x-auto text-[#6B7280] p-4 bg-black/40 rounded-xl border border-white/5 max-h-[200px] custom-scrollbar">
+                              {JSON.stringify(data, null, 2)}
+                            </pre>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Raw Data */}
-            {tab === 'raw' && (
-              rawKeys.length === 0
-                ? <p className="text-sm text-slate-400">Raw agent data appears here.</p>
-                : (
-                  <div>
-                    <p className="text-xs font-semibold mb-3 text-slate-600">{rawKeys.length} agents responded</p>
-                    {rawKeys.map(k => {
-                      const v = findings[k] as unknown;
-                      const preview = typeof v === 'string'
-                        ? v.slice(0, 600)
-                        : JSON.stringify(v, null, 2).slice(0, 600);
-                      return (
-                        <div key={k} className="border border-slate-200 rounded-lg p-2.5 mb-2 bg-white">
-                          <h4 className="text-xs font-semibold mb-1 text-slate-800">{k}</h4>
-                          <pre className="text-[11px] text-slate-700 whitespace-pre-wrap overflow-x-auto">{preview}...</pre>
-                        </div>
                       );
-                    })}
-                  </div>
-                )
-            )}
-
-          </div>
-        </div>
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+          </>
+        )}
       </div>
+
+      <style jsx global>{`
+        @keyframes slideIn {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .prose-chat {
+          font-size: 14px;
+          line-height: 1.6;
+        }
+        .prose-chat h1 { font-size: 1.15rem !important; font-weight: 700 !important; margin: 0.5rem 0 !important; color: #F9FAFB !important; }
+        .prose-chat h2 { font-size: 1.05rem !important; font-weight: 700 !important; margin: 0.5rem 0 !important; color: #F9FAFB !important; }
+        .prose-chat h3 { font-size: 0.95rem !important; font-weight: 700 !important; margin: 0.4rem 0 !important; color: #F9FAFB !important; }
+        .prose-chat p { margin-bottom: 0.75em; }
+        .prose-chat p:last-child { margin-bottom: 0; }
+        .prose-chat strong { color: #F9FAFB; font-weight: 600; }
+        .prose-chat code {
+          padding: 0.125rem 0.375rem;
+          border-radius: 4px;
+          background-color: rgba(0,245,212,0.1);
+          color: #00F5D4;
+          font-size: 0.875em;
+        }
+        .prose-chat ul, .prose-chat ol {
+          margin-left: 1.5em;
+          margin-bottom: 0.75em;
+        }
+        .prose-chat li { margin-bottom: 0.25em; }
+        .prose-chat a { color: #00F5D4; }
+        .prose-chat blockquote {
+          border-left: 3px solid #00F5D4;
+          padding-left: 1em;
+          margin-left: 0;
+          color: #9CA3AF;
+        }
+      `}</style>
     </div>
   );
 }
