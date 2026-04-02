@@ -405,11 +405,17 @@ router.get('/:wid/research/:sid/suggestions', auth, async (req, res) => {
 
         const axios = require('axios');
         const aiRes = await axios.get(`${AI_ENGINE_URL}/research/${sessionId}/suggestions`, {
-            timeout: 5000
+            timeout: 60000 // Increased from 5000ms to 60000ms (60 seconds)
         });
         res.json(aiRes.data);
     } catch (err) {
-        res.json({ topic_locked: false, selected_topic: null, topic_suggestions: [] });
+        logger.error(`[Workspace] Suggestions fetch failed after ${err.config?.timeout || 'default'}ms: ${err.message}`);
+        res.json({ 
+            topic_locked: false, 
+            selected_topic: null, 
+            topic_suggestions: [],
+            error: "Research engine is busy or timed out. Please retry in a moment."
+        });
     }
 });
 
