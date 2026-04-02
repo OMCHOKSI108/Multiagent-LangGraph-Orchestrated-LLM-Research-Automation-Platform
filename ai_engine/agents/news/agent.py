@@ -49,7 +49,7 @@ class NewsAgent(BaseAgent):
             queries = [f"{task} news", f"{task} latest developments", f"{task} recent research"]
 
         # 2. Search News
-        from utils.providers import NewsSearchProvider
+        from ai_engine.utils.providers import NewsSearchProvider
         news_provider = NewsSearchProvider()
         
         all_results = []

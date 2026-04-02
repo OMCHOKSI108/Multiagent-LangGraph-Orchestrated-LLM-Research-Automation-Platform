@@ -33,12 +33,12 @@ def _get_config():
     Config is loaded once by Python's import system and cached.
     """
     try:
-        import config
+        from ai_engine import config
     except ImportError:
         import sys
         import os
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        import config
+        from ai_engine import config
     return config
 
 

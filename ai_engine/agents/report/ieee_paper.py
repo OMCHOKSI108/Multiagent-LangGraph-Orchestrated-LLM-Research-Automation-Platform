@@ -17,7 +17,7 @@ import asyncio
 import gc
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
-from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
+from ai_engine.utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
 
 logger = logging.getLogger("ai_engine.agents.report.ieee_paper")
 

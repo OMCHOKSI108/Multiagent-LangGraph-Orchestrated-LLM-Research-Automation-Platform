@@ -79,6 +79,9 @@ GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else None
 GEMINI_API_KEYS = _parse_keys("GEMINI_API", "GEMINI_API_KEY")
 GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else None
 
+# Serper.dev (Alternative Search)
+SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
+
 # ============================
 # Offline Model Settings (Ollama)
 # ============================

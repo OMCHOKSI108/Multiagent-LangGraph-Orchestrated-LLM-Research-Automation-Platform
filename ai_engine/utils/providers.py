@@ -1,9 +1,12 @@
 import io
 import time
 import json
+import logging
 import requests
 from typing import List, Dict, Any
 from urllib.parse import quote_plus
+
+logger = logging.getLogger("ai_engine.providers")
 
 # =========================
 # Optional Dependencies
@@ -51,6 +54,7 @@ from .metrics import inc as metrics_inc
 # Base Provider
 # =========================
 
+
 class SearchProvider:
     def __init__(self, name: str):
         self.name = name
@@ -63,6 +67,7 @@ class SearchProvider:
 # DuckDuckGo
 # =========================
 
+
 class DuckDuckGoProvider(SearchProvider):
     def __init__(self):
         super().__init__("duckduckgo")
@@ -70,7 +75,10 @@ class DuckDuckGoProvider(SearchProvider):
 
     def search(self, query: str, max_results: int = 5):
         if not self.ddgs:
-            return [{"error": "DuckDuckGo not available"}]
+            logger.error(
+                "[DuckDuckGoProvider] DuckDuckGo not available - package may not be installed"
+            )
+            return [{"error": "DuckDuckGo package not installed or not available"}]
 
         emit_search(query, "duckduckgo")
         results = []
@@ -94,7 +102,11 @@ class DuckDuckGoProvider(SearchProvider):
                     items_found=1,
                 )
         except Exception as e:
-            return [{"error": str(e)}]
+            logger.error(f"[DuckDuckGoProvider] Search failed: {e}")
+            return [{"error": f"DuckDuckGo search failed: {str(e)}"}]
+
+        if not results:
+            logger.warning(f"[DuckDuckGoProvider] No results for query: {query}")
 
         return results
 
@@ -102,6 +114,7 @@ class DuckDuckGoProvider(SearchProvider):
 # =========================
 # Google
 # =========================
+
 
 class GoogleProvider(SearchProvider):
     def __init__(self):
@@ -142,12 +155,14 @@ class GoogleProvider(SearchProvider):
 # ArXiv
 # =========================
 
+
 class ArxivProvider(SearchProvider):
     def __init__(self):
         super().__init__("arxiv")
 
     def search(self, query: str, max_results: int = 5):
         if not arxiv:
+            logger.error("[ArxivProvider] arxiv package not installed")
             return [{"error": "arxiv package not installed"}]
 
         emit_search(query, "arxiv")
@@ -182,7 +197,11 @@ class ArxivProvider(SearchProvider):
                     items_found=1,
                 )
         except Exception as e:
-            return [{"error": str(e)}]
+            logger.error(f"[ArxivProvider] Search failed: {e}")
+            return [{"error": f"Arxiv search failed: {str(e)}"}]
+
+        if not results:
+            logger.warning(f"[ArxivProvider] No results for query: {query}")
 
         return results
 
@@ -199,23 +218,26 @@ class ArxivProvider(SearchProvider):
         for item in results:
             if not isinstance(item, dict):
                 continue
-            normalized.append({
-                "title": item.get("title", ""),
-                "summary": item.get("description", ""),
-                "body": item.get("description", ""),
-                "description": item.get("description", ""),
-                "published": item.get("published", ""),
-                "authors": item.get("authors", []),
-                "url": item.get("url", ""),
-                "link": item.get("url", ""),
-                "source": item.get("source", "arxiv"),
-            })
+            normalized.append(
+                {
+                    "title": item.get("title", ""),
+                    "summary": item.get("description", ""),
+                    "body": item.get("description", ""),
+                    "description": item.get("description", ""),
+                    "published": item.get("published", ""),
+                    "authors": item.get("authors", []),
+                    "url": item.get("url", ""),
+                    "link": item.get("url", ""),
+                    "source": item.get("source", "arxiv"),
+                }
+            )
         return normalized
 
 
 # =========================
 # Wikipedia
 # =========================
+
 
 class WikipediaProvider(SearchProvider):
     def __init__(self):
@@ -262,6 +284,7 @@ class WikipediaProvider(SearchProvider):
 # OpenAlex
 # =========================
 
+
 class OpenAlexProvider(SearchProvider):
     def __init__(self):
         super().__init__("openalex")
@@ -283,7 +306,6 @@ class OpenAlexProvider(SearchProvider):
                 landing = item.get("primary_location", {}).get("landing_page_url")
                 pub_year = item.get("publication_year", "")
                 abstract_inv = item.get("abstract_inverted_index", {})
-                # Reconstruct abstract from inverted index (OpenAlex format)
                 abstract_text = ""
                 if abstract_inv and isinstance(abstract_inv, dict):
                     try:
@@ -295,7 +317,10 @@ class OpenAlexProvider(SearchProvider):
                         abstract_text = " ".join(w for _, w in word_positions)[:300]
                     except Exception:
                         pass
-                desc = abstract_text or f"Year {pub_year} | Citations {item.get('cited_by_count')}"
+                desc = (
+                    abstract_text
+                    or f"Year {pub_year} | Citations {item.get('cited_by_count')}"
+                )
                 result = {
                     "title": item.get("title", ""),
                     "url": landing,
@@ -316,16 +341,20 @@ class OpenAlexProvider(SearchProvider):
                     published_date=str(item.get("publication_year")),
                     items_found=1,
                 )
-            metrics_inc('provider_openalex_success')
+            metrics_inc("provider_openalex_success")
+            if not results:
+                logger.warning(f"[OpenAlexProvider] No results for query: {query}")
             return results
         except Exception as e:
-            metrics_inc('provider_openalex_failure')
-            return [{"error": str(e)}]
+            metrics_inc("provider_openalex_failure")
+            logger.error(f"[OpenAlexProvider] Search failed: {e}")
+            return [{"error": f"OpenAlex search failed: {str(e)}"}]
 
 
 # =========================
 # PubMed
 # =========================
+
 
 class PubMedProvider(SearchProvider):
     def __init__(self):
@@ -339,18 +368,19 @@ class PubMedProvider(SearchProvider):
             s = http_get(
                 f"{base}/esearch.fcgi?db=pubmed&term={quote_plus(query)}&retmode=json&retmax={max_results}&sort=date",
                 timeout=10,
-                retries=3
+                retries=3,
             )
             ids = s.json().get("esearchresult", {}).get("idlist", [])
             if not ids:
-                metrics_inc('provider_pubmed_empty')
+                metrics_inc("provider_pubmed_empty")
+                logger.warning(f"[PubMedProvider] No results for query: {query}")
                 return []
 
             ids_str = ",".join(ids)
             d = http_get(
                 f"{base}/esummary.fcgi?db=pubmed&id={ids_str}&retmode=json",
                 timeout=10,
-                retries=3
+                retries=3,
             ).json()
 
             results = []
@@ -382,16 +412,18 @@ class PubMedProvider(SearchProvider):
                     published_date=item.get("pubdate"),
                     items_found=1,
                 )
-            metrics_inc('provider_pubmed_success')
+            metrics_inc("provider_pubmed_success")
             return results
         except Exception as e:
-            metrics_inc('provider_pubmed_failure')
-            return [{"error": str(e)}]
+            metrics_inc("provider_pubmed_failure")
+            logger.error(f"[PubMedProvider] Search failed: {e}")
+            return [{"error": f"PubMed search failed: {str(e)}"}]
 
 
 # =========================
 # PDF Reader
 # =========================
+
 
 class PDFReaderProvider:
     def read_pdf(self, url: str) -> str:
@@ -407,10 +439,10 @@ class PDFReaderProvider:
             for page in reader.pages[:20]:
                 text += (page.extract_text() or "") + "\n"
 
-            metrics_inc('pdf_read_success')
+            metrics_inc("pdf_read_success")
             return text
         except Exception as e:
-            metrics_inc('pdf_read_failure')
+            metrics_inc("pdf_read_failure")
             return str(e)
 
 
@@ -418,30 +450,36 @@ class PDFReaderProvider:
 # HTML Scraper
 # =========================
 
+
 class HtmlScraperProvider:
     def scrape_url(self, url: str) -> str:
         if not BeautifulSoup:
             return "beautifulsoup4 not installed"
 
         try:
-            r = http_get(url, timeout=10, retries=2, headers={"User-Agent": "Mozilla/5.0"})
+            r = http_get(
+                url, timeout=10, retries=2, headers={"User-Agent": "Mozilla/5.0"}
+            )
             r.raise_for_status()
 
             soup = BeautifulSoup(r.content, "html.parser")
             for tag in soup(["script", "style", "nav", "footer", "header"]):
                 tag.extract()
 
-            text = "\n".join(line.strip() for line in soup.get_text().splitlines() if line.strip())
-            metrics_inc('html_scrape_success')
+            text = "\n".join(
+                line.strip() for line in soup.get_text().splitlines() if line.strip()
+            )
+            metrics_inc("html_scrape_success")
             return text[:15000]
         except Exception as e:
-            metrics_inc('html_scrape_failure')
+            metrics_inc("html_scrape_failure")
             return str(e)
 
 
 # =========================
 # News (DuckDuckGo)
 # =========================
+
 
 class NewsSearchProvider(SearchProvider):
     def __init__(self):
@@ -521,11 +559,13 @@ class WebSearchProvider(DuckDuckGoProvider):
         for item in results:
             if not isinstance(item, dict):
                 continue
-            normalized.append({
-                **item,
-                "link": item.get("url", ""),
-                "body": item.get("description", ""),
-            })
+            normalized.append(
+                {
+                    **item,
+                    "link": item.get("url", ""),
+                    "body": item.get("description", ""),
+                }
+            )
         return normalized
 
 
@@ -548,11 +588,13 @@ class GoogleSearchProvider(GoogleProvider):
         for item in results:
             if not isinstance(item, dict):
                 continue
-            normalized.append({
-                **item,
-                "link": item.get("url", ""),
-                "body": item.get("description", ""),
-            })
+            normalized.append(
+                {
+                    **item,
+                    "link": item.get("url", ""),
+                    "body": item.get("description", ""),
+                }
+            )
         return normalized
 
 

@@ -86,7 +86,8 @@ function startResearchStream(req, res, research_id) {
 
             for (const event of eventsResult.rows) {
                 const eventData = {
-                    type: 'event',
+                    type: event.category === 'brain_thought' ? 'thought' : 
+                          event.category === 'report_chunk' ? 'report' : 'event',
                     event_id: event.event_id,
                     stage: event.stage,
                     severity: event.severity,

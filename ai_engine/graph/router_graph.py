@@ -48,7 +48,7 @@ class RouterState(TypedDict):
 
 def plan_node(state: RouterState) -> RouterState:
     """Run QueryPlannerAgent to classify the query."""
-    from agents.registry import AGENTS
+    from ai_engine.agents.registry import AGENTS
     agent = AGENTS.get("query_planner")
     if not agent:
         logger.warning("[RouterGraph] query_planner not registered — defaulting to deep mode")
@@ -71,9 +71,9 @@ def plan_node(state: RouterState) -> RouterState:
 
 def direct_answer_node(state: RouterState) -> RouterState:
     """Answer directly from LLM knowledge (MODEL_WRITING for quality prose)."""
-    from llm.factory import get_llm_provider
+    from ai_engine.llm.factory import get_llm_provider
     try:
-        import config
+        from ai_engine import config
     except ImportError:
         import sys, os
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -105,7 +105,7 @@ def direct_answer_node(state: RouterState) -> RouterState:
 
 def search_and_answer_node(state: RouterState) -> RouterState:
     """Search web, scrape, synthesize with WebScraperAgent."""
-    from agents.registry import AGENTS
+    from ai_engine.agents.registry import AGENTS
     t0 = time.time()
 
     # Run WebScraperAgent (search + scrape + LLM synthesis)
@@ -140,7 +140,7 @@ def search_and_answer_node(state: RouterState) -> RouterState:
 
 def deep_research_node(state: RouterState) -> RouterState:
     """Invoke the existing full LangGraph research pipeline."""
-    from graph.full_pipeline import app as research_app
+    from ai_engine.graph.full_pipeline import app as research_app
 
     # Convert RouterState → ResearchState (full pipeline expects topic fields)
     research_state = {

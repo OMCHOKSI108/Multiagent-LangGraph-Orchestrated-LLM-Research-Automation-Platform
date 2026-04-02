@@ -5,6 +5,7 @@ Wraps all existing search providers into a single service
 with a normalized response format. Inspired by opensearch-ai's
 Brave Search integration but using our existing providers.
 """
+
 import logging
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -18,7 +19,12 @@ _search_executor = ThreadPoolExecutor(max_workers=6)
 
 # Provider name → class mapping
 AVAILABLE_PROVIDERS = [
-    "duckduckgo", "google", "arxiv", "wikipedia", "openalex", "pubmed"
+    "duckduckgo",
+    "google",
+    "arxiv",
+    "wikipedia",
+    "openalex",
+    "pubmed",
 ]
 
 DEFAULT_PROVIDERS = ["duckduckgo", "arxiv"]
@@ -31,7 +37,9 @@ def _get_favicon(url: str) -> str:
     try:
         hostname = urlparse(url).netloc
         if hostname:
-            return f"https://s2.googleusercontent.com/s2/favicons?domain={hostname}&sz=32"
+            return (
+                f"https://s2.googleusercontent.com/s2/favicons?domain={hostname}&sz=32"
+            )
     except Exception:
         pass
     return ""
@@ -63,18 +71,23 @@ def _search_duckduckgo(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using DuckDuckGo provider."""
     try:
         from .providers import PROVIDER_REGISTRY
+
         provider = PROVIDER_REGISTRY["duckduckgo"]
         raw_results = provider.search(query, max_results=max_results)
         from .metrics import inc as metrics_inc
-        results = [_normalize_result(r, "duckduckgo") for r in raw_results if "error" not in r]
+
+        results = [
+            _normalize_result(r, "duckduckgo") for r in raw_results if "error" not in r
+        ]
         if results:
-            metrics_inc('provider_duckduckgo_success')
+            metrics_inc("provider_duckduckgo_success")
         else:
-            metrics_inc('provider_duckduckgo_empty')
+            metrics_inc("provider_duckduckgo_empty")
         return results
     except Exception as e:
         from .metrics import inc as metrics_inc
-        metrics_inc('provider_duckduckgo_failure')
+
+        metrics_inc("provider_duckduckgo_failure")
         logger.error(f"[SearchService] DuckDuckGo error: {e}")
         return []
 
@@ -83,18 +96,23 @@ def _search_google(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using Google provider."""
     try:
         from .providers import PROVIDER_REGISTRY
+
         provider = PROVIDER_REGISTRY["google"]
         raw_results = provider.search(query, max_results=max_results)
         from .metrics import inc as metrics_inc
-        results = [_normalize_result(r, "google") for r in raw_results if "error" not in r]
+
+        results = [
+            _normalize_result(r, "google") for r in raw_results if "error" not in r
+        ]
         if results:
-            metrics_inc('provider_google_success')
+            metrics_inc("provider_google_success")
         else:
-            metrics_inc('provider_google_empty')
+            metrics_inc("provider_google_empty")
         return results
     except Exception as e:
         from .metrics import inc as metrics_inc
-        metrics_inc('provider_google_failure')
+
+        metrics_inc("provider_google_failure")
         logger.error(f"[SearchService] Google error: {e}")
         return []
 
@@ -103,18 +121,23 @@ def _search_arxiv(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using Arxiv provider."""
     try:
         from .providers import PROVIDER_REGISTRY
+
         provider = PROVIDER_REGISTRY["arxiv"]
         raw_results = provider.search(query, max_results=max_results)
         from .metrics import inc as metrics_inc
-        results = [_normalize_result(r, "arxiv") for r in raw_results if "error" not in r]
+
+        results = [
+            _normalize_result(r, "arxiv") for r in raw_results if "error" not in r
+        ]
         if results:
-            metrics_inc('provider_arxiv_success')
+            metrics_inc("provider_arxiv_success")
         else:
-            metrics_inc('provider_arxiv_empty')
+            metrics_inc("provider_arxiv_empty")
         return results
     except Exception as e:
         from .metrics import inc as metrics_inc
-        metrics_inc('provider_arxiv_failure')
+
+        metrics_inc("provider_arxiv_failure")
         logger.error(f"[SearchService] Arxiv error: {e}")
         return []
 
@@ -123,18 +146,23 @@ def _search_wikipedia(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using Wikipedia provider."""
     try:
         from .providers import PROVIDER_REGISTRY
+
         provider = PROVIDER_REGISTRY["wikipedia"]
         raw_results = provider.search(query, max_results=max_results)
         from .metrics import inc as metrics_inc
-        results = [_normalize_result(r, "wikipedia") for r in raw_results if "error" not in r]
+
+        results = [
+            _normalize_result(r, "wikipedia") for r in raw_results if "error" not in r
+        ]
         if results:
-            metrics_inc('provider_wikipedia_success')
+            metrics_inc("provider_wikipedia_success")
         else:
-            metrics_inc('provider_wikipedia_empty')
+            metrics_inc("provider_wikipedia_empty")
         return results
     except Exception as e:
         from .metrics import inc as metrics_inc
-        metrics_inc('provider_wikipedia_failure')
+
+        metrics_inc("provider_wikipedia_failure")
         logger.error(f"[SearchService] Wikipedia error: {e}")
         return []
 
@@ -143,18 +171,23 @@ def _search_openalex(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using OpenAlex provider."""
     try:
         from .providers import PROVIDER_REGISTRY
+
         provider = PROVIDER_REGISTRY["openalex"]
         raw_results = provider.search(query, max_results=max_results)
         from .metrics import inc as metrics_inc
-        results = [_normalize_result(r, "openalex") for r in raw_results if "error" not in r]
+
+        results = [
+            _normalize_result(r, "openalex") for r in raw_results if "error" not in r
+        ]
         if results:
-            metrics_inc('provider_openalex_success')
+            metrics_inc("provider_openalex_success")
         else:
-            metrics_inc('provider_openalex_empty')
+            metrics_inc("provider_openalex_empty")
         return results
     except Exception as e:
         from .metrics import inc as metrics_inc
-        metrics_inc('provider_openalex_failure')
+
+        metrics_inc("provider_openalex_failure")
         logger.error(f"[SearchService] OpenAlex error: {e}")
         return []
 
@@ -163,18 +196,23 @@ def _search_pubmed(query: str, max_results: int) -> List[Dict[str, Any]]:
     """Search using PubMed provider."""
     try:
         from .providers import PROVIDER_REGISTRY
+
         provider = PROVIDER_REGISTRY["pubmed"]
         raw_results = provider.search(query, max_results=max_results)
         from .metrics import inc as metrics_inc
-        results = [_normalize_result(r, "pubmed") for r in raw_results if "error" not in r]
+
+        results = [
+            _normalize_result(r, "pubmed") for r in raw_results if "error" not in r
+        ]
         if results:
-            metrics_inc('provider_pubmed_success')
+            metrics_inc("provider_pubmed_success")
         else:
-            metrics_inc('provider_pubmed_empty')
+            metrics_inc("provider_pubmed_empty")
         return results
     except Exception as e:
         from .metrics import inc as metrics_inc
-        metrics_inc('provider_pubmed_failure')
+
+        metrics_inc("provider_pubmed_failure")
         logger.error(f"[SearchService] PubMed error: {e}")
         return []
 
@@ -203,6 +241,7 @@ class SearchService:
         max_results: int = 10,
     ) -> Dict[str, Any]:
         import time
+
         start = time.time()
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
@@ -213,9 +252,7 @@ class SearchService:
 
 
 def search_sync(
-    query: str,
-    providers: Optional[List[str]] = None,
-    max_results: int = 10
+    query: str, providers: Optional[List[str]] = None, max_results: int = 10
 ) -> Dict[str, Any]:
     """
     Synchronous unified search across multiple providers.
@@ -229,7 +266,13 @@ def search_sync(
         Unified search response with normalized results.
     """
     if not query or not query.strip():
-        return {"query": query, "results": [], "total_results": 0, "providers_used": []}
+        return {
+            "query": query,
+            "results": [],
+            "total_results": 0,
+            "providers_used": [],
+            "errors": [],
+        }
 
     selected = providers or DEFAULT_PROVIDERS
     selected = [p for p in selected if p in PROVIDER_FUNCTIONS]
@@ -240,24 +283,48 @@ def search_sync(
     per_provider = max(1, max_results // len(selected))
     all_results = []
     providers_used = []
+    errors = []
 
     import concurrent.futures
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(selected)) as pool:
         future_map = {
-            pool.submit(PROVIDER_FUNCTIONS[p], query, per_provider): p
-            for p in selected
+            pool.submit(PROVIDER_FUNCTIONS[p], query, per_provider): p for p in selected
         }
         for future in concurrent.futures.as_completed(future_map, timeout=15):
             provider_name = future_map[future]
             try:
                 results = future.result()
                 if results:
-                    all_results.extend(results)
-                    providers_used.append(provider_name)
+                    error_results = [r for r in results if "error" in r]
+                    valid_results = [r for r in results if "error" not in r]
+
+                    if error_results:
+                        for err in error_results:
+                            errors.append(
+                                {
+                                    "provider": provider_name,
+                                    "error": err.get("error", "Unknown error"),
+                                }
+                            )
+                            logger.warning(
+                                f"[SearchService] {provider_name}: {err.get('error')}"
+                            )
+
+                    if valid_results:
+                        all_results.extend(valid_results)
+                        providers_used.append(provider_name)
+                        logger.info(
+                            f"[SearchService] {provider_name}: returned {len(valid_results)} results"
+                        )
+                else:
+                    logger.warning(
+                        f"[SearchService] {provider_name}: no results for query"
+                    )
             except Exception as e:
                 logger.error(f"[SearchService] Provider {provider_name} failed: {e}")
+                errors.append({"provider": provider_name, "error": str(e)})
 
-    # Deduplicate by URL
     seen_urls = set()
     deduplicated = []
     for r in all_results:
@@ -268,7 +335,6 @@ def search_sync(
         elif not url:
             deduplicated.append(r)
 
-    # Trim to max_results
     deduplicated = deduplicated[:max_results]
 
     return {
@@ -276,4 +342,5 @@ def search_sync(
         "results": deduplicated,
         "total_results": len(deduplicated),
         "providers_used": providers_used,
+        "errors": errors,
     }

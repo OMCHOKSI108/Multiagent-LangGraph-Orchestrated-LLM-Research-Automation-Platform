@@ -9,7 +9,7 @@ from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
 from .domain_templates import detect_domain, get_template
 from .latex_sanitizer import sanitize_llm_latex, sanitize_latex, check_balance
-from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
+from ai_engine.utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
 
 
 class ScientificWritingAgent(BaseAgent):

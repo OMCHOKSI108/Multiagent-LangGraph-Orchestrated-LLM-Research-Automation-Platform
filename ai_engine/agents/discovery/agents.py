@@ -1,5 +1,5 @@
 from ..base import BaseAgent
-from utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, ArxivProvider
+from ai_engine.utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, ArxivProvider
 from langchain_core.messages import SystemMessage, HumanMessage
 
 class DomainIntelligenceAgent(BaseAgent):
