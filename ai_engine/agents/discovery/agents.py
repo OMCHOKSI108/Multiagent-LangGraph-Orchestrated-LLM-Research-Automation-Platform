@@ -29,12 +29,20 @@ class DomainIntelligenceAgent(BaseAgent):
         
         context_str = "\n".join([f"- [{r.get('source', 'web')}] {r['title']}: {r.get('body', '')}" for r in all_results])
         
-        # 2. Update system prompt with real context
-        enhanced_prompt = f"{self.system_prompt}\n\nContext from Web Search:\n{context_str}"
+        # 2. Add Brain Guidance
+        brain_guidance = self._get_brain_guidance(state)
         
+        # 3. Update system prompt with real context and brain directives
+        enhanced_prompt = f"{self.system_prompt}\n\n[CONTEXT FROM WEB SEARCH]\n{context_str}"
+        if brain_guidance:
+            enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
+        
+        # 4. Use intelligent context truncation for the human message
+        context = self._truncate_context(state, self.max_context_tokens)
+
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=str(state))
+            HumanMessage(content=context)
         ]
         
         try:
@@ -44,7 +52,7 @@ class DomainIntelligenceAgent(BaseAgent):
             
             # Add search results to the output for transparency
             if isinstance(parsed_json, dict):
-                parsed_json["_meta_search_results"] = all_results
+                parsed_json["domain_search_results"] = all_results
                 
             return {
                 "response": parsed_json,
@@ -79,11 +87,20 @@ class HistoricalReviewAgent(BaseAgent):
             
         context_str = "\n".join([f"- {p['published']} | {p['title']}: {p['summary'][:300]}..." for p in papers])
         
-        enhanced_prompt = f"{self.system_prompt}\n\nHistorical Context from Arxiv:\n{context_str}"
+        # 2. Add Brain Guidance
+        brain_guidance = self._get_brain_guidance(state)
+
+        # 3. Update system prompt with context and brain directives
+        enhanced_prompt = f"{self.system_prompt}\n\n[HISTORICAL CONTEXT FROM ARXIV]\n{context_str}"
+        if brain_guidance:
+            enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
         
+        # 4. Use intelligent context truncation
+        context = self._truncate_context(state, self.max_context_tokens)
+
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=str(state))
+            HumanMessage(content=context)
         ]
         
         try:
@@ -92,7 +109,7 @@ class HistoricalReviewAgent(BaseAgent):
             parsed_json = self._extract_json(raw_content)
             
             if isinstance(parsed_json, dict):
-                parsed_json["_meta_history_sources"] = papers
+                parsed_json["literature_review_sources"] = papers
                 
             return {
                 "response": parsed_json,

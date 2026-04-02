@@ -31,7 +31,7 @@ _WORKER_THREAD: Optional[threading.Thread] = None
 _current_job_id: Optional[int] = None
 
 ALLOWED_SEVERITIES = {"info", "warn", "error", "success"}
-ALLOWED_CATEGORIES = {"stage", "source", "agent", "error", "user_action_required"}
+ALLOWED_CATEGORIES = {"stage", "source", "agent", "error", "user_action_required", "brain_thought", "brain_report_chunk"}
 
 
 def _sanitize_text(value: Any, max_len: int = 500) -> str:
@@ -128,7 +128,7 @@ def emit_event(
         return
 
     stage = _sanitize_text(stage, 80) or "unknown"
-    message = _sanitize_text(message, 500) or "No message provided"
+    message = _sanitize_text(message, 1000) or "No message provided"
     severity = severity if severity in ALLOWED_SEVERITIES else "info"
     category = category if category in ALLOWED_CATEGORIES else "stage"
 
@@ -259,5 +259,18 @@ def emit_stage_change(stage: str, next_stage: Optional[str] = None, research_id:
         severity="info",
         category="stage",
         details={"next_stage": next_stage},
+        research_id=research_id,
+    )
+
+def emit_report_chunk(chunk: str, research_id: Optional[int] = None):
+    """
+    Emits a real-time report chunk for live typing in the Report tab.
+    """
+    emit_event(
+        stage="writing",
+        message="Reporting chunk...",
+        severity="info",
+        category="brain_report_chunk",
+        details={"chunk": chunk},
         research_id=research_id,
     )

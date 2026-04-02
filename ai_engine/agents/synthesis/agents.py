@@ -1,5 +1,6 @@
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
+from typing import Dict, Any
 import json
 
 class GapSynthesisAgent(BaseAgent):
@@ -13,16 +14,14 @@ class GapSynthesisAgent(BaseAgent):
             **kwargs
         )
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[{self.name}] Synthesizing Research Gaps...")
         findings = state.get("findings", {})
         
         context = ""
-        # Improved parsing of structured SLR data
         if "slr" in findings:
             slr_data = findings["slr"]
             if isinstance(slr_data, dict):
-                # Extract specific useful fields if available
                 methodologies = slr_data.get("methodologies_matrix", "Not available")
                 stats = slr_data.get("statistical_trends", "Not available")
                 context += f"\nMethodologies Matrix: {methodologies}\nStatistical Trends: {stats}"
@@ -32,11 +31,19 @@ class GapSynthesisAgent(BaseAgent):
         if "domain_intelligence" in findings:
              context += f"\nDomain Concepts: {findings['domain_intelligence']}"
              
-        enhanced_prompt = f"{self.system_prompt}\n\nRESEARCH CONTEXT (Structured):\n{context}"
+        # Add Brain Guidance
+        brain_guidance = self._get_brain_guidance(state)
+
+        enhanced_prompt = f"{self.system_prompt}\n\n[RESEARCH CONTEXT (Structured)]\n{context}"
+        if brain_guidance:
+            enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
         
+        # Use intelligent context truncation
+        context_human = self._truncate_context(state, self.max_context_tokens)
+
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=str(state))
+            HumanMessage(content=context_human)
         ]
         
         try:
@@ -62,7 +69,7 @@ class ResearchQuestionEngineeringAgent(BaseAgent):
             **kwargs
         )
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[{self.name}] Engineering Research Questions...")
         findings = state.get("findings", {})
         
@@ -74,11 +81,19 @@ class ResearchQuestionEngineeringAgent(BaseAgent):
             else:
                 gaps = str(findings["gap_synthesis"])
             
-        enhanced_prompt = f"{self.system_prompt}\n\nIDENTIFIED GAPS:\n{gaps}"
+        # Add Brain Guidance
+        brain_guidance = self._get_brain_guidance(state)
+
+        enhanced_prompt = f"{self.system_prompt}\n\n[IDENTIFIED GAPS]\n{gaps}"
+        if brain_guidance:
+            enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
         
+        # Use intelligent context truncation
+        context_human = self._truncate_context(state, self.max_context_tokens)
+
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=str(state))
+            HumanMessage(content=context_human)
         ]
         
         try:
@@ -104,7 +119,7 @@ class ConceptualFrameworkAgent(BaseAgent):
             **kwargs
         )
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[{self.name}] Designing Conceptual Framework...")
         findings = state.get("findings", {})
         
@@ -112,11 +127,19 @@ class ConceptualFrameworkAgent(BaseAgent):
         if "research_question" in findings:
             rq = str(findings["research_question"])
             
-        enhanced_prompt = f"{self.system_prompt}\n\nRESEARCH QUESTIONS:\n{rq}"
+        # Add Brain Guidance
+        brain_guidance = self._get_brain_guidance(state)
+
+        enhanced_prompt = f"{self.system_prompt}\n\n[RESEARCH QUESTIONS]\n{rq}"
+        if brain_guidance:
+            enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
         
+        # Use intelligent context truncation
+        context_human = self._truncate_context(state, self.max_context_tokens)
+
         messages = [
             SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=str(state))
+            HumanMessage(content=context_human)
         ]
         
         try:

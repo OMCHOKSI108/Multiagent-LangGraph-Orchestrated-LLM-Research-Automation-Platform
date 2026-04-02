@@ -93,6 +93,8 @@ AGENTS: Dict[str, Any] = {
     "topic_lock": _lazy(".topic.agents", "TopicLockAgent"),
     # Orchestrator (Reasoning)
     "orchestrator": _lazy(".orchestrator.orchestrator", "OrchestratorAgent"),
+    # Central Brain — chain-of-thought reasoning engine
+    "central_brain": _lazy(".brain.central_brain", "CentralBrainAgent"),
     # Scraper
     "data_scraper": _lazy(".scraper.agents", "DataScraperAgent"),
     # News
@@ -212,6 +214,8 @@ AGENTS: Dict[str, Any] = {
     # ── Conversational & Fast Chat ──────────────────────────────────────────
     "conversational": _lazy(".chatbot.conversational", "ConversationalAgent"),
     "editor": _lazy(".report.editor", "EditorAgent"),
-    # Vision
-    "vision_analysis": _lazy(".vision.agents", "VisionAgent"),
+    # Image Intelligence — academic suitability scoring (replaces VisionAgent)
+    "image_intelligence": _lazy(".vision.agents", "ImageIntelligenceAgent"),
+    # Keep legacy alias so any external callers don't break
+    "vision_analysis": _lazy(".vision.agents", "ImageIntelligenceAgent"),
 }

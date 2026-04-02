@@ -104,4 +104,37 @@ router.post('/providers/test', async (req, res) => {
     }
 });
 
+
+// ─── LLM Status Proxy ────────────────────────────────────────────────────────
+// Returns current LLM mode (OFFLINE/ONLINE/HYBRID), provider name, models
+router.get('/llm-status', async (req, res) => {
+    try {
+        const response = await axios.get(`${AI_ENGINE_URL}/llm/status`, { timeout: 5000 });
+        res.json(response.data);
+    } catch (error) {
+        logger.warn(`[Agents] LLM status fetch failed: ${error.message}`);
+        res.json({
+            mode: 'UNKNOWN',
+            provider: { available: false, error: error.message },
+            config: {}
+        });
+    }
+});
+
+// ─── Usage Stats Proxy ────────────────────────────────────────────────────────
+// Returns token usage statistics from the AI engine
+router.get('/usage', async (req, res) => {
+    try {
+        const hours = req.query.hours || 24;
+        const response = await axios.get(`${AI_ENGINE_URL}/usage/stats`, {
+            params: { hours },
+            timeout: 5000
+        });
+        res.json(response.data);
+    } catch (error) {
+        logger.warn(`[Agents] Usage stats fetch failed: ${error.message}`);
+        res.json({ total_tokens: 0, total_cost: 0, agents: {}, error: error.message });
+    }
+});
+
 module.exports = router;

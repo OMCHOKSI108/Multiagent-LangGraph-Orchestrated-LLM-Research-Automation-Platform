@@ -150,6 +150,39 @@ class LLMProvider(ABC):
         logger.error(f"[{self.provider_name}] All {max_retries} sync retry attempts exhausted.")
         raise last_exception or RuntimeError(f"All {self.provider_name} sync API retries exhausted")
 
+    async def astream_with_retry(self, messages: list):
+        """
+        Asynchronous streaming version of ainvoke_with_retry.
+        """
+        import asyncio
+
+        max_retries = 3
+        backoff = 1.0
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                llm = self.get_langchain_llm()
+                async for chunk in llm.astream(messages):
+                    yield chunk
+                return # Successful completion
+            except Exception as e:
+                classification = self.classify_error(e)
+                if classification != "retryable":
+                    raise e
+
+                logger.warning(
+                    f"[{self.provider_name}] Transient failure during stream. "
+                    f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s. Error: {e}"
+                )
+                self.rotate_key()
+                await asyncio.sleep(backoff)
+                backoff *= 2.0
+                last_exception = e
+
+        logger.error(f"[{self.provider_name}] All {max_retries} async stream retry attempts exhausted.")
+        raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
+
     async def ainvoke_with_retry(self, messages: list) -> Any:
         """
         Asynchronous version of invoke_with_retry.
@@ -195,6 +228,10 @@ class RetryLLMWrapper:
 
     async def ainvoke(self, messages: list) -> Any:
         return await self.provider.ainvoke_with_retry(messages)
+
+    async def astream(self, messages: list):
+        async for chunk in self.provider.astream_with_retry(messages):
+            yield chunk
 
     @property
     def model_name(self) -> str:

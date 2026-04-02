@@ -13,9 +13,10 @@ if (process.env.DATABASE_URL) {
     if (connStr.includes('sslmode=')) {
         connStr = connStr.split('?')[0]; // Strip sslmode query param to prevent pg-connection-string from overriding ssl object
     }
+    const isLocal = connStr.includes('localhost') || connStr.includes('127.0.0.1');
     pool = new Pool({
         connectionString: connStr,
-        ssl: { rejectUnauthorized: false }
+        ssl: isLocal ? false : { rejectUnauthorized: false }
     });
 } else {
     const requiredEnvVars = ['DB_USER', 'DB_HOST', 'DB_NAME', 'DB_PASSWORD', 'DB_PORT'];

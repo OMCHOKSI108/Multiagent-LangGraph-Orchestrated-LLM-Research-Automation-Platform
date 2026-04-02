@@ -17,6 +17,8 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import PremiumCharts from '@/components/PremiumCharts';
+import BrainPanel, { type BrainThought } from '@/components/BrainPanel';
+import LLMStatusBar from '@/components/LLMStatusBar';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -86,7 +88,7 @@ function extractLatexFromResult(result: ResearchResult | null): string {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type TabId = 'feed' | 'sources' | 'report' | 'raw';
+type TabId = 'feed' | 'sources' | 'report' | 'raw' | 'brain';
 type MsgRole = 'user' | 'bot' | 'system';
 
 interface Msg {
@@ -324,17 +326,19 @@ function FeedItem({ ev, index }: { ev: ResearchEvent; index: number }) {
 // ─── Sources Panel ────────────────────────────────────────────────────────────
 
 const SOURCE_AGENTS: [string, string, string | null][] = [
-  ['literature_review', 'Literature', 'papers'],
+  ['literature_review', 'Literature', 'paper_list'],
+  ['slr', 'Systematic Review', 'paper_list'],
+  ['historical_review', 'Historical Sources', 'literature_review_sources'],
   ['web_scraper', 'Web Sources', 'sources'],
   ['data_scraper', 'Scraped Data', 'results'],
   ['google_news', 'News', 'results'],
-  ['domain_intelligence', 'Domain Intelligence', null],
+  ['domain_intelligence', 'Domain Intelligence', 'domain_search_results'],
   ['topic_discovery', 'Topic Discovery', 'topic_suggestions'],
   ['gap_synthesis', 'Gap Analysis', null],
   ['scoring', 'Quality Score', null],
   ['fact_check', 'Fact Check', null],
   ['bias_detection', 'Bias Detection', null],
-  ['visualization', 'Visualization', null],
+  ['visualization', 'Visualization', 'images_metadata'],
   ['innovation', 'Innovation', null],
   ['technical_verification', 'Technical Verification', null],
   ['chat_sources', 'Chat References', 'sources'],
@@ -453,9 +457,41 @@ function SourcesPanel({
     if (listKey && typeof resp === 'object' && resp !== null && Array.isArray((resp as Record<string,unknown>)[listKey])) {
       const items = (resp as Record<string, SourceItem[]>)[listKey];
       if (!items.length) continue;
+
+      // Special handling for Visualization (Gallery mode)
+      if (key === 'visualization') {
+        sections.push(
+          <div key={key} className="mb-8">
+            <h4 className="text-sm font-semibold mb-4 pb-2 border-b border-white/5" style={{ color: '#F9FAFB' }}>
+              {label} ({items.length})
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {items.map((img: any, i: number) => (
+                <div key={i} className="rounded-xl overflow-hidden bg-black/40 border border-white/5 group">
+                  <div className="aspect-video relative overflow-hidden">
+                    <img 
+                      src={normalizeImageUrl(img.local || img.url || img.original)} 
+                      alt="Research Visual"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/300x200?text=Image+Load+Error'; }}
+                    />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-[10px] text-[#9CA3AF] line-clamp-2 italic">
+                      {img.caption || 'Research visualization component'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        continue;
+      }
+
       sections.push(
         <div key={key} className="mb-4">
-          <h4 className="text-sm font-semibold mb-3 pb-2" style={{ color: '#F9FAFB', borderColor: 'rgba(255,255,255,0.08)' }}>
+          <h4 className="text-sm font-semibold mb-3 pb-2 border-b border-white/5" style={{ color: '#F9FAFB' }}>
             {label} ({items.length})
           </h4>
           {items.slice(0, 15).map((item, i) => (
@@ -621,7 +657,7 @@ function SectionEditor({
 // ─── Main Workspace Page ──────────────────────────────────────────────────────
 
 export default function WorkspacePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, token, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const wsId = params.id as string;
@@ -643,6 +679,9 @@ export default function WorkspacePage() {
   const [abort, setAbort] = useState(false);
   const abortRef = useRef(false);
   const [statusText, setStatusText] = useState('');
+
+  // Brain tab — live AI thought stream
+  const [brainThoughts, setBrainThoughts] = useState<BrainThought[]>([]);
 
   // Panels
   const [tab, setTab] = useState<TabId>('feed');
@@ -725,6 +764,7 @@ export default function WorkspacePage() {
     setReportMd('');
     setLatexSource('');
     setSectionsData([]);
+    setBrainThoughts([]);
   }
 
   async function loadSession(s: ResearchSession) {
@@ -826,15 +866,40 @@ export default function WorkspacePage() {
           try {
             const payload = JSON.parse(evt.data);
             if (payload.type === 'event') {
+              const details = payload.details || {};
+
+              // ── Brain thought detection ────────────────────────────────────
+              if (details.is_brain_thought === true) {
+                const thought: BrainThought = {
+                  id: payload.event_id || `bt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  step: details.brain_step || 'analyzing',
+                  content: details.thought_content || payload.message || '',
+                  timestamp: Date.now(),
+                };
+                setBrainThoughts(prev => [...prev, thought]);
+                // Auto-switch to brain tab on first thought
+                setTab(prev => prev === 'feed' ? 'brain' : prev);
+              }
+
+              // ── Report streaming detection ───────────────────────────────────
+              if (payload.category === 'brain_report_chunk') {
+                const chunk = details.chunk || '';
+                setReportMd(prev => prev + chunk);
+                // Auto-switch to report tab when writing starts
+                setTab(prev => (prev === 'feed' || prev === 'brain') ? 'report' : prev);
+              }
+
+              // ── Regular feed event ────────────────────────────────────────
               setFeedEvents(prev => [...prev, {
                 id: payload.id || Date.now(),
                 message: payload.message || payload.category || 'Event',
                 stage: payload.stage,
                 severity: payload.severity,
-                category: payload.category,
+                category: payload.category || 'stage',
                 details: payload.details,
                 created_at: payload.timestamp || new Date().toISOString(),
               } as any]);
+
             } else if (payload.type === 'sources' && Array.isArray(payload.sources)) {
               setLiveSources(prev => {
                 const merged = [...prev, ...payload.sources];
@@ -1136,6 +1201,13 @@ export default function WorkspacePage() {
     { id: 'sources', label: 'Sources', icon: <Icons.source /> },
     { id: 'report', label: 'Report', icon: <Icons.report /> },
     { id: 'raw', label: 'Raw Data', icon: <Icons.data /> },
+    {
+      id: 'brain',
+      label: `Brain${brainThoughts.length > 0 ? ` (${brainThoughts.length})` : ''}`,
+      icon: (
+        <span style={{ fontSize: '12px', lineHeight: 1 }}>🧠</span>
+      ),
+    },
   ];
 
   const findings = resultJson?.final_state?.findings || resultJson?.findings || {};
@@ -1226,6 +1298,14 @@ export default function WorkspacePage() {
           {!running && statusText && (
             <span className="text-xs hidden sm:inline" style={{ color: '#6B7280' }}>{statusText}</span>
           )}
+          {/* LLM Status Bar */}
+          <LLMStatusBar 
+            compact 
+            authToken={token || undefined} 
+            thoughts={brainThoughts}
+            className="hidden sm:flex" 
+          />
+
           {curSession && !running && (
             <div className="flex gap-1 sm:gap-2">
               {[
@@ -1258,88 +1338,99 @@ export default function WorkspacePage() {
         {/* LEFT DRAWER: Sessions Sidebar (Overlay) */}
         {showDrawer && (
           <>
-            {/* Overlay */}
-            <div 
-              className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+        {/* Sidebar (Desktop Persistent / Mobile Drawer) */}
+        <aside 
+          className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-64 shadow-2xl transition-all duration-300 transform 
+            ${showDrawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            ${!showDrawer ? 'lg:flex' : 'flex'}`}
+          style={{ 
+            backgroundColor: '#111827', 
+            borderRight: '1px solid rgba(255,255,255,0.08)',
+            top: '3.5rem'
+          }}
+        >
+          {/* Drawer Header (Mobile only) */}
+          <div 
+            className="px-4 py-3 flex lg:hidden items-center justify-between"
+            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#6B7280' }}>
+              Sessions
+            </span>
+            <button
               onClick={() => setShowDrawer(false)}
-            />
-            
-            {/* Drawer */}
-            <aside 
-              className="fixed left-0 top-14 bottom-0 z-40 flex flex-col w-64 shadow-2xl"
-              style={{ 
-                backgroundColor: '#111827', 
-                borderRight: '1px solid rgba(255,255,255,0.08)',
-                animation: 'slideIn 0.3s ease-out'
-              }}
+              className="p-1 rounded hover:bg-white/5 transition-colors"
+              style={{ color: '#6B7280' }}
             >
-              {/* Drawer Header */}
-              <div 
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: '#6B7280' }}>
-                  Sessions
-                </span>
-                <button
-                  onClick={() => setShowDrawer(false)}
-                  className="p-1 rounded hover:bg-white/5 transition-colors"
-                  style={{ color: '#6B7280' }}
-                >
-                  <CloseIcon />
-                </button>
+              <CloseIcon />
+            </button>
+          </div>
+          
+          {/* Desktop Header */}
+          <div className="hidden lg:flex px-4 py-3 items-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: '#00F5D4' }}>
+              RESEARCH HISTORY
+            </span>
+          </div>
+
+          {/* Sessions List */}
+          <div className="flex-1 overflow-y-auto py-2">
+            {sessions.length === 0 ? (
+              <div className="px-4 py-8 text-center">
+                <p className="text-xs" style={{ color: '#6B7280' }}>No sessions yet</p>
+                <p className="text-[10px] mt-1" style={{ color: '#4B5563' }}>Start a research query below</p>
               </div>
-              
-              {/* Sessions List */}
-              <div className="flex-1 overflow-y-auto py-2">
-                {sessions.length === 0 ? (
-                  <div className="px-4 py-8 text-center">
-                    <p className="text-xs" style={{ color: '#6B7280' }}>No sessions yet</p>
-                    <p className="text-[10px] mt-1" style={{ color: '#4B5563' }}>Start a research query below</p>
+            ) : (
+              sessions.map(s => {
+                const label = s.topic || s.title || 'Untitled';
+                const short = label.length > 30 ? label.slice(0, 28) + '…' : label;
+                const isActive = curSession?.id === s.id;
+                const statusColors = {
+                  completed: '#00F5D4',
+                  running: '#3B82F6',
+                  failed: '#EF4444',
+                  queued: '#8B5CF6'
+                };
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => { loadSession(s); setShowDrawer(false); }}
+                    className="px-4 py-3 cursor-pointer transition-all duration-300 hover:bg-white/5 group"
+                    style={{ 
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      backgroundColor: isActive ? 'rgba(0,245,212,0.08)' : 'transparent',
+                      borderLeft: isActive ? '3px solid #00F5D4' : '3px solid transparent'
+                    }}
+                  >
+                    <p 
+                      className="text-xs font-medium truncate mb-1 transition-colors"
+                      style={{ color: isActive ? '#00F5D4' : '#9CA3AF' }}
+                    >
+                      {short}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span 
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: statusColors[s.status as keyof typeof statusColors] || '#6B7280' }}
+                      />
+                      <span className="text-[10px]" style={{ color: '#6B7280' }}>
+                        {s.status} · {new Date(s.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  sessions.map(s => {
-                    const label = s.topic || s.title || 'Untitled';
-                    const short = label.length > 30 ? label.slice(0, 28) + '…' : label;
-                    const isActive = curSession?.id === s.id;
-                    const statusColors = {
-                      completed: '#00F5D4',
-                      running: '#3B82F6',
-                      failed: '#EF4444',
-                      queued: '#8B5CF6'
-                    };
-                    return (
-                      <div
-                        key={s.id}
-                        onClick={() => { loadSession(s); setShowDrawer(false); }}
-                        className="px-4 py-3 cursor-pointer transition-all duration-300 hover:bg-white/5"
-                        style={{ 
-                          borderBottom: '1px solid rgba(255,255,255,0.04)',
-                          backgroundColor: isActive ? 'rgba(0,245,212,0.08)' : 'transparent',
-                          borderLeft: isActive ? '3px solid #00F5D4' : '3px solid transparent'
-                        }}
-                      >
-                        <p 
-                          className="text-sm font-medium truncate mb-1"
-                          style={{ color: isActive ? '#F9FAFB' : '#9CA3AF' }}
-                        >
-                          {short}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span 
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: statusColors[s.status as keyof typeof statusColors] || '#6B7280' }}
-                          />
-                          <span className="text-[10px]" style={{ color: '#6B7280' }}>
-                            {s.status} · {new Date(s.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </aside>
+                );
+              })
+            )}
+          </div>
+        </aside>
+
+        {/* Mobile Overlay */}
+        {showDrawer && (
+          <div 
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden transition-opacity duration-300"
+            onClick={() => setShowDrawer(false)}
+          />
+        )}
           </>
         )}
 
@@ -1360,12 +1451,43 @@ export default function WorkspacePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                <h2 className="text-xl font-bold mb-2" style={{ color: '#F9FAFB' }}>
+                <h2 className="text-xl font-bold mb-2 uppercase tracking-tight" style={{ color: '#F9FAFB' }}>
                   Welcome to <span className="gradient-text">MARP</span>
                 </h2>
-                <p className="text-sm mb-6 max-w-md" style={{ color: '#9CA3AF' }}>
-                  Ask a research question or trigger a pipeline with slash commands.
-                </p>
+                
+                {sessions.length > 0 ? (
+                  <div className="w-full max-w-4xl mt-4 px-4 overflow-hidden">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00F5D4]">
+                        Recent Research Sessions
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {sessions.slice(0, 4).map(s => (
+                        <div 
+                          key={s.id} 
+                          onClick={() => loadSession(s)}
+                          className="group p-4 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-[1.02] border border-white/5 hover:border-[#00F5D4]/30"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
+                        >
+                          <h4 className="text-sm font-medium text-[#F9FAFB] truncate mb-2 group-hover:text-[#00F5D4] transition-colors text-left">
+                            {s.topic || s.title}
+                          </h4>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-[#6B7280]">{new Date(s.created_at).toLocaleDateString()}</span>
+                            <span className="text-[9px] py-0.5 px-2 rounded-full border border-white/10 uppercase tracking-widest text-[#9CA3AF]">
+                              {s.depth}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm mb-6 max-w-md" style={{ color: '#9CA3AF' }}>
+                    Ask a research question or trigger a pipeline with slash commands.
+                  </p>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg">
                   {[
                     { cmd: '/research', desc: 'Standard research' },
@@ -1643,6 +1765,14 @@ export default function WorkspacePage() {
                       );
                     })
                   )}
+                </div>
+              )}
+              {tab === 'brain' && (
+                <div className="-m-3 sm:-m-4 h-full" style={{ minHeight: '400px' }}>
+                  <BrainPanel
+                    thoughts={brainThoughts}
+                    isActive={running}
+                  />
                 </div>
               )}
             </div>

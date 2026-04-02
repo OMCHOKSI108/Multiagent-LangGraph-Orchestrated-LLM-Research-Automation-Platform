@@ -114,6 +114,7 @@ export interface ResearchSession {
   topic?: string;
   title?: string;
   status: string;
+  depth?: string;
   current_stage?: string;
   started_at?: string;
   completed_at?: string;

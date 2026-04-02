@@ -1,5 +1,6 @@
 import asyncio
-from typing import Dict, Any, Optional
+import gc
+from typing import Dict, Any, Optional, List
 from langchain_core.messages import SystemMessage, HumanMessage
 
 # ============================
@@ -104,7 +105,8 @@ class BaseAgent:
         core = {
             "task": state.get("task", ""),
             "paper_url": state.get("paper_url", ""),
-            "_job_id": state.get("_job_id", "")
+            "_job_id": state.get("_job_id", ""),
+            "brain_context": state.get("brain_context", {})
         }
         core_str = json.dumps(core)
         # Convert max_tokens to approx chars (1 token ~= 4 chars)
@@ -139,6 +141,45 @@ class BaseAgent:
         
         result = {**core, "findings": truncated_findings}
         return json.dumps(result)
+
+    def _get_brain_guidance(self, state: Dict[str, Any]) -> str:
+        """
+        Extracts relevant guidance from the Central Brain for the current agent.
+        """
+        brain = state.get("brain_context", {})
+        if not brain:
+            return ""
+
+        guidance = ["\n[CENTRAL BRAIN GUIDANCE]"]
+        
+        # 1. Check for Initial Research Plan (Relevant for early research)
+        init_plan = brain.get("init_result", {})
+        if init_plan:
+            guidance.append(f"RESEARCH PLAN: {init_plan.get('primary_focus', 'N/A')}")
+            if init_plan.get("core_research_questions"):
+                questions = "\n- ".join(init_plan.get("core_research_questions", []))
+                guidance.append(f"RESEARCH QUESTIONS:\n- {questions}")
+            if init_plan.get("novelty_angle"):
+                guidance.append(f"TARGET NOVELTY: {init_plan.get('novelty_angle')}")
+
+        # 2. Check for Synthesis (Relevant for later research/gap analysis)
+        synthesis = brain.get("synthesize_result", {})
+        if synthesis:
+            guidance.append(f"CORE THESIS: {synthesis.get('core_thesis', 'N/A')}")
+            guidance.append(f"IDENTIFIED GAP: {synthesis.get('true_research_gap', 'N/A')}")
+            if synthesis.get("key_insights"):
+                insights = "\n- ".join(synthesis.get("key_insights", []))
+                guidance.append(f"KEY SYNTHESIZED INSIGHTS:\n- {insights}")
+
+        # 3. Check for Paper Directive (Relevant for writing)
+        directive = brain.get("direct_result", {})
+        if directive:
+            guidance.append(f"PAPER THESIS: {directive.get('thesis_statement', 'N/A')}")
+            for section, instruction in directive.get("section_directives", {}).items():
+                if self.name.lower().replace("agent", "") in section.lower():
+                    guidance.append(f"YOUR SECTION DIRECTIVE ({section}): {instruction}")
+
+        return "\n".join(guidance)
 
     def _compute_hash(self, text: str) -> str:
         import hashlib
@@ -222,9 +263,20 @@ class BaseAgent:
 
         logger.info(f"[{self.name}] Cache MISS. Hash: {input_hash[:8]}")
 
+        # Inject Brain Guidance into System Prompt
+        brain_guidance = self._get_brain_guidance(state)
+        enhanced_system_prompt = self.system_prompt
+        if brain_guidance:
+            enhanced_system_prompt += f"\n\nFOLLOW THESE DIRECTIVES FROM THE CENTRAL BRAIN:{brain_guidance}\n"
+
         messages = [
-            SystemMessage(content=self.system_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=context)
+            SystemMessage(content=enhanced_system_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
+            HumanMessage(content=(
+                f"=== ORIGINAL RESEARCH GOAL ===\n{state.get('task', 'No task specified')}\n\n"
+                f"--- RESEARCH CONTEXT & FINDINGS ---\n{context}\n\n"
+                f"=== REMINDER: MAIN DOMAIN & GOAL ===\n{state.get('task', 'No task specified')}\n"
+                "Focus your analysis strictly on the goal and domain above."
+            ))
         ]
         
         try:

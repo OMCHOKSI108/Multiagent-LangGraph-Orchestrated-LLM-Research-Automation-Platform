@@ -33,20 +33,26 @@ function shouldSkipGlobalRateLimit(req) {
     return false;
 }
 
-// Global limiter (lenient in development to avoid blocking local UX)
+// Global limiter (increased for "Real Website" experience)
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: isDev ? 5000 : 2000,
-    skip: shouldSkipGlobalRateLimit,
+    max: isDev ? 10000 : 5000, // Increased from 5000:2000
+    skip: (req) => {
+        if (shouldSkipGlobalRateLimit(req)) return true;
+        // TRUST AUTHENTICATED USERS: If a valid JWT is present, don't count against global rate limit
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) return true;
+        return false;
+    },
     message: { error: 'Too many requests, please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
 });
 
-// Stricter limiter only for auth mutation endpoints
+// Stricter limiter only for auth mutation endpoints (increased for multi-device/tab stability)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: isDev ? 200 : 25,
+    max: isDev ? 500 : 100, // Increased from 200:25
     skipSuccessfulRequests: true,
     message: { error: 'Too many login attempts. Please try again later.' },
     standardHeaders: true,
@@ -83,7 +89,7 @@ app.use('/api/workspaces', require('./routes/workspace.routes'));
 app.use('/api/research', require('./routes/research.routes'));
 app.use('/api/chat', require('./routes/chat.routes'));
 app.use('/api/events', require('./routes/events.routes'));
-app.use('/api/agents', require('./routes/agents.routes'));
+app.use('/api/agents', auth, require('./routes/agents.routes'));
 app.use('/api/memories', auth, require('./routes/memory.routes'));
 app.use('/api/export', auth, require('./routes/export.routes'));
 app.use('/api/usage', auth, require('./routes/usage.routes'));

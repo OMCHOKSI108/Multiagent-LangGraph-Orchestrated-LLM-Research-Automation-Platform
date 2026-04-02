@@ -13,8 +13,11 @@ Also supports conversational section editing:
 
 import logging
 import time
+import asyncio
+import gc
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
+from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
 
 logger = logging.getLogger("ai_engine.agents.report.ieee_paper")
 
@@ -127,42 +130,73 @@ class IEEEPaperAgent(BaseAgent):
             **kwargs
         )
 
-    def run(self, state: dict) -> dict:
-        """Generate full IEEE paper from completed research state."""
+    async def arun(self, state: dict) -> dict:
+        """Generate full IEEE paper from completed research state with streaming."""
         task = state.get("task", "")
         selected_topic = state.get("selected_topic", task)
+        job_id = state.get("_job_id", "?")
+        research_id = int(job_id) if str(job_id).isdigit() else None
+        
         t0 = time.time()
+        logger.info(f"[{self.name}] Generating IEEE paper (Streaming) for: {selected_topic[:60]}")
+        emit_agent_start(self.name, research_id=research_id)
+        gc.collect()
 
-        logger.info(f"[{self.name}] Generating IEEE paper for: {selected_topic[:60]}")
-
-        # ── Gather all research findings ──────────────────────────────────
+        # Gather context
         findings = state.get("findings", {})
         report_context = self._build_context(selected_topic, findings, state)
+        brain_guidance = self._get_brain_guidance(state)
+        
+        enhanced_system_prompt = IEEE_SYSTEM_PROMPT
+        if brain_guidance:
+            enhanced_system_prompt += (
+                f"\n\nFOLLOW THESE DIRECTIVES FROM THE CENTRAL BRAIN:\n{brain_guidance}\n"
+                f"Ensure the paper matches the thesis and narrative arc defined by the brain.\n"
+            )
+
+        context_human = self._truncate_context(state, self.max_context_tokens)
 
         messages = [
-            SystemMessage(content=IEEE_SYSTEM_PROMPT),
-            HumanMessage(content=report_context),
+            SystemMessage(content=enhanced_system_prompt),
+            HumanMessage(content=(
+                f"Topic: {selected_topic}\n\n"
+                f"Research Findings:\n{context_human}\n\n"
+                f"Detailed Context:\n{report_context[:10000]}"
+            )),
         ]
 
+        full_response = ""
         try:
-            response = self.llm.invoke(messages)
-            paper_text = response.content.strip()
+            # TRUE LIVE STREAMING
+            async for chunk in self.llm.astream(messages):
+                content = chunk.content
+                if content:
+                    full_response += content
+                    emit_report_chunk(content, research_id=research_id)
+                    
+            gc.collect()
+            elapsed = time.time() - t0
+            emit_agent_complete(self.name, int(elapsed * 1000), success=True, research_id=research_id)
 
             return {
                 "response": {
-                    "ieee_paper": paper_text,
+                    "ieee_paper": full_response,
                     "topic": selected_topic,
-                    "word_count": len(paper_text.split()),
+                    "word_count": len(full_response.split()),
                     "status": "generated",
                 },
-                "raw": paper_text[:500],
+                "raw": full_response[:500],
                 "agent": self.name,
-                "execution_time": round(time.time() - t0, 2),
+                "execution_time": round(elapsed, 2),
             }
 
         except Exception as e:
-            logger.error(f"[{self.name}] Failed to generate paper: {e}")
+            logger.error(f"[{self.name}] Failed to generate streaming paper: {e}")
             return {"error": str(e), "agent": self.name}
+
+    def run(self, state: dict) -> dict:
+        """Generate full IEEE paper from completed research state."""
+        return asyncio.run(self.arun(state))
 
     def expand_section(self, state: dict, section: str, additional_context: str = "") -> dict:
         """
@@ -187,8 +221,14 @@ class IEEEPaperAgent(BaseAgent):
             prompt += f"Additional context/new research:\n{additional_context}\n"
         prompt += "\nReturn the COMPLETE updated paper in Markdown format."
 
+        # Add Brain Guidance
+        brain_guidance = self._get_brain_guidance(state)
+        enhanced_system_prompt = EXPAND_SYSTEM_PROMPT
+        if brain_guidance:
+            enhanced_system_prompt += f"\n\nFOLLOW THESE DIRECTIVES FROM THE CENTRAL BRAIN:{brain_guidance}\n"
+
         messages = [
-            SystemMessage(content=EXPAND_SYSTEM_PROMPT),
+            SystemMessage(content=enhanced_system_prompt),
             HumanMessage(content=prompt),
         ]
 

@@ -42,6 +42,8 @@ class ResearchState(TypedDict):
     history: Annotated[List[str], operator.add]
     depth: str
     _job_id: Optional[str]
+    # 🧠 Brain context — accumulates across all 3 brain invocations
+    brain_context: Annotated[Dict[str, Any], merge_dicts]
 
 
 from agents.registry import AGENTS
@@ -162,12 +164,40 @@ async def critique_node(state): return await run_agent("hallucination_detection"
 async def visualization_node(state): return await run_agent("visualization", state)
 
 
-async def vision_node(state):
+async def central_brain_node(state):
     """
-    Node for multi-modal image analysis.
-    Only runs if image URLs were found by scrapers.
+    Brain Mode 1: INIT — Strategic planning before research begins.
+    Runs once after orchestrator. Sets research direction.
     """
-    return await run_agent("vision_analysis", state)
+    return await run_agent("central_brain", state)
+
+
+async def brain_synthesize_node(state):
+    """
+    Brain Mode 2: SYNTHESIZE — Reads all gathered findings and forms thesis.
+    Runs after gap_synthesis. Pivots or confirms research direction.
+    Injects: synthesis, core_thesis, adjusted focus into brain_context.
+    """
+    # Force mode to synthesize by temporarily injecting marker
+    inject = {**state, "findings": {**state.get("findings", {})}}
+    # The brain auto-detects mode from findings (has gap_synthesis = synthesize)
+    return await run_agent("central_brain", inject)
+
+
+async def brain_direct_node(state):
+    """
+    Brain Mode 3: DIRECT — Editor-in-chief before paper writing.
+    Runs after scoring. Defines thesis, narrative, paper directive.
+    """
+    return await run_agent("central_brain", state)
+
+
+async def image_intelligence_node(state):
+    """
+    Evaluates web-sourced images for academic suitability.
+    Only approved images (score >= 7) flow into the paper generator.
+    """
+    return await run_agent("image_intelligence", state)
 
 
 async def multi_stage_report_node(state):
@@ -208,6 +238,14 @@ workflow = StateGraph(ResearchState)
 workflow.add_node("topic_discovery", topic_discovery_node)
 workflow.add_node("topic_lock", topic_lock_node)
 workflow.add_node("orchestrator", orchestrator_node)
+
+# 🧠 Brain Node 1: INIT — strategic planning
+workflow.add_node("brain_init", central_brain_node)
+# 🧠 Brain Node 2: SYNTHESIZE — interprets all findings
+workflow.add_node("brain_synthesize", brain_synthesize_node)
+# 🧠 Brain Node 3: DIRECT — directs the paper before writing
+workflow.add_node("brain_direct", brain_direct_node)
+
 workflow.add_node("domain_intelligence", domain_node)
 workflow.add_node("historical_review", historical_node)
 workflow.add_node("slr", slr_node)
@@ -219,7 +257,7 @@ workflow.add_node("understanding", understanding_node)
 workflow.add_node("technical_verification", verify_node)
 workflow.add_node("critique", critique_node)
 workflow.add_node("visualization", visualization_node)
-workflow.add_node("vision", vision_node)
+workflow.add_node("image_intelligence", image_intelligence_node)  # 📸 Image scoring
 workflow.add_node("scoring", scoring_node)
 workflow.add_node("multi_stage_report", multi_stage_report_node)
 workflow.add_node("writing", write_node)
@@ -240,34 +278,51 @@ workflow.add_conditional_edges("topic_lock", topic_gate, {
     END: END,
 })
 
+# After orchestrator → Brain INIT (strategic planning)
+workflow.add_conditional_edges("orchestrator", lambda s: "brain_init", {
+    "brain_init": "brain_init",
+})
 
-def route_strategy(state):
+
+def route_after_brain_init(state):
+    """Route from brain_init to domain or paper analysis."""
     step = state.get("next_step")
     if step == "paper_analysis":
         return "paper_decomposition"
     return "domain_intelligence"
 
 
-workflow.add_conditional_edges("orchestrator", route_strategy, {
+workflow.add_conditional_edges("brain_init", route_after_brain_init, {
     "paper_decomposition": "paper_decomposition",
     "domain_intelligence": "domain_intelligence",
 })
 
+# Domain research pipeline
 workflow.add_edge("domain_intelligence", "historical_review")
 workflow.add_edge("domain_intelligence", "slr")
 workflow.add_edge("domain_intelligence", "news")
 workflow.add_edge("historical_review", "gap_synthesis")
-workflow.add_edge("slr", "vision")
-workflow.add_edge("news", "vision")
-workflow.add_edge("vision", "gap_synthesis")
-workflow.add_edge("gap_synthesis", "innovation")
+workflow.add_edge("slr", "image_intelligence")
+workflow.add_edge("news", "image_intelligence")
+workflow.add_edge("image_intelligence", "gap_synthesis")
+
+# After gap_synthesis → Brain SYNTHESIZE (interprets all findings)
+workflow.add_edge("gap_synthesis", "brain_synthesize")
+workflow.add_edge("brain_synthesize", "innovation")
+
+# Paper analysis pipeline
 workflow.add_edge("paper_decomposition", "understanding")
 workflow.add_edge("understanding", "technical_verification")
 workflow.add_edge("technical_verification", "critique")
+
+# Both pipelines converge at visualization
 workflow.add_edge("innovation", "visualization")
 workflow.add_edge("critique", "visualization")
 workflow.add_edge("visualization", "scoring")
-workflow.add_edge("scoring", "multi_stage_report")
+
+# After scoring → Brain DIRECT (editor-in-chief before writing)
+workflow.add_edge("scoring", "brain_direct")
+workflow.add_edge("brain_direct", "multi_stage_report")
 workflow.add_edge("multi_stage_report", "latex")
 workflow.add_edge("latex", END)
 

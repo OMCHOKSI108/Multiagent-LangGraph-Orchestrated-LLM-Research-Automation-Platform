@@ -1,11 +1,15 @@
 import os
 import re
 import subprocess
+import asyncio
+import gc
+import time
 
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
 from .domain_templates import detect_domain, get_template
 from .latex_sanitizer import sanitize_llm_latex, sanitize_latex, check_balance
+from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
 
 
 class ScientificWritingAgent(BaseAgent):
@@ -47,72 +51,131 @@ Quality Standards:
 - Academic rigor
 - Dense, professional language
 - No filler or fluff content
+
+Visual Integration (IMPORTANT):
+1. You will receive 'approved_images' — a list of images scored >= 7/10 for academic suitability.
+2. Each image has: url, caption, placement (which section), alt_text, score.
+3. Place each approved image in the EXACT section indicated by its 'placement' field.
+4. Use the format: ![{alt_text}]({url})
+   *Figure N: {caption}*
+5. Number figures sequentially: Figure 1, Figure 2, ...
+6. If 'approved_images' is empty, write '[No figures available]' in the Results section.
+
+Data Tables:
+- If findings contain structured data (lists of dicts with consistent keys), render them as Markdown tables.
+- Table format: | Column | Column | with proper alignment.
+
+AI Brain Research Plan:
+- If 'research_plan' is provided (from CentralBrain), follow its 'priority_sections' and 'key_hypotheses'.
+- Emphasize sections listed in 'priority_sections'.
 """,
             **kwargs
         )
 
-    def run(self, state: dict) -> dict:
-        print(f"[{self.name}] Writing Rigorous Research Report...")
+    def _build_image_context(self, findings: dict) -> str:
+        """Extract approved images from ImageIntelligenceAgent findings."""
+        img_data = findings.get("image_intelligence", {})
+        if isinstance(img_data, dict):
+            resp = img_data.get("response", img_data)
+            approved = resp.get("approved_images", []) if isinstance(resp, dict) else []
+        else:
+            approved = []
+
+        if not approved:
+            return ""
+
+        lines = ["\n== APPROVED FIGURES (embed in appropriate sections) =="]
+        for i, img in enumerate(approved, 1):
+            lines.append(
+                f"Figure {i}: url={img.get('url','')} | "
+                f"placement={img.get('placement','results')} | "
+                f"caption={img.get('caption','')} | "
+                f"alt_text={img.get('alt_text','Figure')} | "
+                f"score={img.get('score',0)}/10"
+            )
+        return "\n".join(lines)
+
+    def _build_brain_context(self, state: dict) -> str:
+        """Extract cumulative brain guidance from state."""
+        return self._get_brain_guidance(state)
+
+    async def arun(self, state: dict) -> dict:
+        """
+        Native async implementation for streaming report generation.
+        """
+        print(f"[{self.name}] Writing Rigorous Research Report (Streaming)...")
         findings = state.get("findings", {})
         task = state.get("task", "Research Topic")
+        job_id = state.get("_job_id", "?")
+        research_id = int(job_id) if str(job_id).isdigit() else None
         
-        # Flatten findings into a single context string
+        start_time = time.time()
+        emit_agent_start(self.name, research_id=research_id)
+        gc.collect()
+
+        # Build context (same logic as sync run)
         context_parts = [f"RESEARCH TOPIC: {task}\n"]
         for key, value in findings.items():
             if key.startswith("_"): continue
+            if key in ("image_intelligence", "central_brain", "vision_analysis"): continue
             if isinstance(value, dict):
-                # Extract meaningful text from dict
-                if "raw_text" in value:
-                    context_parts.append(f"[{key.upper()}]: {value['raw_text'][:3000]}")
-                elif "markdown_report" in value:
-                    context_parts.append(f"[{key.upper()}]: {value['markdown_report'][:3000]}")
-                elif "markdown_content" in value: #From Scraper
-                     context_parts.append(f"[{key.upper()}]: {value['markdown_content'][:3000]}")
-                else:
-                    # Try to stringify useful parts
-                    text_parts = []
-                    for k, v in value.items():
-                        if not k.startswith("_") and isinstance(v, (str, list)):
-                            text_parts.append(f"{k}: {str(v)[:500]}")
-                    if text_parts:
-                        context_parts.append(f"[{key.upper()}]:\n" + "\n".join(text_parts))
-            elif isinstance(value, str):
-                context_parts.append(f"[{key.upper()}]: {value[:3000]}")
-            
-        # Domain detection (imports are at module top)
-        
-        # Detect Domain and Template
+                resp = value.get("response", value)
+                if isinstance(resp, dict):
+                    if "raw_text" in resp: context_parts.append(f"[{key.upper()}]: {resp['raw_text'][:3000]}")
+                    elif "markdown_report" in resp: context_parts.append(f"[{key.upper()}]: {resp['markdown_report'][:3000]}")
+                    else:
+                        text_parts = [f"{k}: {str(v)[:500]}" for k, v in resp.items() if not k.startswith("_") and isinstance(v, (str, list))]
+                        if text_parts: context_parts.append(f"[{key.upper()}]:\n" + "\n".join(text_parts))
+            elif isinstance(value, str): context_parts.append(f"[{key.upper()}]: {value[:3000]}")
+
+        image_ctx = self._build_image_context(findings)
+        if image_ctx: context_parts.append(image_ctx)
+        brain_ctx = self._build_brain_context(state)
+        if brain_ctx: context_parts.append(brain_ctx)
+
         domain = detect_domain(task, findings)
         template = get_template(domain)
         sections = template.get("sections", [])
         section_prompts = template.get("section_prompts", {})
-        
-        print(f"[{self.name}] Detected Domain: {domain}. Using Template: {template['name']}")
 
-        # Build Section Instructions
         structure_instruction = "Follow this EXACT report structure:\n"
         for section in sections:
             prompt = section_prompts.get(section, "")
             structure_instruction += f"## {section.replace('_', ' ').title()}\n- Guideline: {prompt}\n"
 
         full_context = "\n\n".join(context_parts)
-        safe_context = full_context[:20000]  # Safe limit
-        
+        context_human = self._truncate_context(state, self.max_context_tokens)
+
         messages = [
-            SystemMessage(content=self.system_prompt),
-            HumanMessage(content=f"Here is the research data.\n\n{structure_instruction}\n\nWrite the complete paper NOW based on the data below:\n\n{safe_context}")
+            SystemMessage(content=self.system_prompt + (f"\n\nDIRECTIVES:{brain_ctx}" if brain_ctx else "")),
+            HumanMessage(content=(f"Research Data:\n{structure_instruction}\n\nWrite Report:\n{context_human}\n\nData:\n{full_context[:10000]}"))
         ]
-        
+
+        full_response = ""
         try:
-            response = self.llm.invoke(messages)
+            # TRUE LIVE STREAMING
+            async for chunk in self.llm.astream(messages):
+                content = chunk.content
+                if content:
+                    full_response += content
+                    emit_report_chunk(content, research_id=research_id)
+            
+            gc.collect()
+            elapsed = time.time() - start_time
+            emit_agent_complete(self.name, int(elapsed * 1000), success=True, research_id=research_id)
+            
             return {
-                "response": {"markdown_report": response.content},
-                "raw": response.content,
+                "response": {"markdown_report": full_response},
+                "raw": full_response,
                 "agent": self.name
             }
         except Exception as e:
-            print(f"[{self.name}] Error: {e}")
+            logger.error(f"[{self.name}] Async streaming failed: {e}")
             return {"error": str(e)}
+
+    def run(self, state: dict) -> dict:
+        # Fallback for sync contexts
+        return asyncio.run(self.arun(state))
 
 class LaTeXGenerationAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -128,9 +191,15 @@ class LaTeXGenerationAgent(BaseAgent):
 5. All citations MUST use \cite{key} where 'key' exactly matches a \bibitem{key} in the bibliography.
 6. NEVER invent or hallucinate references. Only cite sources explicitly given to you.
 7. Use \includegraphics{placeholder_fig1} for figures when no actual image file is provided.
-8. Use \section{}, \subsection{} — NEVER \chapter{}.
-9. Escape ALL special characters: & → \&  |  % → \%  |  # → \#  |  _ → \_  (outside math mode)
-10. Use \textbf{} for bold, \textit{} for italic, \texttt{} for code — NEVER ** or * markdown.
+8. If a Markdown image ![Caption](URL) is provided, convert it to:
+   \begin{figure}[h]
+   \centering
+   \includegraphics[width=0.8\linewidth]{URL}
+   \caption{Caption}
+   \end{figure}
+9. Use \section{}, \subsection{} — NEVER \chapter{}.
+10. Escape ALL special characters: & → \&  |  % → \%  |  # → \#  |  _ → \_  (outside math mode)
+11. Use \textbf{} for bold, \textit{} for italic, \texttt{} for code — NEVER ** or * markdown.
 
 === REQUIRED PREAMBLE ===
 \documentclass[conference]{IEEEtran}
@@ -162,7 +231,10 @@ Any non-LaTeX content in your output will cause a compile failure and break the 
         findings = state.get("findings", {})
         task = state.get("task", "Research Report")
         job_id = state.get("_job_id", "unknown")
+        research_id = int(job_id) if str(job_id).isdigit() else None
         
+        # RAM Management: Clear before complex LaTeX/PDF processing
+        gc.collect()
         # Check for existing LaTeX in findings or state
         existing_latex = state.get("latex_source", "") or findings.get("latex_generation", {}).get("latex_source", "")
         
