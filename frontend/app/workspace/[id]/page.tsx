@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { useTheme } from '@/components/ThemeProvider';
 import {
   workspaces as wsApi,
   events as eventsApi,
@@ -17,7 +16,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import PremiumCharts from '@/components/PremiumCharts';
-import BrainPanel, { type BrainThought } from '@/components/BrainPanel';
+import BrainPanel from '@/components/BrainPanel';
 import LLMStatusBar from '@/components/LLMStatusBar';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -86,9 +85,123 @@ function extractLatexFromResult(result: ResearchResult | null): string {
   return typeof hit === 'string' ? hit : '';
 }
 
+type RawRow = {
+  agent: string;
+  field: string;
+  type: string;
+  preview: string;
+};
+
+function stringifyPreview(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return `${value.length} items`;
+  if (typeof value === 'object') {
+    const keys = Object.keys(value as Record<string, unknown>);
+    return `{${keys.slice(0, 6).join(', ')}${keys.length > 6 ? ', ...' : ''}}`;
+  }
+  return String(value);
+}
+
+function buildRawRows(findings: Record<string, any> | null | undefined): RawRow[] {
+  if (!findings || typeof findings !== 'object') return [];
+  const rows: RawRow[] = [];
+  const LIMIT = 600;
+
+  for (const [agent, payload] of Object.entries(findings)) {
+    if (rows.length >= LIMIT) break;
+    if (payload == null) {
+      rows.push({ agent, field: 'value', type: 'null', preview: '' });
+      continue;
+    }
+
+    if (typeof payload !== 'object') {
+      rows.push({
+        agent,
+        field: 'value',
+        type: typeof payload,
+        preview: stringifyPreview(payload).slice(0, 220),
+      });
+      continue;
+    }
+
+    const obj = payload as Record<string, unknown>;
+    const entries = Object.entries(obj);
+    if (entries.length === 0) {
+      rows.push({ agent, field: 'value', type: 'object', preview: '{}' });
+      continue;
+    }
+
+    for (const [field, value] of entries) {
+      if (rows.length >= LIMIT) break;
+      const rowType = Array.isArray(value) ? 'array' : value == null ? 'null' : typeof value;
+      rows.push({
+        agent,
+        field,
+        type: rowType,
+        preview: stringifyPreview(value).slice(0, 220),
+      });
+    }
+  }
+
+  return rows;
+}
+
+function buildLiveRawRows(feedEvents: ResearchEvent[], liveSources: any[]): RawRow[] {
+  const rows: RawRow[] = [];
+
+  for (const ev of feedEvents) {
+    rows.push({
+      agent: ev.stage || ev.category || 'event',
+      field: 'message',
+      type: 'event',
+      preview: (ev.message || '').slice(0, 220),
+    });
+
+    if (ev.details && typeof ev.details === 'object') {
+      for (const [k, v] of Object.entries(ev.details as Record<string, unknown>)) {
+        rows.push({
+          agent: ev.stage || ev.category || 'event',
+          field: String(k),
+          type: Array.isArray(v) ? 'array' : typeof v,
+          preview: stringifyPreview(v).slice(0, 220),
+        });
+      }
+    }
+  }
+
+  for (const src of liveSources) {
+    rows.push({
+      agent: src.source_type || src.domain || 'source',
+      field: 'title',
+      type: 'source',
+      preview: String(src.title || '').slice(0, 220),
+    });
+    if (src.url) {
+      rows.push({
+        agent: src.source_type || src.domain || 'source',
+        field: 'url',
+        type: 'source',
+        preview: String(src.url).slice(0, 220),
+      });
+    }
+    if (src.description || src.citation_text) {
+      rows.push({
+        agent: src.source_type || src.domain || 'source',
+        field: 'description',
+        type: 'source',
+        preview: String(src.description || src.citation_text || '').slice(0, 220),
+      });
+    }
+  }
+
+  return rows.slice(0, 800);
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type TabId = 'feed' | 'sources' | 'report' | 'raw' | 'brain';
+type TabId = 'brain' | 'feed' | 'sources' | 'report' | 'raw';
 type MsgRole = 'user' | 'bot' | 'system';
 
 interface Msg {
@@ -139,9 +252,8 @@ const Icons = {
     </svg>
   ),
   stop: () => (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+      <rect x="6" y="6" width="12" height="12" rx="2" />
     </svg>
   ),
   agent: () => (
@@ -183,11 +295,11 @@ const Icons = {
 };
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'feed', label: 'Feed', icon: <Icons.feed /> },
-  { id: 'brain', label: 'Brain', icon: <Icons.brain /> },
-  { id: 'report', label: 'Report', icon: <Icons.report /> },
+  { id: 'brain', label: 'AI Brain', icon: <Icons.brain /> },
+  { id: 'feed', label: 'Live Feed', icon: <Icons.feed /> },
   { id: 'sources', label: 'Sources', icon: <Icons.source /> },
-  { id: 'raw', label: 'Raw', icon: <Icons.data /> },
+  { id: 'raw', label: 'Raw Data', icon: <Icons.data /> },
+  { id: 'report', label: 'Report', icon: <Icons.report /> },
 ];
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -335,6 +447,63 @@ function FeedItem({ ev, index }: { ev: ResearchEvent; index: number }) {
             </pre>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RawDataGrid({
+  findings,
+  feedEvents,
+  liveSources,
+}: {
+  findings: Record<string, any> | null | undefined;
+  feedEvents: ResearchEvent[];
+  liveSources: any[];
+}) {
+  const structuredRows = buildRawRows(findings);
+  const liveRows = buildLiveRawRows(feedEvents, liveSources);
+  const rows = structuredRows.length > 0 ? structuredRows : liveRows;
+
+  if (!rows.length) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="w-16 h-16 rounded-full bg-[#111827] flex items-center justify-center mb-4 border border-[rgba(255,255,255,0.1)]">
+          <span style={{ color: '#6B7280' }}><Icons.data /></span>
+        </div>
+        <p className="text-sm" style={{ color: '#6B7280' }}>No raw data available yet.</p>
+        <p className="text-xs mt-1" style={{ color: '#4B5563' }}>Live events and source rows will appear here while research runs.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 overflow-hidden bg-black/30">
+      <div className="px-3 py-2 border-b border-white/10 text-[11px] text-[#9CA3AF] flex items-center justify-between">
+        <span>{structuredRows.length > 0 ? 'Structured RAW output' : 'Live RAW stream'}</span>
+        <span>{rows.length} rows</span>
+      </div>
+      <div className="max-h-[65vh] overflow-auto">
+        <table className="w-full text-left text-[11px]">
+          <thead className="sticky top-0 bg-[#111827] border-b border-white/10">
+            <tr>
+              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Agent</th>
+              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Field</th>
+              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Type</th>
+              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Preview</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr key={`${row.agent}-${row.field}-${idx}`} className="border-b border-white/5 hover:bg-white/[0.03]">
+                <td className="px-3 py-2 align-top text-[#00F5D4] font-medium whitespace-nowrap">{row.agent}</td>
+                <td className="px-3 py-2 align-top text-[#9CA3AF] whitespace-nowrap">{row.field}</td>
+                <td className="px-3 py-2 align-top text-[#3B82F6] whitespace-nowrap">{row.type}</td>
+                <td className="px-3 py-2 align-top text-[#D1D5DB] break-words">{row.preview || '-'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -689,11 +858,12 @@ export default function WorkspacePage() {
   const abortRef = useRef(false);
   const [statusText, setStatusText] = useState('');
 
-  const [brainThoughts, setBrainThoughts] = useState<BrainThought[]>([]);
+  const [brainThoughts, setBrainThoughts] = useState<any[]>([]);
 
   const [tab, setTab] = useState<TabId>('feed');
   const [feedEvents, setFeedEvents] = useState<ResearchEvent[]>([]);
   const [liveSources, setLiveSources] = useState<any[]>([]);
+  const [sseConnected, setSseConnected] = useState(false);
   const [resultJson, setResultJson] = useState<ResearchResult | null>(null);
   const [reportMd, setReportMd] = useState('');
   const [latexSource, setLatexSource] = useState('');
@@ -702,9 +872,9 @@ export default function WorkspacePage() {
   const feedRef = useRef<HTMLDivElement>(null);
   const chatLogRef = useRef<HTMLDivElement>(null);
 
-  const [showDrawer, setShowDrawer] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [rightPanelWidth, setRightPanelWidth] = useState(50);
+  const [rightPanelWidth, setRightPanelWidth] = useState(42);
   const isResizingRef = useRef(false);
 
   useEffect(() => {
@@ -778,6 +948,7 @@ export default function WorkspacePage() {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    setSseConnected(false);
   }, []);
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -788,10 +959,17 @@ export default function WorkspacePage() {
     (async () => {
       try {
         const tok = await eventsApi.getSSEToken(sid);
-        if (!tok?.token || abortRef.current) return;
+        if (!tok?.token || abortRef.current) {
+          setSseConnected(false);
+          return;
+        }
         const streamUrl = `${API_ROOT}/api/events/stream-public/${sid}?token=${encodeURIComponent(tok.token)}`;
         const es = new EventSource(streamUrl);
         eventSourceRef.current = es;
+
+        es.onopen = () => {
+          setSseConnected(true);
+        };
 
         es.onmessage = (evt) => {
           try {
@@ -799,7 +977,7 @@ export default function WorkspacePage() {
             const { type, message, category, stage, severity, details, timestamp } = payload;
 
             if (type === 'thought' || category === 'brain_thought' || details?.is_brain_thought) {
-              const thought: BrainThought = {
+              const thought = {
                 id: payload.event_id || `bt_${Date.now()}`,
                 step: details?.brain_step || 'analyzing',
                 content: details?.thought_content || message || '',
@@ -809,7 +987,6 @@ export default function WorkspacePage() {
                 if (prev.some(t => t.id === thought.id)) return prev;
                 return [...prev, thought];
               });
-              setTab('brain');
             }
             else if (type === 'report' || category === 'report_chunk') {
               const chunk = details?.chunk || message || '';
@@ -819,7 +996,7 @@ export default function WorkspacePage() {
               }
             }
             else if (type === 'event' || type === 'stage') {
-              setFeedEvents(prev => [...prev, {
+              const incoming = {
                 id: payload.id || Date.now(),
                 message: message || category || 'Progress Update',
                 stage,
@@ -827,7 +1004,19 @@ export default function WorkspacePage() {
                 category: category || 'stage',
                 details,
                 created_at: timestamp || new Date().toISOString(),
-              } as any]);
+              } as any;
+
+              setFeedEvents(prev => {
+                const last = prev.length ? prev[prev.length - 1] : null;
+                const isDuplicateStage = !!last
+                  && incoming.category === 'stage'
+                  && last.category === 'stage'
+                  && (incoming.stage || '').toLowerCase() === (last.stage || '').toLowerCase();
+                if (isDuplicateStage) {
+                  return prev;
+                }
+                return [...prev, incoming];
+              });
             }
             else if (type === 'sources' && Array.isArray(payload.sources)) {
               setLiveSources(prev => {
@@ -836,12 +1025,14 @@ export default function WorkspacePage() {
               });
             }
             else if (type === 'done') {
+              setSseConnected(false);
               es.close();
             }
           } catch (err) { }
         };
 
         es.onerror = () => {
+          setSseConnected(false);
           es.close();
           eventSourceRef.current = null;
         };
@@ -856,7 +1047,7 @@ export default function WorkspacePage() {
     setAbort(false);
     startEventPolling(sid);
 
-    for (let i = 0; i < 300; i++) {
+    while (!abortRef.current) {
       if (abortRef.current) break;
       await sleep(3000);
       if (abortRef.current) break;
@@ -893,6 +1084,11 @@ export default function WorkspacePage() {
           setStatusText('Failed');
           break;
         }
+        if (s.status === 'cancelled') {
+          addMsg('Research stopped by user.', 'bot');
+          setStatusText('Cancelled');
+          break;
+        }
         if (s.current_stage) setStatusText(s.current_stage);
       } catch { }
     }
@@ -900,6 +1096,40 @@ export default function WorkspacePage() {
     setRunStartedAt(null);
     stopEventPolling();
     await loadWorkspace();
+  }
+
+  async function hydrateHistoricalSessionData(sessionId: number) {
+    try {
+      const [eventsHistory, sourcesHistory] = await Promise.all([
+        eventsApi.list(sessionId),
+        eventsApi.sources(sessionId),
+      ]);
+
+      const normalizedEvents = (eventsHistory || []).map((ev: any) => ({
+        id: ev.id || ev.event_id || Date.now(),
+        message: ev.message || ev.category || 'Progress Update',
+        stage: ev.stage,
+        severity: ev.severity,
+        category: ev.category || 'stage',
+        details: ev.details || {},
+        created_at: ev.created_at || ev.timestamp || new Date().toISOString(),
+      }));
+
+      const historicalThoughts = normalizedEvents
+        .filter((ev: any) => ev.category === 'brain_thought' || ev.details?.is_brain_thought)
+        .map((ev: any, idx: number) => ({
+          id: ev.id || `bt_hist_${idx}`,
+          step: ev.details?.brain_step || ev.stage || 'analyzing',
+          content: ev.details?.thought_content || ev.message || '',
+          timestamp: new Date(ev.created_at).getTime() || Date.now(),
+        }));
+
+      setFeedEvents(normalizedEvents.filter((ev: any) => ev.category !== 'brain_thought'));
+      setBrainThoughts(historicalThoughts);
+      setLiveSources(Array.isArray(sourcesHistory) ? sourcesHistory : []);
+    } catch {
+      // Historical hydration is best-effort and should not block session load.
+    }
   }
 
   async function loadSession(s: ResearchSession) {
@@ -912,6 +1142,7 @@ export default function WorkspacePage() {
     try {
       const full = await wsApi.getResearchStatus(wsId, s.id);
       addMsg(full.topic || full.title || 'Research', 'user');
+      await hydrateHistoricalSessionData(s.id);
 
       if (full.status === 'completed') {
         addMsg(summarizeResearch(full.report_markdown, full.topic), 'bot');
@@ -926,6 +1157,9 @@ export default function WorkspacePage() {
       } else if (full.status === 'running' || full.status === 'queued') {
         setStatusText('Reconnecting...');
         await pollResearch(s.id);
+      } else if (full.status === 'cancelled') {
+        setStatusText('Cancelled');
+        addMsg('Research was cancelled.', 'bot');
       }
     } catch { }
   }
@@ -946,7 +1180,18 @@ export default function WorkspacePage() {
         return;
       }
       const sid = res.session_id!;
-      setMsgs(p => p.map(m => m.id === msgId ? { ...m, text: `⏳ Job #${sid} created (${depth}). Working...` } : m));
+      setCurSession(prev => ({
+        ...(prev || {} as any),
+        id: sid,
+        workspace_id: wsId,
+        topic,
+        title: topic,
+        status: 'running',
+        depth,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as any));
+      setMsgs(p => p.map(m => m.id === msgId ? { ...m, text: `Job #${sid} created (${depth}). Working...` } : m));
       await loadWorkspace();
       await pollResearch(sid);
     } catch (e: any) {
@@ -970,6 +1215,68 @@ export default function WorkspacePage() {
       URL.revokeObjectURL(url);
     } catch (e: any) {
       addMsg('Export failed: ' + e.message, 'bot');
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!curSession) return;
+    try {
+      const blob = await exportApi.downloadPdf(curSession.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `research-${curSession.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      addMsg('PDF download failed: ' + e.message, 'bot');
+    }
+  }
+
+  async function handleDownloadLatex() {
+    if (!curSession) return;
+    try {
+      const blob = await exportApi.downloadLatex(curSession.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `research-${curSession.id}.tex`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      addMsg('LaTeX download failed: ' + e.message, 'bot');
+    }
+  }
+
+  async function handleCompilePdf() {
+    if (!curSession || compileBusy) return;
+
+    const content = (latexSource || reportMd || '').trim();
+    if (!content) {
+      addMsg('Nothing to compile yet. Generate the report first.', 'bot');
+      return;
+    }
+
+    setCompileBusy(true);
+    try {
+      const blob = await exportApi.compileToPdf(curSession.id, content);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `research-${curSession.id}-compiled.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      addMsg('PDF compiled successfully.', 'system');
+    } catch (e: any) {
+      addMsg('PDF compile failed: ' + e.message, 'bot');
+    } finally {
+      setCompileBusy(false);
     }
   }
 
@@ -997,77 +1304,232 @@ export default function WorkspacePage() {
     }
   }
 
+  async function handleCancel() {
+    if (!curSession || !wsId) return;
+    addMsg('Stopping research...', 'system');
+    try {
+      await wsApi.cancel(wsId, curSession.id);
+      abortRef.current = true;
+      setRunning(false);
+      setRunStartedAt(null);
+      addMsg('Research stopped by user', 'bot');
+      stopEventPolling();
+      await loadWorkspace();
+    } catch (e: any) {
+      addMsg('Failed to stop: ' + e.message, 'bot');
+    }
+  }
+
   if (authLoading) return null;
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ backgroundColor: '#0B0F1A' }}>
-      <header className="h-14 px-4 flex items-center justify-between border-b border-white/5 bg-[#0B0F1A]/90 backdrop-blur-md z-20">
+    <div className="fixed inset-0 flex flex-col overflow-hidden workspace-root">
+      <div className="bg-ambient" />
+      <header className="h-14 px-4 flex items-center justify-between border-b border-white/5 bg-[rgba(11,15,26,0.9)] backdrop-blur-md z-20">
         <div className="flex items-center gap-3">
-          <button onClick={() => setShowDrawer(!showDrawer)} className="p-2 rounded-lg hover:bg-white/5 text-[#9CA3AF]"><MenuIcon /></button>
-          <button onClick={() => router.push('/dashboard')} className="text-sm text-[#9CA3AF] flex items-center gap-2"><Icons.back /> <span>Back</span></button>
+          <button
+            onClick={() => setShowDrawer(!showDrawer)}
+            aria-label="Toggle history drawer"
+            className="p-2 rounded-lg hover:bg-white/5 text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/50"
+          >
+            <MenuIcon />
+          </button>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="text-sm text-[#9CA3AF] flex items-center gap-2 hover:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/50 rounded-lg px-2 py-1"
+          >
+            <Icons.back />
+            <span>Back</span>
+          </button>
           <div className="h-4 w-px bg-white/10" />
-          <h1 className="text-sm font-semibold text-white truncate">{wsName}</h1>
-          <button onClick={handleDeleteWorkspace} className="p-2 rounded-lg hover:bg-red-500/20 text-[#9CA3AF] hover:text-red-400 transition-colors" title="Delete workspace">
+          <h1 className="text-sm font-semibold text-white truncate max-w-[280px] gradient-text-teal">{wsName}</h1>
+          <button
+            onClick={handleDeleteWorkspace}
+            className="p-2 rounded-lg hover:bg-red-500/20 text-[#9CA3AF] hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/40"
+            title="Delete workspace"
+            aria-label="Delete workspace"
+          >
             <Icons.trash />
           </button>
         </div>
         <div className="flex items-center gap-4">
           <LLMStatusBar compact authToken={token || undefined} thoughts={brainThoughts} />
+          <div className="text-[11px] font-medium px-2 py-1 rounded-md border"
+            style={{
+              color: sseConnected ? '#00F5D4' : '#9CA3AF',
+              borderColor: sseConnected ? 'rgba(0,245,212,0.3)' : 'rgba(255,255,255,0.1)',
+              backgroundColor: sseConnected ? 'rgba(0,245,212,0.08)' : 'rgba(255,255,255,0.03)',
+            }}
+            title={sseConnected ? 'Live event stream connected' : 'Live stream disconnected'}
+          >
+            {sseConnected ? 'LIVE SSE' : 'SSE OFFLINE'}
+          </div>
           {running && <div className="text-[#00F5D4] text-xs font-mono flex items-center gap-2"><Icons.running /> <span>{formatDuration(elapsedSec)}</span></div>}
           {curSession && !running && <button onClick={() => handleExport('markdown')} className="px-3 py-1 rounded-lg text-xs bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20">Download</button>}
         </div>
       </header>
 
       <div className="flex flex-1 min-h-0">
-        <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[#111827] border-r border-white/5 transition-transform duration-300 ${showDrawer ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-          <div className="p-4 text-[10px] font-bold text-[#00F5D4] uppercase border-b border-white/5">History</div>
+        {showDrawer && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+              onClick={() => setShowDrawer(false)}
+            />
+            <aside className="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[rgba(17,24,39,0.82)] border-r border-white/10 backdrop-blur-xl transition-transform duration-300 translate-x-0">
+          <div className="p-4 text-[10px] font-bold text-[#00F5D4] uppercase border-b border-white/5 tracking-[0.16em]">History</div>
           <div className="flex-1 overflow-y-auto">
             {sessions.map(s => (
-              <div key={s.id} onClick={() => loadSession(s)} className={`p-4 cursor-pointer border-b border-white/5 hover:bg-white/5 ${curSession?.id === s.id ? 'bg-[#00F5D4]/5 border-l-2 border-[#00F5D4]' : ''}`}>
-                <p className="text-xs text-[#9CA3AF] truncate">{s.topic || s.title}</p>
-              </div>
+              <button
+                key={s.id}
+                onClick={() => loadSession(s)}
+                className={`w-full text-left px-3 py-2.5 border-b border-white/5 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/40 ${curSession?.id === s.id ? 'bg-[#00F5D4]/7 border-l-2 border-[#00F5D4]' : ''}`}
+              >
+                <p className="text-[11px] text-[#9CA3AF] truncate">{s.topic || s.title}</p>
+              </button>
             ))}
           </div>
-        </aside>
+            </aside>
+          </>
+        )}
 
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0 bg-[linear-gradient(180deg,rgba(11,15,26,0.7),rgba(11,15,26,0.95))]">
           <div ref={chatLogRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {msgs.map(m => <ChatBubble key={m.id} msg={m} />)}
           </div>
           <div className="p-4 border-t border-white/5">
+            {msgs.length === 0 && (
+              <div className="mb-3 rounded-xl border border-[rgba(0,245,212,0.14)] bg-[rgba(0,245,212,0.04)] p-3">
+                <p className="text-[11px] text-[#9CA3AF] mb-2">
+                  Shortcuts: Use commands to run faster research workflows.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['/research your topic', '/deepresearch your topic', '/gatherdata your topic'].map((cmd) => (
+                    <button
+                      key={cmd}
+                      onClick={() => setChatInput(cmd)}
+                      className="px-2.5 py-1 rounded-md text-[11px] border border-[rgba(0,245,212,0.2)] text-[#00F5D4] bg-[rgba(11,15,26,0.5)] hover:bg-[rgba(0,245,212,0.08)]"
+                    >
+                      {cmd}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <textarea
                 value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
+                onChange={e => {
+                  const next = e.target.value;
+                  setChatInput(next);
+                  setShowSlashHint(next.trim().startsWith('/'));
+                }}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
                 placeholder="Message MARP..."
-                className="flex-1 bg-[#111827] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00F5D4]/50 transition-all resize-none"
+                className="flex-1 bg-[#111827] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00F5D4]/60 focus:ring-2 focus:ring-[#00F5D4]/20 transition-all resize-none"
                 rows={1}
               />
-              <button onClick={handleSend} disabled={!chatInput.trim() || running} className="bg-[#00F5D4] text-[#0B0F1A] p-3 rounded-xl disabled:opacity-30 transition-all"><Icons.send /></button>
+              {running ? (
+                <button
+                  onClick={handleCancel}
+                  className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 flex items-center gap-2"
+                  title="Stop research"
+                >
+                  <Icons.stop />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!chatInput.trim() || running}
+                  className="bg-[#00F5D4] text-[#0B0F1A] p-3 rounded-xl disabled:opacity-30 transition-all focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/50"
+                aria-label="Send message"
+              >
+                <Icons.send />
+              </button>
+              )}
             </div>
+            {showSlashHint && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {['/research', '/deepresearch', '/gatherdata'].map((cmd) => (
+                  <button
+                    key={cmd}
+                    onClick={() => setChatInput(`${cmd} `)}
+                    className="text-[11px] px-2 py-1 rounded-md border border-[rgba(255,255,255,0.12)] text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[rgba(0,245,212,0.28)]"
+                  >
+                    {cmd}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </main>
 
         {showRightPanel && (
-          <aside style={{ width: `${rightPanelWidth}%` }} className="border-l border-white/5 bg-[#111827] flex flex-col relative transition-all duration-300">
+          <aside style={{ width: `${rightPanelWidth}%` }} className="border-l border-white/5 bg-[rgba(17,24,39,0.78)] backdrop-blur-xl flex flex-col relative transition-all duration-300">
             <div
               className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[#00F5D4]/50 z-10"
               onMouseDown={() => { isResizingRef.current = true; }}
             />
-            <div className="flex border-b border-white/5">
+            <div className="p-2 border-b border-white/5 flex flex-wrap gap-2">
               {TABS.map(t => (
-                <button key={t.id} onClick={() => setTab(t.id)} className={`flex-1 py-3 text-[10px] uppercase font-bold flex flex-col items-center gap-1 ${tab === t.id ? 'text-[#00F5D4] bg-[#00F5D4]/5 border-b-2 border-[#00F5D4]' : 'text-[#6B7280]'}`}>
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`px-3 py-1.5 rounded-md text-[10px] uppercase font-bold inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/30 ${tab === t.id ? 'text-[#00F5D4] bg-[#00F5D4]/8 border border-[#00F5D4]/30' : 'text-[#6B7280] border border-transparent hover:border-white/10'}`}
+                >
                   {t.icon} <span>{t.label}</span>
                 </button>
               ))}
+              <div className="ml-auto text-[10px] text-[#6B7280] px-2 py-1">
+                {feedEvents.length} events · {liveSources.length} sources
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {tab === 'feed' && feedEvents.map((e, i) => <FeedItem key={i} ev={e} index={i} />)}
               {tab === 'brain' && <BrainPanel thoughts={brainThoughts} isActive={running} />}
-              {tab === 'report' && <div className="prose prose-invert prose-sm"><ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd || 'Researching...'}</ReactMarkdown></div>}
+              {tab === 'feed' && feedEvents.map((e, i) => <FeedItem key={i} ev={e} index={i} />)}
+              {tab === 'report' && (
+                <div>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={handleCompilePdf}
+                      disabled={!curSession || compileBusy}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-amber-500/10 text-amber-300 border border-amber-400/20 disabled:opacity-50"
+                    >
+                      {compileBusy ? 'Compiling PDF...' : 'Compile to PDF'}
+                    </button>
+                    <button
+                      onClick={handleDownloadPdf}
+                      disabled={!curSession}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[#00F5D4]/10 text-[#00F5D4] border border-[#00F5D4]/20 disabled:opacity-50"
+                    >
+                      Download Report PDF
+                    </button>
+                    <button
+                      onClick={() => handleExport('markdown')}
+                      disabled={!curSession}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20 disabled:opacity-50"
+                    >
+                      Download Markdown
+                    </button>
+                    <button
+                      onClick={handleDownloadLatex}
+                      disabled={!curSession}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[#8B5CF6]/10 text-[#8B5CF6] border border-[#8B5CF6]/20 disabled:opacity-50"
+                    >
+                      Download LaTeX
+                    </button>
+                  </div>
+                  <div className="prose prose-invert prose-sm"><ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd || 'Researching...'}</ReactMarkdown></div>
+                </div>
+              )}
               {tab === 'sources' && <SourcesPanel resultJson={resultJson} feedEvents={feedEvents} liveSources={liveSources} />}
-              {tab === 'raw' && <pre className="text-[9px] text-[#6B7280] bg-black/40 p-4 rounded-xl">{JSON.stringify(resultJson?.final_state?.findings || resultJson?.findings || {}, null, 2)}</pre>}
+              {tab === 'raw' && (
+                <RawDataGrid
+                  findings={(resultJson?.final_state?.findings || resultJson?.findings || {}) as Record<string, any>}
+                  feedEvents={feedEvents}
+                  liveSources={liveSources}
+                />
+              )}
             </div>
           </aside>
         )}

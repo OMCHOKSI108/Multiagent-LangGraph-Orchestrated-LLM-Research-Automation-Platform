@@ -268,7 +268,10 @@ router.post('/', async (req, res) => {
                 if (updated.rowCount === 0) {
                     try {
                         await db.query(
-                            `UPDATE research_sessions SET current_stage = $1, updated_at = NOW() WHERE id = $2`,
+                            `UPDATE research_sessions
+                             SET current_stage = $1, updated_at = NOW()
+                             WHERE id = $2
+                               AND COALESCE(status, '') NOT IN ('cancelled', 'failed', 'completed')`,
                             [stage, research_id]
                         );
                     } catch (e) { /* table may not exist */ }

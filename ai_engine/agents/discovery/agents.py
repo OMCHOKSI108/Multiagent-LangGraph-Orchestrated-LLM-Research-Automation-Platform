@@ -18,7 +18,7 @@ class DomainIntelligenceAgent(BaseAgent):
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Running with Multi-Engine Web Search...")
-        task = state.get("task", "")
+        task = state.get("selected_topic") or state.get("task", "")
         
         # 1. Perform searches
         ddg_results = self.ddg_provider.search(f"research domain taxonomy {task}", max_results=5)
@@ -78,7 +78,7 @@ class HistoricalReviewAgent(BaseAgent):
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Tracing History with Arxiv...")
-        task = state.get("task", "")
+        task = state.get("selected_topic") or state.get("task", "")
         
         # 1. Search Arxiv for "history of <task>" or "survey <task>"
         papers = self.arxiv_provider.search_papers(f"history of {task}", max_results=6)

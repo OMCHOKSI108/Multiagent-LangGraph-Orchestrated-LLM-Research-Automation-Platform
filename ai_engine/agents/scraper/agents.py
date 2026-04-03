@@ -1,6 +1,6 @@
 from ..base import BaseAgent
-from utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, PDFReaderProvider, ArxivProvider, HtmlScraperProvider
-from utils.event_emitter import emit_source
+from ai_engine.utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, PDFReaderProvider, ArxivProvider, HtmlScraperProvider
+from ai_engine.utils.event_emitter import emit_source
 from langchain_core.messages import SystemMessage, HumanMessage
 import logging
 import json
@@ -96,8 +96,11 @@ class DataScraperAgent(BaseAgent):
                     # Fetch full content for the very first result
                     if fetch_full and i == 0 and r.get('url'):
                         try:
-                            logger.info(f"   - Deep scraping {source_name} top result: {r['url']}")
-                            full_text = self.html_provider.scrape_url(r['url'])
+                            source_url = (r.get('url') or '').strip()
+                            if not source_url:
+                                continue
+                            logger.info(f"   - Deep scraping {source_name} top result: {source_url}")
+                            full_text = self.html_provider.scrape_url(source_url)
                             content += f"   DETAILS: {full_text[:4000]}...\n"
                         except Exception as e:
                             logger.error(f"   - Deep scrape failed: {e}")

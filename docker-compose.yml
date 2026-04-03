@@ -79,8 +79,8 @@ services:
       - ai_logs:/app/ai_engine/logs
       - ai_cache:/app/ai_engine/cache
       - research_images:/shared/research_images
-    working_dir: /app
-    command: ["sh", "-c", "cd /app && PYTHONPATH=/app python -m uvicorn ai_engine.main:app --host 0.0.0.0 --port 8000"]
+    working_dir: /app/ai_engine
+    command: ["sh", "-c", "cd /app/ai_engine && PYTHONPATH=/app/ai_engine:/app python -m uvicorn main:app --host 0.0.0.0 --port 8000"]
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]

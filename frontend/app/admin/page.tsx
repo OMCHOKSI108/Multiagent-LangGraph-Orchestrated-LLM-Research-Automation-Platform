@@ -257,6 +257,7 @@ export default function AdminPage() {
                       <th className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Status</th>
                       <th className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Stage</th>
                       <th className="text-right p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Created</th>
+                      <th className="text-right p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -284,6 +285,33 @@ export default function AdminPage() {
                         <td className="p-4 text-xs text-slate-400 capitalize">{r.current_stage || 'N/A'}</td>
                         <td className="p-4 text-right text-slate-500 text-xs">
                           {safeDate(r.created_at, 'datetime')}
+                        </td>
+                        <td className="p-4 text-right">
+                          {(() => {
+                            const normalizedStatus = safeLabel(r.status, 'unknown').toLowerCase();
+                            const normalizedStage = safeLabel(r.current_stage, '').toLowerCase();
+                            const canDelete =
+                              normalizedStatus === 'failed'
+                              || normalizedStatus === 'writing'
+                              || normalizedStage === 'writing'
+                              || normalizedStatus === 'running'
+                              || normalizedStatus === 'processing';
+
+                            if (!canDelete) return null;
+
+                            return (
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Delete research #${r.id}?`)) return;
+                                  await adminApi.deleteResearch(r.id);
+                                  loadTabData('research');
+                                }}
+                                className="px-3 py-1 rounded-lg text-xs font-medium border border-rose-100 text-rose-600 hover:bg-rose-50"
+                              >
+                                Delete
+                              </button>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))}

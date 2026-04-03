@@ -29,6 +29,8 @@ _CLIENT: Optional[httpx.Client] = None
 _WORKER_THREAD: Optional[threading.Thread] = None
 
 _current_job_id: Optional[int] = None
+_LAST_STAGE_BY_JOB: Dict[int, str] = {}
+_STAGE_LOCK = threading.Lock()
 
 ALLOWED_SEVERITIES = {"info", "warn", "error", "success"}
 ALLOWED_CATEGORIES = {"stage", "source", "agent", "error", "user_action_required", "brain_thought", "brain_report_chunk"}
@@ -249,6 +251,17 @@ def emit_error(message: str, error_code: Optional[str] = None, recoverable: bool
 
 
 def emit_stage_change(stage: str, next_stage: Optional[str] = None, research_id: Optional[int] = None):
+    job_id = research_id or _current_job_id
+    if not job_id:
+        return
+
+    normalized = _sanitize_text(stage, 80).lower() or "unknown"
+    with _STAGE_LOCK:
+        prev = _LAST_STAGE_BY_JOB.get(job_id)
+        if prev == normalized:
+            return
+        _LAST_STAGE_BY_JOB[job_id] = normalized
+
     msg = f"Stage: {stage}"
     if next_stage:
         msg += f" -> Next: {next_stage}"
@@ -259,7 +272,7 @@ def emit_stage_change(stage: str, next_stage: Optional[str] = None, research_id:
         severity="info",
         category="stage",
         details={"next_stage": next_stage},
-        research_id=research_id,
+        research_id=job_id,
     )
 
 def emit_report_chunk(chunk: str, research_id: Optional[int] = None):

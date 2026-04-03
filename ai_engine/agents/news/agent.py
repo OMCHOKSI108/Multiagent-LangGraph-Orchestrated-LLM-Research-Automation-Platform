@@ -2,6 +2,28 @@ from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
 import json
 from datetime import datetime
+import re
+
+
+def _is_noise_query(q: str) -> bool:
+    s = (q or "").strip().lower()
+    if not s:
+        return True
+    if s in {"json", "{", "}", "[]", "()"}:
+        return True
+    noise_tokens = [
+        "news_summary",
+        "key_events",
+        "market_trends",
+        "sources",
+        '"event"',
+        '"description"',
+    ]
+    if any(tok in s for tok in noise_tokens):
+        return True
+    if s.count(":") >= 2:
+        return True
+    return False
 
 class NewsAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -32,7 +54,7 @@ class NewsAgent(BaseAgent):
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Searching for latest news...")
         
-        task = state.get("task", "")
+        task = state.get("selected_topic") or state.get("task", "")
         
         # 1. Generate Queries
         messages = [
@@ -42,10 +64,34 @@ class NewsAgent(BaseAgent):
         
         try:
             response = self.llm.invoke(messages)
-            queries = [q.strip() for q in response.content.split('\n') if q.strip()]
-            queries = queries[:3] # Limit to 3 queries
+            raw_lines = [q.strip() for q in response.content.split('\n') if q.strip()]
+            queries = []
+            for q in raw_lines:
+                cleaned = q.strip().strip("-*").strip().strip('"').strip(",")
+                cleaned = re.sub(r"^\d+[\)\.\-:\s]+", "", cleaned).strip()
+                cleaned = cleaned.strip("` ")
+                cleaned = cleaned.replace("{", " ").replace("}", " ")
+                cleaned = cleaned.replace("[", " ").replace("]", " ")
+                if not cleaned:
+                    continue
+                if cleaned.startswith("```"):
+                    continue
+                if cleaned in {"{", "}"}:
+                    continue
+                if ":" in cleaned and cleaned.lower().startswith(("news_summary", "key_events", "market_trends", "sources")):
+                    continue
+                cleaned = " ".join(cleaned.split())
+                if _is_noise_query(cleaned):
+                    continue
+                if len(cleaned.split()) > 22:
+                    cleaned = " ".join(cleaned.split()[:22])
+                queries.append(cleaned)
+            queries = queries[:3]  # Limit to 3 queries
         except Exception as e:
             print(f"[{self.name}] Query generation failed: {e}")
+            queries = [f"{task} news", f"{task} latest developments", f"{task} recent research"]
+
+        if not queries:
             queries = [f"{task} news", f"{task} latest developments", f"{task} recent research"]
 
         # 2. Search News
@@ -62,9 +108,14 @@ class NewsAgent(BaseAgent):
         seen_urls = set()
         unique_results = []
         for r in all_results:
-            if r['url'] not in seen_urls:
+            if not isinstance(r, dict):
+                continue
+            url = (r.get("url") or "").strip()
+            if not url:
+                continue
+            if url not in seen_urls:
                 unique_results.append(r)
-                seen_urls.add(r['url'])
+                seen_urls.add(url)
         
         # 3. Synthesize
         if not unique_results:

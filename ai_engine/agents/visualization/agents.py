@@ -1,8 +1,9 @@
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
-from utils.providers import ImageSearchProvider
-from utils.image_downloader import download_image
+from ai_engine.utils.providers import ImageSearchProvider
+from ai_engine.utils.image_downloader import download_image
 from typing import Dict, Any
+import gc
 
 class VisualizationAgent(BaseAgent):
     def __init__(self, **kwargs):

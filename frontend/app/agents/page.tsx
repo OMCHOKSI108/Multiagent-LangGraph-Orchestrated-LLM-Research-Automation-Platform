@@ -39,20 +39,20 @@ const KNOWN_AGENTS: AgentInfo[] = [
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  discovery: '🔍 Discovery',
-  review: '📚 Review',
-  synthesis: '🧩 Synthesis',
-  novelty: '💡 Innovation',
-  scraper: '🌐 Data Collection',
-  news: '📰 News',
-  ingestion: '📄 Paper Analysis',
-  critique: '🔬 Critique & Verification',
-  report: '📋 Reporting',
-  scoring: '📊 Scoring',
-  chatbot: '💬 Chatbot',
-  memory: '🧠 Memory',
-  reresearch: '🔄 Re-Research',
-  orchestrator: '⚙️ Orchestration',
+  discovery: 'Discovery',
+  review: 'Review',
+  synthesis: 'Synthesis',
+  novelty: 'Innovation',
+  scraper: 'Data Collection',
+  news: 'News',
+  ingestion: 'Paper Analysis',
+  critique: 'Critique and Verification',
+  report: 'Reporting',
+  scoring: 'Scoring',
+  chatbot: 'Chatbot',
+  memory: 'Memory',
+  reresearch: 'Re-Research',
+  orchestrator: 'Orchestration',
 };
 
 export default function AgentsPage() {

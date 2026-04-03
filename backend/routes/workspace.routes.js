@@ -316,6 +316,63 @@ router.post('/:wid/research/start', auth, async (req, res) => {
 });
 
 // ============================================
+// POST /workspaces/:wid/research/:sid/cancel — Cancel running research
+// ============================================
+router.post('/:wid/research/:sid/cancel', auth, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { wid, sid } = req.params;
+        const sessionId = Number.parseInt(sid, 10);
+
+        // Verify workspace ownership
+        const wsCheck = await db.query(
+            `SELECT id FROM workspaces WHERE id = $1 AND user_id = $2 AND status = 'active'`,
+            [wid, userId]
+        );
+
+        if (wsCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Workspace not found' });
+        }
+
+        // Update session status to cancelled (including in-flight processing jobs)
+        const updateResult = await db.query(
+            `UPDATE research_sessions
+             SET status = 'cancelled',
+                 current_stage = 'cancelled',
+                 completed_at = NOW(),
+                 updated_at = NOW()
+             WHERE id = $1 AND workspace_id = $2 AND user_id = $3
+             AND status IN ('running', 'queued', 'processing', 'waiting')
+             RETURNING id`,
+            [sessionId, wid, userId]
+        );
+
+        if (updateResult.rowCount === 0) {
+            return res.status(400).json({ error: 'Research not found or not in a cancellable state' });
+        }
+
+        // Notify AI Engine to cancel
+        try {
+            await axios.post(`${AI_ENGINE_URL}/research/cancel`, {
+                research_id: sessionId,
+                state_update: { cancelled: true }
+            }, {
+                headers: { 'X-API-Key': AI_ENGINE_SECRET },
+                timeout: 10000
+            });
+        } catch (aiErr) {
+            logger.warn(`[Workspace] Failed to notify AI Engine: ${aiErr.message}`);
+        }
+
+        logger.info(`[Workspace] Cancelled research session #${sessionId}`);
+        res.json({ success: true, message: 'Research cancelled' });
+    } catch (err) {
+        logger.error(`[Workspace] Cancel failed: ${err.message}`);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ============================================
 // GET /workspaces/:wid/research/:sid/status — Check session status
 // ============================================
 router.get('/:wid/research/:sid/status', auth, async (req, res) => {

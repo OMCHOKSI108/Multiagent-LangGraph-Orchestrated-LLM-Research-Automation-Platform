@@ -1,5 +1,5 @@
 from ..base import BaseAgent
-from utils.providers import ArxivProvider, WebSearchProvider, GoogleSearchProvider, OpenAlexProvider, PubMedProvider
+from ai_engine.utils.providers import ArxivProvider, WebSearchProvider, GoogleSearchProvider, OpenAlexProvider, PubMedProvider
 from langchain_core.messages import SystemMessage, HumanMessage
 from typing import Dict, Any
 
@@ -21,7 +21,7 @@ class SystematicLiteratureReviewAgent(BaseAgent):
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Running SLR with Multi-Source Data...")
-        task = state.get("task", "")
+        task = state.get("selected_topic") or state.get("task", "")
         
         # 1. Search Multi-Source
         arxiv_papers = self.arxiv_provider.search_papers(task, max_results=15)

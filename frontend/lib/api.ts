@@ -146,6 +146,9 @@ export const workspaces = {
   getResearchStatus: (workspaceId: string, sessionId: number) =>
     req<ResearchSession>('GET', `/workspaces/${workspaceId}/research/${sessionId}/status`),
 
+  cancel: (workspaceId: string, sessionId: number) =>
+    req<{ success: boolean; message: string }>('POST', `/workspaces/${workspaceId}/research/${sessionId}/cancel`),
+
   getSections: async (workspaceId: string, sessionId: number) => {
     const data = await req<any>('GET', `/workspaces/${workspaceId}/sessions/${sessionId}/sections`);
     if (Array.isArray(data)) return { sections: data };
@@ -396,6 +399,8 @@ export const admin = {
     req<{ user: User }>('POST', `/admin/users/${id}/disable`, { action }),
   stats: () => req<{ stats: Record<string, number> }>('GET', '/admin/stats/overview'),
   research: () => req<{ research_logs: ResearchSession[] }>('GET', '/admin/research'),
+  deleteResearch: (id: number) =>
+    req<{ success: boolean; message: string }>('DELETE', `/admin/research/${id}`),
   workspaces: () => req<{ workspaces: Workspace[] }>('GET', '/admin/workspaces'),
   chatSessions: () => req<{ sessions: any[] }>('GET', '/admin/chat/sessions'),
   chatHistory: (sessionId: string) => req<{ transcript: any[] }>('GET', `/admin/chat/history/${sessionId}`),

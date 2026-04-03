@@ -217,7 +217,9 @@ def get_section_context(
     task: str,
     findings: dict,
     previous_sections: Dict[str, str],
-    template: dict
+    template: dict,
+    brain_context: Optional[Dict[str, Any]] = None,
+    writer_draft: str = "",
 ) -> str:
     """
     Build focused context for a specific section.
@@ -239,6 +241,45 @@ def get_section_context(
     })
     
     parts = [f"RESEARCH TOPIC: {task}\n"]
+    parts.append(
+        "RELEVANCE RULE: Use only evidence directly relevant to the research topic. "
+        "Ignore tangential findings even if they are high quality.\n"
+    )
+
+    if writer_draft:
+        parts.append(
+            "[SCIENTIFIC WRITER DRAFT — USE AS CONTEXT, NOT FINAL]:\n"
+            f"{writer_draft[:1800]}\n"
+        )
+
+    if brain_context:
+        plan = brain_context.get("init_result", {})
+        synth = brain_context.get("synthesize_result", {})
+        direct = brain_context.get("direct_result", {})
+        brain_lines = []
+        if isinstance(plan, dict) and plan:
+            if plan.get("primary_focus"):
+                brain_lines.append(f"Primary Focus: {plan.get('primary_focus')}")
+            if plan.get("core_research_questions"):
+                brain_lines.append(
+                    "Research Questions: "
+                    + "; ".join(plan.get("core_research_questions", [])[:3])
+                )
+        if isinstance(synth, dict) and synth:
+            if synth.get("core_thesis"):
+                brain_lines.append(f"Core Thesis: {synth.get('core_thesis')}")
+            if synth.get("true_research_gap"):
+                brain_lines.append(f"Research Gap: {synth.get('true_research_gap')}")
+        if isinstance(direct, dict) and direct:
+            if direct.get("thesis_statement"):
+                brain_lines.append(f"Paper Thesis: {direct.get('thesis_statement')}")
+            section_directives = direct.get("section_directives", {})
+            if isinstance(section_directives, dict):
+                directive = section_directives.get(section_name)
+                if directive:
+                    brain_lines.append(f"Section Directive: {directive}")
+        if brain_lines:
+            parts.append("[CENTRAL BRAIN DIRECTIVES]:\n" + "\n".join(brain_lines) + "\n")
     
     # Add section-specific instructions from template
     if section_name in template.get("section_prompts", {}):

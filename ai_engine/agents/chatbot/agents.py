@@ -1,6 +1,6 @@
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
-from utils.embeddings import ToneAnalyzer
+from ai_engine.utils.embeddings import ToneAnalyzer
 
 class InteractivePaperChatbotAgent(BaseAgent):
     def __init__(self, **kwargs):

@@ -18,7 +18,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from config import SEARCH_PROVIDERS, ENVIRONMENT
-from utils.metrics import get_metrics
+from ai_engine.utils.metrics import get_metrics
 
 # ============================
 # Structured Logging Setup
@@ -28,11 +28,8 @@ os.makedirs("logs", exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.FileHandler('logs/ai_engine.log'),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.FileHandler("logs/ai_engine.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger("ai_engine")
 
@@ -47,6 +44,7 @@ executor = ThreadPoolExecutor(max_workers=int(os.getenv("AI_ENGINE_MAX_WORKERS",
 # ============================
 AI_ENGINE_SECRET = os.getenv("AI_ENGINE_SECRET", "")
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
 
 async def verify_internal_key(api_key: str = Security(_api_key_header)):
     """
@@ -66,6 +64,7 @@ async def verify_internal_key(api_key: str = Security(_api_key_header)):
         )
     if api_key != AI_ENGINE_SECRET:
         raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
 
 # Import search router
 from routes.search import router as search_router
@@ -93,38 +92,23 @@ app = FastAPI(
     version="2.1.0",
     contact={
         "name": "Deep Research Engine",
-        "url": "https://github.com/your-repo",
+        "url": "https://github.com/OMCHOKSI108/Multiagent-LangGraph-Orchestrated-LLM-Research-Automation-Platform",
     },
     license_info={
         "name": "MIT",
         "url": "https://opensource.org/licenses/MIT",
     },
     openapi_tags=[
+        {"name": "Health", "description": "Service health and status checks"},
         {
-            "name": "Health",
-            "description": "Service health and status checks"
+            "name": "Providers",
+            "description": "Search provider configuration and testing",
         },
-        {
-            "name": "Providers", 
-            "description": "Search provider configuration and testing"
-        },
-        {
-            "name": "Agents",
-            "description": "Individual agent testing and management"
-        },
-        {
-            "name": "Research",
-            "description": "Full research pipeline execution"
-        },
-        {
-            "name": "Usage",
-            "description": "Token usage and cost tracking"
-        },
-        {
-            "name": "Search",
-            "description": "Direct search functionality"
-        }
-    ]
+        {"name": "Agents", "description": "Individual agent testing and management"},
+        {"name": "Research", "description": "Full research pipeline execution"},
+        {"name": "Usage", "description": "Token usage and cost tracking"},
+        {"name": "Search", "description": "Direct search functionality"},
+    ],
 )
 
 # ============================
@@ -148,14 +132,15 @@ app.add_middleware(
 # ============================
 app.include_router(search_router)
 
+
 class ResearchRequest(BaseModel):
     task: str
     paper_url: Optional[str] = None
     depth: str = "deep"
     findings: Optional[Dict[str, Any]] = None
     job_id: Optional[int] = None  # For correlation/tracing
-    workspace_id: Optional[str] = None   # Phase 2: workspace isolation
-    session_id: Optional[int] = None     # Phase 2: session tracking
+    workspace_id: Optional[str] = None  # Phase 2: workspace isolation
+    session_id: Optional[int] = None  # Phase 2: session tracking
 
     model_config = {
         "json_schema_extra": {
@@ -163,33 +148,32 @@ class ResearchRequest(BaseModel):
                 {
                     "task": "Transformer Architecture evolution",
                     "paper_url": "https://arxiv.org/pdf/1706.03762.pdf",
-                    "depth": "deep"
+                    "depth": "deep",
                 },
-                {
-                    "task": "Impact of Generative AI on Education",
-                    "depth": "quick"
-                }
+                {"task": "Impact of Generative AI on Education", "depth": "quick"},
             ]
         }
     }
+
 
 class SearchRequest(BaseModel):
     query: str
     providers: Optional[List[str]] = None
     max_results: int = 10
 
+
 @app.get("/health", tags=["Health"])
 async def health_check():
     """
     🟢 **Health Check**
-    
+
     Returns the current status of the AI Engine service.
     Use this endpoint to verify the service is running and operational.
     """
     return {"status": "ok", "service": "ai_engine", "version": "2.1.0"}
 
 
-@app.get('/metrics', tags=['Health'])
+@app.get("/metrics", tags=["Health"])
 async def metrics_endpoint():
     """Return in-memory metrics (development only)."""
     try:
@@ -209,15 +193,17 @@ async def llm_status():
     Use this endpoint to display the current mode in the frontend UI.
     """
     from llm.factory import get_llm_status
+
     return get_llm_status()
+
 
 @app.get("/providers", tags=["Providers"])
 async def get_provider_config():
     """
     🔍 **Get Search Provider Configuration**
-    
+
     Returns all available search providers with descriptions and test capabilities.
-    
+
     **Available Providers:**
     - 🦆 **DuckDuckGo**: Privacy-focused general web search
     - 🔍 **Google**: Comprehensive web search (requires API key)
@@ -225,7 +211,7 @@ async def get_provider_config():
     - 📰 **Wikipedia**: Encyclopedia articles and summaries
     - 🔬 **OpenAlex**: Open access scientific literature
     - ⚕️ **PubMed**: Medical and life science research
-    
+
     **Each provider can be tested individually using the `/providers/test` endpoint!**
     """
     return {
@@ -233,65 +219,76 @@ async def get_provider_config():
         "test_endpoint": "/providers/test",
         "usage_examples": {
             "duckduckgo": "General web search for any topic",
-            "google": "Comprehensive search with advanced ranking", 
+            "google": "Comprehensive search with advanced ranking",
             "arxiv": "Latest research papers and preprints",
             "wikipedia": "Encyclopedic knowledge and summaries",
             "openalex": "Open access academic publications",
-            "pubmed": "Medical and biomedical research"
-        }
+            "pubmed": "Medical and biomedical research",
+        },
     }
+
 
 @app.get("/providers/status", tags=["Providers"])
 async def get_providers_status():
     """
     📊 **Check All Search Providers Status**
-    
+
     Tests connectivity and availability of all search providers.
     Shows which providers are working and which have issues.
     """
-    from utils.providers import PROVIDER_REGISTRY
-    
+    from ai_engine.utils.providers import PROVIDER_REGISTRY
+
     status_results = {}
-    
+
     for provider_name, provider_instance in PROVIDER_REGISTRY.items():
         try:
             # Quick test search
             test_results = provider_instance.search("test", max_results=1)
-            
-            if test_results and len(test_results) > 0 and "error" not in test_results[0]:
+
+            if (
+                test_results
+                and len(test_results) > 0
+                and "error" not in test_results[0]
+            ):
                 status_results[provider_name] = {
                     "status": "✅ Available",
                     "test_results": len(test_results),
-                    "sample_title": test_results[0].get("title", "N/A")[:50]
+                    "sample_title": test_results[0].get("title", "N/A")[:50],
                 }
             else:
-                error_msg = test_results[0].get("error", "No results") if test_results else "No response"
+                error_msg = (
+                    test_results[0].get("error", "No results")
+                    if test_results
+                    else "No response"
+                )
                 status_results[provider_name] = {
                     "status": "⚠️ Issues",
-                    "error": error_msg
+                    "error": error_msg,
                 }
         except Exception as e:
-            status_results[provider_name] = {
-                "status": "❌ Failed",
-                "error": str(e)
-            }
-    
-    working_count = sum(1 for s in status_results.values() if "Available" in s["status"])
-    
+            status_results[provider_name] = {"status": "❌ Failed", "error": str(e)}
+
+    working_count = sum(
+        1 for s in status_results.values() if "Available" in s["status"]
+    )
+
     return {
         "total_providers": len(PROVIDER_REGISTRY),
         "working_providers": working_count,
         "provider_status": status_results,
-        "summary": f"{working_count}/{len(PROVIDER_REGISTRY)} providers working"
+        "summary": f"{working_count}/{len(PROVIDER_REGISTRY)} providers working",
     }
 
+
 @app.post("/providers/test", tags=["Providers"])
-async def test_provider(provider: str = "duckduckgo", query: str = "artificial intelligence research"):
+async def test_provider(
+    provider: str = "duckduckgo", query: str = "artificial intelligence research"
+):
     """
     🧪 **Test Search Provider**
-    
+
     Tests any available search provider with a sample query.
-    
+
     **Available Providers:**
     - `duckduckgo`: General web search with privacy focus
     - `google`: Google search (requires API key)
@@ -299,9 +296,9 @@ async def test_provider(provider: str = "duckduckgo", query: str = "artificial i
     - `wikipedia`: Wikipedia encyclopedia articles
     - `openalex`: Open access scientific literature
     - `pubmed`: Medical and life science literature
-    
+
     **Click 'Try it out' to test any provider immediately!**
-    
+
     **Example Queries by Provider:**
     - **DuckDuckGo**: "machine learning trends 2024"
     - **ArXiv**: "transformer neural networks"
@@ -311,8 +308,8 @@ async def test_provider(provider: str = "duckduckgo", query: str = "artificial i
     - **Google**: "quantum computing research"
     """
     try:
-        from utils.search_service import search_sync
-        
+        from ai_engine.utils.search_service import search_sync
+
         # Provider-specific default queries
         default_queries = {
             "duckduckgo": "machine learning trends 2024",
@@ -320,23 +317,23 @@ async def test_provider(provider: str = "duckduckgo", query: str = "artificial i
             "arxiv": "transformer neural networks",
             "wikipedia": "artificial intelligence",
             "openalex": "deep learning applications",
-            "pubmed": "COVID-19 treatment"
+            "pubmed": "COVID-19 treatment",
         }
-        
+
         # Use default query if generic query provided
         test_query = query
         if query == "artificial intelligence research":
             test_query = default_queries.get(provider, query)
-        
+
         logger.info(f"Testing provider: {provider} with query: '{test_query}'")
-        
+
         # Run search in thread pool
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             executor,
-            lambda: search_sync(test_query, providers=[provider], max_results=3)
+            lambda: search_sync(test_query, providers=[provider], max_results=3),
         )
-        
+
         return {
             "provider": provider,
             "status": "success",
@@ -344,156 +341,161 @@ async def test_provider(provider: str = "duckduckgo", query: str = "artificial i
             "results_count": result.get("total_results", 0),
             "execution_time": result.get("execution_time", 0),
             "sample_results": result.get("results", [])[:2],  # Show first 2 results
-            "all_results": result.get("results", [])  # Full results for detailed inspection
+            "all_results": result.get(
+                "results", []
+            ),  # Full results for detailed inspection
         }
     except Exception as e:
         logger.error(f"Provider test failed: {e}")
         return {
             "provider": provider,
-            "status": "error", 
+            "status": "error",
             "query": query,
             "error": str(e),
-            "available_providers": SEARCH_PROVIDERS["available"]
+            "available_providers": SEARCH_PROVIDERS["available"],
         }
+
 
 @app.get("/agents", tags=["Agents"])
 async def list_agents():
     """
     🤖 **List Available Agents**
-    
+
     Returns all available AI agents with their descriptions and default inputs.
     Each agent can be tested individually using the `/agents/{agent_slug}/test` endpoint.
-    
+
     **Click "Try it out" on any agent below to test with pre-filled inputs!**
     """
     from agents.registry import AGENTS
-    
+
     # Agent metadata with default inputs for testing
     agent_metadata = {
         "topic_discovery": {
             "name": "Topic Discovery",
             "description": "Generates professional research titles and topics",
             "default_input": "artificial intelligence in healthcare",
-            "category": "Discovery"
+            "category": "Discovery",
         },
         "domain_intelligence": {
             "name": "Domain Intelligence",
             "description": "Maps research landscapes and key concepts",
             "default_input": "quantum computing applications",
-            "category": "Discovery"
+            "category": "Discovery",
         },
         "historical_review": {
             "name": "Historical Review",
             "description": "Traces evolution of research topics over time",
             "default_input": "neural networks development",
-            "category": "Discovery"
+            "category": "Discovery",
         },
         "slr": {
             "name": "Systematic Literature Review",
             "description": "PRISMA-compliant literature reviews",
             "default_input": "transformer architecture papers",
-            "category": "Review"
+            "category": "Review",
         },
         "gap_synthesis": {
             "name": "Gap Synthesis",
             "description": "Identifies research opportunities and gaps",
             "default_input": "computer vision limitations",
-            "category": "Synthesis"
+            "category": "Synthesis",
         },
         "innovation_novelty": {
             "name": "Innovation & Novelty",
             "description": "Creates novel research ideas and approaches",
             "default_input": "sustainable AI computing",
-            "category": "Innovation"
+            "category": "Innovation",
         },
         "paper_decomposition": {
             "name": "Paper Decomposition",
             "description": "Structural analysis of research papers",
             "default_input": "https://arxiv.org/abs/1706.03762",
-            "category": "Analysis"
+            "category": "Analysis",
         },
         "paper_understanding": {
             "name": "Paper Understanding",
             "description": "Deep comprehension and summarization",
             "default_input": "Attention mechanism in transformers",
-            "category": "Analysis"
+            "category": "Analysis",
         },
         "technical_verification": {
             "name": "Technical Verification",
             "description": "Validates technical claims and methods",
             "default_input": "BERT achieves 95% accuracy on GLUE benchmark",
-            "category": "Verification"
+            "category": "Verification",
         },
         "interactive_chatbot": {
             "name": "Interactive Chatbot",
             "description": "Conversational research assistance",
             "default_input": "Explain the attention mechanism in simple terms",
-            "category": "Interaction"
+            "category": "Interaction",
         },
         "visualization": {
             "name": "Data Visualization",
             "description": "Creates charts, diagrams, and visual representations",
             "default_input": "GPU performance: RTX 4090: 100 TFLOPS, RTX 4080: 80 TFLOPS, RTX 4070: 60 TFLOPS",
-            "category": "Visualization"
+            "category": "Visualization",
         },
         "scientific_writing": {
             "name": "Scientific Writing",
             "description": "Academic paper composition and editing",
             "default_input": "Write introduction for machine learning survey",
-            "category": "Writing"
+            "category": "Writing",
         },
         "latex_generation": {
             "name": "LaTeX Generation",
             "description": "Professional typesetting and formatting",
             "default_input": "Generate LaTeX table for experimental results",
-            "category": "Writing"
+            "category": "Writing",
         },
         "adversarial_critique": {
             "name": "Adversarial Critique",
             "description": "Bias detection and critical analysis",
             "default_input": "AI will replace all human jobs within 5 years",
-            "category": "Critique"
+            "category": "Critique",
         },
         "hallucination_detection": {
             "name": "Hallucination Detection",
             "description": "AI output validation and fact-checking",
             "default_input": "GPT-4 has 1 trillion parameters and was trained on 100TB of data",
-            "category": "Verification"
+            "category": "Verification",
         },
         "data_scraper": {
             "name": "Data Scraper",
             "description": "Web content extraction and processing",
             "default_input": "https://arxiv.org/abs/2023.12345",
-            "category": "Data"
+            "category": "Data",
         },
         "news": {
             "name": "News Agent",
             "description": "Latest research news and developments",
             "default_input": "recent AI breakthroughs 2024",
-            "category": "Discovery"
+            "category": "Discovery",
         },
         "scoring": {
             "name": "Research Scoring",
             "description": "Quality assessment and ranking",
             "default_input": "evaluate research methodology quality",
-            "category": "Assessment"
-        }
+            "category": "Assessment",
+        },
     }
-    
+
     # Build response with available agents
     available_agents = []
     for agent_key, agent_instance in AGENTS.items():
         if agent_instance and agent_key in agent_metadata:
             meta = agent_metadata[agent_key]
-            available_agents.append({
-                "slug": agent_key,
-                "name": meta["name"],
-                "description": meta["description"],
-                "default_input": meta["default_input"],
-                "category": meta["category"],
-                "test_url": f"/agents/{agent_key}/test"
-            })
-    
+            available_agents.append(
+                {
+                    "slug": agent_key,
+                    "name": meta["name"],
+                    "description": meta["description"],
+                    "default_input": meta["default_input"],
+                    "category": meta["category"],
+                    "test_url": f"/agents/{agent_key}/test",
+                }
+            )
+
     # Group by category
     categories = {}
     for agent in available_agents:
@@ -501,66 +503,71 @@ async def list_agents():
         if cat not in categories:
             categories[cat] = []
         categories[cat].append(agent)
-    
+
     return {
         "total_agents": len(available_agents),
         "categories": categories,
         "agents": available_agents,
-        "search_providers": SEARCH_PROVIDERS
+        "search_providers": SEARCH_PROVIDERS,
     }
+
 
 class AgentTestRequest(BaseModel):
     task: str = "artificial intelligence in healthcare"
     options: Optional[Dict[str, Any]] = {}
-    
+
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
                     "task": "artificial intelligence in healthcare",
-                    "options": {"depth": "detailed", "focus": "applications"}
+                    "options": {"depth": "detailed", "focus": "applications"},
                 },
                 {
                     "task": "quantum computing applications",
-                    "options": {"include_timeline": True}
+                    "options": {"include_timeline": True},
                 },
                 {
                     "task": "https://arxiv.org/abs/1706.03762",
-                    "options": {"extract_figures": True, "summarize": True}
+                    "options": {"extract_figures": True, "summarize": True},
                 },
                 {
                     "task": "transformer architecture papers",
-                    "options": {"max_papers": 10, "include_citations": True}
+                    "options": {"max_papers": 10, "include_citations": True},
                 },
                 {
                     "task": "BERT achieves 95% accuracy on GLUE benchmark",
-                    "options": {"check_methodology": True, "verify_claims": True}
+                    "options": {"check_methodology": True, "verify_claims": True},
                 },
                 {
                     "task": "GPU performance: RTX 4090: 100 TFLOPS, RTX 4080: 80 TFLOPS",
-                    "options": {"chart_type": "bar", "include_comparison": True}
+                    "options": {"chart_type": "bar", "include_comparison": True},
                 },
                 {
                     "task": "recent AI breakthroughs 2024",
-                    "options": {"time_range": "last_6_months", "sources": ["arxiv", "news"]}
-                }
+                    "options": {
+                        "time_range": "last_6_months",
+                        "sources": ["arxiv", "news"],
+                    },
+                },
             ]
         }
     }
+
 
 @app.post("/agents/{agent_slug}/test", tags=["Agents"])
 async def test_agent(agent_slug: str, request: AgentTestRequest):
     """
     🧪 **Test Individual Agent**
-    
+
     Test any available AI agent with pre-filled default inputs or custom inputs.
-    
+
     **Quick Test Instructions:**
     1. Select an agent from the dropdown or enter agent slug
-    2. Click "Try it out" 
+    2. Click "Try it out"
     3. Use the default input or modify as needed
     4. Click "Execute" to see results
-    
+
     **Available Agent Categories:**
     - **Discovery**: topic_discovery, domain_intelligence, historical_review, news
     - **Review**: slr, gap_synthesis, innovation_novelty
@@ -572,48 +579,50 @@ async def test_agent(agent_slug: str, request: AgentTestRequest):
     - **Critique**: adversarial_critique
     - **Data**: data_scraper
     - **Assessment**: scoring
-    
+
     **Default inputs are automatically provided for each agent!**
     """
     from agents.registry import AGENTS
     import datetime
     import traceback
-    
+
     try:
         logger.info(f"Testing agent: {agent_slug} with task: {request.task[:50]}...")
-        
+
         # Get agent from registry
         agent = AGENTS.get(agent_slug)
         if not agent:
             available_agents = list(AGENTS.keys())
             raise HTTPException(
-                status_code=404, 
-                detail=f"Agent '{agent_slug}' not found. Available agents: {available_agents}"
+                status_code=404,
+                detail=f"Agent '{agent_slug}' not found. Available agents: {available_agents}",
             )
-        
+
         # Prepare state for agent
         state = {
             "task": request.task,
             "options": request.options,
-            "history": request.history, # Pass history from the request
+            "history": request.history,  # Pass history from the request
             "_job_id": "test",
-            "findings": {}
+            "findings": {},
         }
-        
+
         # Run agent asynchronously
         result = await agent.arun(state)
-        
+
         return {
             "agent": agent_slug,
             "agent_name": agent.name,
-            "status": "success", 
+            "status": "success",
             "input": request.task,
             "options": request.options,
             "result": result,
-            "execution_time": result.get("execution_time", 0) if isinstance(result, dict) else 0,
-            "timestamp": datetime.datetime.now().isoformat()
+            "execution_time": result.get("execution_time", 0)
+            if isinstance(result, dict)
+            else 0,
+            "timestamp": datetime.datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Agent test failed: {e}")
         return {
@@ -621,46 +630,53 @@ async def test_agent(agent_slug: str, request: AgentTestRequest):
             "status": "error",
             "input": request.task,
             "error": str(e),
-            "traceback": traceback.format_exc() if logger.level <= logging.DEBUG else None,
-            "timestamp": datetime.datetime.now().isoformat()
+            "traceback": traceback.format_exc()
+            if logger.level <= logging.DEBUG
+            else None,
+            "timestamp": datetime.datetime.now().isoformat(),
         }
+
 
 @app.get("/usage/stats")
 async def get_usage_stats(hours: int = 24):
     """Get token usage statistics for the last N hours"""
     try:
-        from utils.token_tracker import get_usage_stats
+        from ai_engine.utils.token_tracker import get_usage_stats
+
         stats = get_usage_stats(hours)
         return stats
     except Exception as e:
         logger.error(f"Failed to get usage stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/usage/job/{job_id}")
 async def get_job_usage(job_id: str):
     """Get token usage statistics for a specific job"""
     try:
-        from utils.token_tracker import get_job_usage
+        from ai_engine.utils.token_tracker import get_job_usage
+
         stats = get_job_usage(job_id)
         return stats
     except Exception as e:
         logger.error(f"Failed to get job usage: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/", tags=["Health"])
 async def root():
     """
     🏠 **Multi-Agent Research Platform API**
-    
+
     Welcome to the Deep Research Engine! This API provides access to 18+ specialized AI agents
     for comprehensive research analysis and automation.
-    
+
     **🚀 Quick Start Guide:**
     1. **Test Individual Agents**: Use `/agents/{agent_slug}/test` endpoints
-    2. **Test Search Providers**: Use `/providers/test` endpoint  
+    2. **Test Search Providers**: Use `/providers/test` endpoint
     3. **Run Full Research**: Use `/research` endpoint
     4. **View All Agents**: Check `/agents` endpoint
-    
+
     **🤖 Available Agent Categories:**
     - **Discovery**: Topic analysis and domain mapping
     - **Review**: Literature reviews and synthesis
@@ -669,15 +685,16 @@ async def root():
     - **Visualization**: Charts and diagrams
     - **Writing**: Academic writing and LaTeX
     - **Critique**: Quality assessment and bias detection
-    
+
     **🔍 Search Providers:**
     - DuckDuckGo, Google, ArXiv, Wikipedia, OpenAlex, PubMed
-    
+
     **Click on any endpoint below to test it immediately!**
     """
     from agents.registry import AGENTS
+
     active_agents = [k for k, v in AGENTS.items() if v is not None]
-    
+
     return {
         "service": "Multi-Agent Research Platform",
         "version": "2.1.0",
@@ -688,37 +705,58 @@ async def root():
         "quick_test_urls": {
             "list_agents": "/agents",
             "test_topic_discovery": "/agents/topic_discovery/test",
-            "test_visualization": "/agents/visualization/test", 
+            "test_visualization": "/agents/visualization/test",
             "test_search_arxiv": "/providers/test?provider=arxiv",
             "test_search_duckduckgo": "/providers/test?provider=duckduckgo",
-            "full_research": "/research"
+            "full_research": "/research",
+            "full_pipeline_run": "/research/full-pipeline-run",
         },
         "documentation": "/docs",
-        "openapi_spec": "/openapi.json"
+        "openapi_spec": "/openapi.json",
     }
 
-@app.post("/research", dependencies=[Depends(verify_internal_key)])
-async def run_research(request: ResearchRequest):
+
+async def _run_research_pipeline(request: ResearchRequest):
     """
-    Main research endpoint - runs the full pipeline.
+    Shared research pipeline implementation.
     Uses ThreadPoolExecutor to avoid blocking the async event loop.
     """
     from graph.full_pipeline import app as pipeline
-    from utils.event_emitter import set_job_context, emit_stage_change, emit_event
-    
+    from ai_engine.utils.event_emitter import (
+        set_job_context,
+        emit_stage_change,
+        emit_event,
+    )
+
     job_id = request.job_id or request.session_id or "unknown"
     research_id = int(job_id) if str(job_id).isdigit() else None
     workspace_id = request.workspace_id
-    
-    logger.info(f"[Job #{job_id}] Starting research: {request.task[:50]}...")
+    depth = (request.depth or "standard").strip().lower()
+    if depth not in {"quick", "standard", "gather", "deep"}:
+        depth = "standard"
+
+    timeout_by_depth = {
+        # Default disabled for every depth. Set env vars to enforce explicit limits.
+        "quick": int(os.getenv("PIPELINE_TIMEOUT_QUICK_SECONDS", "0")),
+        "standard": int(os.getenv("PIPELINE_TIMEOUT_STANDARD_SECONDS", "0")),
+        "gather": int(os.getenv("PIPELINE_TIMEOUT_GATHER_SECONDS", "0")),
+        "deep": int(os.getenv("PIPELINE_TIMEOUT_DEEP_SECONDS", "0")),
+    }
+    max_runtime_seconds = timeout_by_depth.get(depth, timeout_by_depth["standard"])
+
+    timeout_label = f"{max_runtime_seconds}s" if max_runtime_seconds and max_runtime_seconds > 0 else "disabled"
+    logger.info(
+        f"[Job #{job_id}] Starting research: {request.task[:50]}... "
+        f"(depth={depth}, timeout={timeout_label})"
+    )
     if workspace_id:
         logger.info(f"[Job #{job_id}] Workspace: {workspace_id}")
-    
+
     # Set job context for event emission
     if research_id:
         set_job_context(research_id)
         emit_stage_change("orchestrating", next_stage="searching")
-    
+
     initial_state = {
         "task": request.task,
         "paper_url": request.paper_url,
@@ -727,14 +765,16 @@ async def run_research(request: ResearchRequest):
         "next_step": None,
         "findings": {},
         "history": [],
+        "depth": depth,
         "topic_locked": False,
         "selected_topic": None,
         "topic_suggestions": [],
         "_job_id": job_id,
         "workspace_id": workspace_id,
-        "session_id": request.session_id or (int(job_id) if str(job_id).isdigit() else None),
+        "session_id": request.session_id
+        or (int(job_id) if str(job_id).isdigit() else None),
     }
-    
+
     try:
         # RUN NATIVELY ASYNC PIPELINE
         # LangGraph checkpointing requires configurable IDs when a checkpointer is attached.
@@ -746,32 +786,45 @@ async def run_research(request: ResearchRequest):
                 "checkpoint_id": f"job-{job_id}",
             }
         }
-        result = await pipeline.ainvoke(initial_state, config=pipeline_config)
-        
+        pipeline_task = pipeline.ainvoke(initial_state, config=pipeline_config)
+        if max_runtime_seconds and max_runtime_seconds > 0:
+            result = await asyncio.wait_for(pipeline_task, timeout=max_runtime_seconds)
+        else:
+            result = await pipeline_task
+
         logger.info(f"[Job #{job_id}] Research completed successfully")
-        
+
         # Save result to JSON file as requested
         try:
-            output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output")
+            output_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output"
+            )
             os.makedirs(output_dir, exist_ok=True)
-            
+
             output_file = os.path.join(output_dir, f"{job_id}.json")
             import json
+
             with open(output_file, "w", encoding="utf-8") as f:
-                json.dump({
-                    "status": "completed",
-                    "task": request.task,
-                    "result": result.get("results"),
-                    "final_state": result
-                }, f, indent=2, ensure_ascii=False)
-                
+                json.dump(
+                    {
+                        "status": "completed",
+                        "task": request.task,
+                        "result": result.get("results"),
+                        "final_state": result,
+                    },
+                    f,
+                    indent=2,
+                    ensure_ascii=False,
+                )
+
             logger.info(f"[Job #{job_id}] Saved result to {output_file}")
-            
+
             # Also save as latest.json for easy access
             latest_file = os.path.join(output_dir, "latest.json")
             import shutil
+
             shutil.copy2(output_file, latest_file)
-            
+
         except Exception as e:
             logger.error(f"[Job #{job_id}] Failed to save output JSON: {str(e)}")
 
@@ -779,6 +832,7 @@ async def run_research(request: ResearchRequest):
         if workspace_id and result.get("findings"):
             try:
                 from vectorstore.manager import add_text
+
                 findings = result.get("findings", {})
                 embedded_count = 0
 
@@ -790,7 +844,9 @@ async def run_research(request: ResearchRequest):
                     if isinstance(agent_output, str):
                         text = agent_output
                     elif isinstance(agent_output, dict):
-                        text = agent_output.get("response", "") or agent_output.get("content", "")
+                        text = agent_output.get("response", "") or agent_output.get(
+                            "content", ""
+                        )
                         if isinstance(text, dict):
                             text = str(text)
                     if text and len(text) > 50:
@@ -804,57 +860,151 @@ async def run_research(request: ResearchRequest):
                         )
                         embedded_count += count
 
-                logger.info(f"[Job #{job_id}] Embedded {embedded_count} chunks into vector store")
+                logger.info(
+                    f"[Job #{job_id}] Embedded {embedded_count} chunks into vector store"
+                )
             except Exception as e:
-                logger.error(f"[Job #{job_id}] Vector embedding failed (non-fatal): {e}")
+                logger.error(
+                    f"[Job #{job_id}] Vector embedding failed (non-fatal): {e}"
+                )
 
         if research_id:
             emit_stage_change("completed")
-        
-        # Extract the markdown report if available
+
+        # Extract report artifacts (markdown + latex + file paths)
         findings = result.get("findings", {})
-        msr = findings.get("multi_stage_report", {})
-        report_markdown = msr.get("markdown_report") or msr.get("response") or ""
-        if not report_markdown:
-            sw = findings.get("scientific_writing", {})
-            report_markdown = sw.get("markdown_report") or sw.get("response") or ""
-            
+
+        def _as_dict(value):
+            return value if isinstance(value, dict) else {}
+
+        msr = _as_dict(findings.get("multi_stage_report"))
+        msr_resp = _as_dict(msr.get("response"))
+        sw = _as_dict(findings.get("scientific_writing"))
+        sw_resp = _as_dict(sw.get("response"))
+        latex_node = _as_dict(findings.get("latex_generation"))
+        latex_resp = _as_dict(latex_node.get("response"))
+
+        report_markdown = (
+            msr.get("markdown_report")
+            or msr_resp.get("markdown_report")
+            or msr_resp.get("response")
+            or sw.get("markdown_report")
+            or sw_resp.get("markdown_report")
+            or sw_resp.get("response")
+            or ""
+        )
+
+        latex_source = (
+            msr.get("latex_source")
+            or msr_resp.get("latex_source")
+            or latex_node.get("latex_source")
+            or latex_resp.get("latex_source")
+            or latex_resp.get("raw_latex")
+            or ""
+        )
+
+        tex_path = (
+            msr.get("tex_path")
+            or msr_resp.get("tex_path")
+            or latex_node.get("tex_path")
+            or latex_resp.get("tex_path")
+            or ""
+        )
+
+        pdf_path = (
+            msr.get("pdf_path")
+            or msr_resp.get("pdf_path")
+            or latex_node.get("pdf_path")
+            or latex_resp.get("pdf_path")
+            or ""
+        )
+
         return {
             "status": "completed",
             "task": request.task,
+            "depth": depth,
             "result": result.get("results"),
             "final_state": result,
-            "report_markdown": report_markdown
+            "report_markdown": report_markdown,
+            "latex_source": latex_source,
+            "report_artifacts": {
+                "tex_path": tex_path,
+                "pdf_path": pdf_path,
+            },
         }
+    except asyncio.TimeoutError:
+        timeout_msg = (
+            f"Pipeline exceeded time budget ({max_runtime_seconds}s) for depth='{depth}'."
+        )
+        logger.error(f"[Job #{job_id}] {timeout_msg}")
+        if research_id:
+            emit_event("failed", timeout_msg, severity="error")
+        raise HTTPException(status_code=504, detail=timeout_msg)
     except Exception as e:
         logger.error(f"[Job #{job_id}] Research failed: {str(e)}")
         if research_id:
             emit_event("failed", f"Pipeline failed: {str(e)}", severity="error")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/research", dependencies=[Depends(verify_internal_key)])
+async def run_research(request: ResearchRequest):
+    """
+    Main research endpoint - runs the full pipeline.
+    """
+    return await _run_research_pipeline(request)
+
+
+@app.post("/research/full-pipeline-run", tags=["Research"])
+async def full_pipeline_run(
+    request: ResearchRequest,
+    api_key: str = Security(_api_key_header),
+):
+    """
+    Full Pipeline Run (Swagger-friendly)
+
+    This endpoint is intended for manual testing from `/docs`.
+    - In development: can run without API key.
+    - In non-development: requires `X-API-Key`.
+    """
+    if ENVIRONMENT != "development":
+        if not AI_ENGINE_SECRET:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "AI Engine misconfigured: AI_ENGINE_SECRET must be set "
+                    "in non-development environments."
+                ),
+            )
+        if api_key != AI_ENGINE_SECRET:
+            raise HTTPException(status_code=403, detail="Invalid or missing API key")
+
+    return await _run_research_pipeline(request)
+
+
 @app.post("/chatbot/fast-chat")
 async def chatbot_fast_chat(request: Dict[str, Any]):
     """
     ⚡ **Chatbot Fast Chat (Backend Compatible)**
-    
+
     Smart routing: uses QueryPlanner to decide if web search is needed.
     Returns sources alongside the response for right-panel display.
     """
     from agents.registry import AGENTS
-    from utils.search_service import SearchService
-    
+    from ai_engine.utils.search_service import SearchService
+
     query = request.get("query", "") or request.get("task", "")
     history = request.get("history", [])
     context = request.get("context", "")
-    
+
     if not query:
         raise HTTPException(status_code=400, detail="Query or task is required")
-        
+
     try:
         # 1. PLAN: Decide if we need search (with robust fallback)
         mode = "direct"
         search_terms = [query]
-        
+
         try:
             planner = AGENTS.get("query_planner")
             if planner:
@@ -864,15 +1014,35 @@ async def chatbot_fast_chat(request: Dict[str, Any]):
                     mode = plan.get("mode", "direct")
                     search_terms = plan.get("search_terms", [query])
         except Exception as plan_err:
-            logger.warning(f"[FastChat] Planner failed, using keyword fallback: {plan_err}")
+            logger.warning(
+                f"[FastChat] Planner failed, using keyword fallback: {plan_err}"
+            )
             # Keyword-based fallback when planner LLM fails
             q_lower = query.lower()
-            search_keywords = {"how many", "latest", "current", "recent", "today", "news",
-                               "what is", "who is", "where is", "when did", "price of",
-                               "top ", "best ", "list of", "nuclear", "countries", "2024", "2025", "2026"}
+            search_keywords = {
+                "how many",
+                "latest",
+                "current",
+                "recent",
+                "today",
+                "news",
+                "what is",
+                "who is",
+                "where is",
+                "when did",
+                "price of",
+                "top ",
+                "best ",
+                "list of",
+                "nuclear",
+                "countries",
+                "2024",
+                "2025",
+                "2026",
+            }
             if any(kw in q_lower for kw in search_keywords):
                 mode = "search"
-        
+
         # 2. SEARCH (if needed)
         search_context = ""
         sources = []
@@ -880,53 +1050,64 @@ async def chatbot_fast_chat(request: Dict[str, Any]):
             logger.info(f"[FastChat] Smart search triggered for: {search_terms}")
             try:
                 search_svc = SearchService()
-                search_results = await search_svc.search(query=search_terms[0] if search_terms else query, max_results=5)
+                search_results = await search_svc.search(
+                    query=search_terms[0] if search_terms else query, max_results=5
+                )
                 results = search_results.get("results", [])
-                
+
                 for r in results:
-                    sources.append({
-                        "title": r.get("title", ""),
-                        "url": r.get("url", ""),
-                        "description": r.get("description", ""),
-                        "favicon": r.get("favicon", ""),
-                        "source": r.get("source", "web"),
-                    })
-                
-                search_context = "\n".join([
-                    f"[Source: {r['title']}] ({r.get('url','')})\n{r['description']}" 
-                    for r in results
-                ])
+                    sources.append(
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("url", ""),
+                            "description": r.get("description", ""),
+                            "favicon": r.get("favicon", ""),
+                            "source": r.get("source", "web"),
+                        }
+                    )
+
+                search_context = "\n".join(
+                    [
+                        f"[Source: {r['title']}] ({r.get('url', '')})\n{r['description']}"
+                        for r in results
+                    ]
+                )
                 logger.info(f"[FastChat] Found {len(results)} search results")
             except Exception as search_err:
                 logger.warning(f"[FastChat] Search failed: {search_err}")
-        
+
         # 3. RESPOND with ConversationalAgent
         agent = AGENTS.get("conversational")
-        combined_context = f"{context}\n\n--- Web Search Results ---\n{search_context}" if search_context else context
-        
-        state = {
-            "task": query,
-            "history": history,
-            "fast_context": combined_context
-        }
-        
+        combined_context = (
+            f"{context}\n\n--- Web Search Results ---\n{search_context}"
+            if search_context
+            else context
+        )
+
+        state = {"task": query, "history": history, "fast_context": combined_context}
+
         result = await agent.arun(state)
-        
+
         # 4. Attach sources to response for frontend right-panel
         if isinstance(result, dict):
             result["sources"] = sources
             result["search_mode"] = mode
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Chatbot fast chat failed: {e}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/research/fast-chat", tags=["Research"], dependencies=[Depends(verify_internal_key)])
+@app.post(
+    "/research/fast-chat",
+    tags=["Research"],
+    dependencies=[Depends(verify_internal_key)],
+)
 async def fast_chat(request: ResearchRequest):
     """
     ⚡ **Fast Conversational Q&A**
@@ -944,56 +1125,60 @@ async def fast_chat(request: ResearchRequest):
     state = {
         "task": request.task,
         "fast_context": "Direct conversational request.",
-        "findings": request.findings or {}
+        "findings": request.findings or {},
     }
 
     try:
         # Run in executor to avoid blocking
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            executor,
-            lambda: agent.run(state)
-        )
-        return {"status": "success", "response": result.get("refined_content") or result.get("response")}
+        result = await loop.run_in_executor(executor, lambda: agent.run(state))
+        return {
+            "status": "success",
+            "response": result.get("refined_content") or result.get("response"),
+        }
     except Exception as e:
         logger.error(f"Fast-chat failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/research/edit-section", tags=["Research"], dependencies=[Depends(verify_internal_key)])
+
+@app.post(
+    "/research/edit-section",
+    tags=["Research"],
+    dependencies=[Depends(verify_internal_key)],
+)
 async def edit_section(request: Dict[str, Any]):
     """
     🖋️ **Gridded Document Editing**
-    
+
     Edits a specific section of a report based on natural language instructions.
     """
     from agents.registry import AGENTS
-    
+
     agent = AGENTS.get("editor")
     if not agent:
         raise HTTPException(status_code=404, detail="Editor agent not found")
-        
+
     # Prepare state for editor
     state = {
         "section_title": request.get("section_title"),
         "current_content": request.get("current_content"),
         "instruction": request.get("instruction"),
-        "context": request.get("context", {})
+        "context": request.get("context", {}),
     }
-    
+
     try:
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            executor,
-            lambda: agent.run(state)
-        )
+        result = await loop.run_in_executor(executor, lambda: agent.run(state))
         return {"status": "success", "refined_content": result.get("refined_content")}
     except Exception as e:
         logger.error(f"Section edit failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ============================
 # Unified Web Search Endpoint
 # ============================
+
 
 @app.post("/search", tags=["Search"])
 async def unified_search(request: SearchRequest):
@@ -1001,7 +1186,7 @@ async def unified_search(request: SearchRequest):
     Unified web search across multiple providers.
     Returns normalized results from DuckDuckGo, Google, Arxiv, Wikipedia, OpenAlex, PubMed.
     """
-    from utils.search_service import search_sync
+    from ai_engine.utils.search_service import search_sync
 
     try:
         loop = asyncio.get_event_loop()
@@ -1010,8 +1195,8 @@ async def unified_search(request: SearchRequest):
             lambda: search_sync(
                 query=request.query,
                 providers=request.providers,
-                max_results=request.max_results
-            )
+                max_results=request.max_results,
+            ),
         )
         return result
     except Exception as e:
@@ -1023,9 +1208,11 @@ async def unified_search(request: SearchRequest):
 # Research State Management
 # ============================
 
+
 class StateUpdateRequest(BaseModel):
     research_id: int
     state_update: Dict[str, Any]
+
 
 @app.post("/research/update-state", tags=["Research"])
 async def update_research_state(request: StateUpdateRequest):
@@ -1035,19 +1222,45 @@ async def update_research_state(request: StateUpdateRequest):
     """
     try:
         from state_store import update_state as store_update
-        
+
         rid = request.research_id
         update = request.state_update
-        
+
         logger.info(f"[State Update] Job #{rid}: {update}")
-        
+
         # Use new state store API (Redis-backed with fallback)
         store_update(rid, update)
-        
+
         return {"status": "success", "updated": True}
-        
+
     except Exception as e:
         logger.error(f"[State Update] Failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================
+# Research Cancellation
+# ============================
+
+
+@app.post("/research/cancel", tags=["Research"])
+async def cancel_research(request: StateUpdateRequest):
+    """
+    Cancel a running research job.
+    Sets the cancellation flag in state store.
+    """
+    try:
+        from state_store import update_state as store_update
+
+        rid = request.research_id
+        logger.info(f"[Cancel] Job #{rid} requested")
+
+        store_update(rid, {"cancelled": True, "cancel_requested_at": "now"})
+
+        return {"status": "success", "cancelled": True}
+
+    except Exception as e:
+        logger.error(f"[Cancel] Failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1059,7 +1272,7 @@ async def get_topic_suggestions(job_id: int):
     """
     try:
         from state_store import get_state
-        
+
         state = get_state(job_id)
         return {
             "topic_locked": state.get("topic_locked", False),
@@ -1075,11 +1288,13 @@ async def get_topic_suggestions(job_id: int):
 # Vector Store Endpoints (Phase 3)
 # ============================
 
+
 class VectorSearchRequest(BaseModel):
     workspace_id: str
     query: str
     top_k: int = 10
     session_id: Optional[int] = None
+
 
 class VectorIngestRequest(BaseModel):
     workspace_id: str
@@ -1087,6 +1302,7 @@ class VectorIngestRequest(BaseModel):
     source_url: str = ""
     source_type: str = "scraped"
     session_id: Optional[int] = None
+
 
 @app.post("/vectorstore/search", tags=["VectorStore"])
 async def vectorstore_search(request: VectorSearchRequest):
@@ -1096,6 +1312,7 @@ async def vectorstore_search(request: VectorSearchRequest):
     """
     try:
         from vectorstore.manager import similarity_search
+
         results = similarity_search(
             workspace_id=request.workspace_id,
             query=request.query,
@@ -1109,18 +1326,25 @@ async def vectorstore_search(request: VectorSearchRequest):
         logger.error(f"[VectorStore] Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/vectorstore/{workspace_id}/stats", tags=["VectorStore"])
 async def vectorstore_stats(workspace_id: str):
     """Get document count and stats for a workspace's vector collection."""
     try:
         from vectorstore.manager import get_collection_stats
+
         return get_collection_stats(workspace_id)
     except ImportError as e:
         raise HTTPException(status_code=501, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/vectorstore/ingest", tags=["VectorStore"], dependencies=[Depends(verify_internal_key)])
+
+@app.post(
+    "/vectorstore/ingest",
+    tags=["VectorStore"],
+    dependencies=[Depends(verify_internal_key)],
+)
 async def vectorstore_ingest(request: VectorIngestRequest):
     """
     Manually ingest text into a workspace's vector collection.
@@ -1128,6 +1352,7 @@ async def vectorstore_ingest(request: VectorIngestRequest):
     """
     try:
         from vectorstore.manager import add_text
+
         count = add_text(
             workspace_id=request.workspace_id,
             text=request.text,
@@ -1146,6 +1371,7 @@ async def vectorstore_ingest(request: VectorIngestRequest):
 # ============================
 # Streaming Chat Endpoint (RAG-Enhanced)
 # ============================
+
 
 def _build_rag_context(findings: dict) -> str:
     """
@@ -1176,7 +1402,10 @@ def _build_rag_context(findings: dict) -> str:
                     f"({p.get('published', 'N/A')})\n    URL: {p.get('url', 'N/A')}\n    "
                     f"Summary: {(p.get('abstract') or p.get('summary', ''))[:200]}"
                 )
-            sections.append(f"=== LITERATURE ({len(lit_resp['papers'])} papers) ===\n" + "\n".join(papers_text))
+            sections.append(
+                f"=== LITERATURE ({len(lit_resp['papers'])} papers) ===\n"
+                + "\n".join(papers_text)
+            )
         elif isinstance(lit_resp, str):
             sections.append(f"=== LITERATURE REVIEW ===\n{lit_resp[:3000]}")
 
@@ -1207,7 +1436,10 @@ def _build_rag_context(findings: dict) -> str:
     if ws_resp and isinstance(ws_resp, dict):
         src_list = ws_resp.get("sources", [])
         if src_list:
-            sections.append(f"=== WEB SOURCES ({len(src_list)}) ===\n" + "\n".join(str(s) for s in src_list[:20]))
+            sections.append(
+                f"=== WEB SOURCES ({len(src_list)}) ===\n"
+                + "\n".join(str(s) for s in src_list[:20])
+            )
 
     if not sections:
         # Fallback: dump first 8000 chars of raw findings
@@ -1228,13 +1460,15 @@ async def stream_chatbot(request: ResearchRequest):
 
     agent = AGENTS.get("interactive_chatbot")
     if not agent:
-        raise HTTPException(status_code=500, detail="Interactive chatbot agent not found in registry")
+        raise HTTPException(
+            status_code=500, detail="Interactive chatbot agent not found in registry"
+        )
 
     state = {
         "task": request.task,
         "paper_url": request.paper_url or "",
         "findings": request.findings or {},
-        "_job_id": request.job_id or "unknown"
+        "_job_id": request.job_id or "unknown",
     }
 
     async def generate():
@@ -1282,8 +1516,11 @@ REFERENCE HIGHLIGHTING:
 
             # Check global state for topic status
             from state_store import RESEARCH_STATES
-            job_id_int = int(state["_job_id"]) if str(state["_job_id"]).isdigit() else None
-            
+
+            job_id_int = (
+                int(state["_job_id"]) if str(state["_job_id"]).isdigit() else None
+            )
+
             topic_context = ""
             if job_id_int and job_id_int in RESEARCH_STATES:
                 job_state = RESEARCH_STATES[job_id_int]
@@ -1292,15 +1529,19 @@ REFERENCE HIGHLIGHTING:
                     topic_context = f"\n\n[SYSTEM UPDATE]: The user is currently in the TOPIC DISCOVERY phase. Research has NOT started yet.\nThe user has been offered the following topic suggestions:\n{suggestions}\n\nYOUR TASK: Help the user select one of these topics or refine their original query. Do NOT ask for a paper PDF yet. Focus on freezing the research title."
 
             from langchain_core.messages import SystemMessage, HumanMessage
+
             messages = [
-                SystemMessage(content=system_prompt + "\n\n" + rag_context + topic_context),
-                HumanMessage(content=state["task"])
+                SystemMessage(
+                    content=system_prompt + "\n\n" + rag_context + topic_context
+                ),
+                HumanMessage(content=state["task"]),
             ]
 
             # Stream chunks
             import json
+
             for chunk in llm.stream(messages):
-                content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                content = chunk.content if hasattr(chunk, "content") else str(chunk)
                 if content:
                     payload = json.dumps({"text": content})
                     yield f"data: {payload}\n\n"
@@ -1317,9 +1558,10 @@ REFERENCE HIGHLIGHTING:
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "Access-Control-Allow-Origin": "*"
-        }
+            "Access-Control-Allow-Origin": "*",
+        },
     )
+
 
 # Dynamic Agent Endpoints with Default Inputs
 from agents.registry import AGENTS
@@ -1328,11 +1570,11 @@ from agents.registry import AGENTS
 for agent_slug, agent_instance in AGENTS.items():
     if not agent_instance:
         continue
-        
+
     # Default inputs for each agent
     default_inputs = {
         "topic_discovery": "artificial intelligence in healthcare",
-        "domain_intelligence": "quantum computing applications", 
+        "domain_intelligence": "quantum computing applications",
         "historical_review": "neural networks development",
         "slr": "transformer architecture papers",
         "gap_synthesis": "computer vision limitations",
@@ -1348,37 +1590,35 @@ for agent_slug, agent_instance in AGENTS.items():
         "hallucination_detection": "GPT-4 has 1 trillion parameters and was trained on 100TB of data",
         "data_scraper": "https://arxiv.org/abs/2023.12345",
         "news": "recent AI breakthroughs 2024",
-        "scoring": "evaluate research methodology quality"
+        "scoring": "evaluate research methodology quality",
     }
-    
+
     def make_handler(agent=agent_instance, slug=agent_slug):
         async def handler(request: ResearchRequest):
             job_id = request.job_id or "test"
             logger.info(f"[Job #{job_id}] Calling agent: {agent.name}")
-            
+
             state = {
-                "task": request.task, 
+                "task": request.task,
                 "paper_url": request.paper_url or "",
                 "findings": request.findings or {},
-                "_job_id": job_id
+                "_job_id": job_id,
             }
-            
+
             # Run blocking LLM call in thread pool
             loop = asyncio.get_event_loop()
             try:
-                result = await loop.run_in_executor(
-                    executor,
-                    lambda: agent.run(state)
-                )
+                result = await loop.run_in_executor(executor, lambda: agent.run(state))
                 return {"agent": agent.name, "response": result}
             except Exception as e:
                 logger.error(f"[Job #{job_id}] Agent {agent.name} failed: {str(e)}")
                 raise HTTPException(status_code=500, detail=str(e))
+
         return handler
 
     # Create endpoint with default input in schema
     default_input = default_inputs.get(agent_slug, "test input")
-    
+
     # Create a custom request model for this agent
     class AgentSpecificRequest(BaseModel):
         task: str = default_input
@@ -1386,31 +1626,31 @@ for agent_slug, agent_instance in AGENTS.items():
         depth: str = "deep"
         findings: Optional[Dict[str, Any]] = None
         job_id: Optional[int] = None
-        
+
         model_config = {
             "json_schema_extra": {
-                "examples": [{
-                    "task": default_input,
-                    "depth": "deep"
-                }]
+                "examples": [{"task": default_input, "depth": "deep"}]
             }
         }
-    
+
     # Add the endpoint
     endpoint_func = make_handler()
-    endpoint_func.__annotations__['request'] = AgentSpecificRequest
-    
+    endpoint_func.__annotations__["request"] = AgentSpecificRequest
+
     app.post(
-        f"/agent/{agent_slug}", 
+        f"/agent/{agent_slug}",
         tags=["Agents"],
         summary=f"🤖 {agent_instance.name}",
-        description=f"Test the {agent_instance.name} agent with default input: '{default_input}'. Click 'Try it out' to test immediately!"
+        description=f"Test the {agent_instance.name} agent with default input: '{default_input}'. Click 'Try it out' to test immediately!",
     )(endpoint_func)
+
 
 def main():
     """Main entry point for console script"""
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 if __name__ == "__main__":
     main()

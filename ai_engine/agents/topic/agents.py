@@ -8,10 +8,41 @@ Topic MUST be locked before any other agents proceed.
 
 from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
+import re
+
+
+def _compact_topic(text: str) -> str:
+    value = " ".join((text or "").split())
+    if not value:
+        return "the requested topic"
+
+    # Drop explanatory tails that hurt search relevance.
+    split_markers = [
+        r"\bexplores\b",
+        r"\banalyzes\b",
+        r"\binvestigates\b",
+        r"\bexamines\b",
+        r"\bfocus(?:es)? on\b",
+        r"\bwith a focus on\b",
+    ]
+    for marker in split_markers:
+        parts = re.split(marker, value, maxsplit=1, flags=re.IGNORECASE)
+        if len(parts) > 1:
+            value = parts[0].strip(" :;,.\"")
+            break
+
+    if "." in value:
+        value = value.split(".", 1)[0].strip()
+
+    words = value.split()
+    if len(words) > 18:
+        value = " ".join(words[:18])
+
+    return value or "the requested topic"
 
 
 def fallback_topic_suggestions(input_topic: str):
-    normalized = (input_topic or "the requested topic").strip() or "the requested topic"
+    normalized = _compact_topic(input_topic)
     return [
         {
             "title": f"A Comprehensive Survey on {normalized}",
@@ -148,7 +179,7 @@ Output as JSON.""")
                 print(f"[{self.name}] Error checking external state: {e}")
 
             # Re-emit event in case frontend reconnected
-            from utils.event_emitter import emit_event
+            from ai_engine.utils.event_emitter import emit_event
             try:
                 emit_event(
                     stage="topic_discovery",
@@ -189,7 +220,7 @@ Output as JSON.""")
                 print(f"[{self.name}] Detected SPECIFIC topic. Auto-locking: {selected_topic}")
                 
                  # Emit success event
-                from utils.event_emitter import emit_event
+                from ai_engine.utils.event_emitter import emit_event
                 emit_event(
                     stage="topic_discovery",
                     message=f"Topic accepted: {selected_topic}",
@@ -224,7 +255,7 @@ Output as JSON.""")
                 print(f"[{self.name}] Failed to store in RESEARCH_STATES: {e}")
             
             # EMIT TOPIC SUGGESTIONS EVENT
-            from utils.event_emitter import emit_event
+            from ai_engine.utils.event_emitter import emit_event
             try:
                 emit_event(
                     stage="topic_discovery",
@@ -250,7 +281,8 @@ Output as JSON.""")
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
 
-            fallback_suggestions = fallback_topic_suggestions(task)
+            compact_task = _compact_topic(task)
+            fallback_suggestions = fallback_topic_suggestions(compact_task)
             fallback_title = fallback_suggestions[0]["title"]
             print(f"[{self.name}] Fallback: Auto-locking topic as '{fallback_title}'")
 

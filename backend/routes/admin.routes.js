@@ -23,8 +23,15 @@ router.get('/users', async (req, res) => {
                 u.is_active,
                 u.created_at,
                 (SELECT COUNT(*) FROM workspaces w WHERE w.user_id = u.id) as workspace_count,
-                (SELECT COUNT(*) FROM research_logs rl WHERE rl.user_id = u.id) as research_count,
-                (SELECT MAX(created_at) FROM research_logs rl WHERE rl.user_id = u.id) as last_active
+                (
+                    COALESCE((SELECT COUNT(*) FROM research_logs rl WHERE rl.user_id = u.id), 0)
+                    +
+                    COALESCE((SELECT COUNT(*) FROM research_sessions rs WHERE rs.user_id = u.id), 0)
+                ) as research_count,
+                GREATEST(
+                    (SELECT MAX(created_at) FROM research_logs rl WHERE rl.user_id = u.id),
+                    (SELECT MAX(created_at) FROM research_sessions rs WHERE rs.user_id = u.id)
+                ) as last_active
             FROM users u
             ORDER BY u.created_at DESC
         `;
@@ -164,15 +171,31 @@ router.get('/stats/overview', async (req, res) => {
             // fallback if workspaces table doesn't exist yet
         }
 
-        const researchResult = await db.query('SELECT COUNT(*) FROM research_logs');
-        const activeResearchResult = await db.query('SELECT COUNT(*) FROM research_logs WHERE status IN ($1, $2)', ['queued', 'processing']);
+        const researchLogsCount = await db.query('SELECT COUNT(*) FROM research_logs');
+        const researchSessionsCount = await db.query('SELECT COUNT(*) FROM research_sessions');
+
+        const activeLogsCount = await db.query(
+            'SELECT COUNT(*) FROM research_logs WHERE status IN ($1, $2, $3, $4)',
+            ['queued', 'processing', 'running', 'waiting']
+        );
+        const activeSessionsCount = await db.query(
+            'SELECT COUNT(*) FROM research_sessions WHERE status IN ($1, $2, $3, $4)',
+            ['queued', 'processing', 'running', 'waiting']
+        );
+
+        const totalResearchJobs =
+            parseInt(researchLogsCount.rows[0].count || '0', 10)
+            + parseInt(researchSessionsCount.rows[0].count || '0', 10);
+        const activeResearchJobs =
+            parseInt(activeLogsCount.rows[0].count || '0', 10)
+            + parseInt(activeSessionsCount.rows[0].count || '0', 10);
 
         res.json({
             stats: {
                 total_users: parseInt(usersResult.rows[0].count),
                 total_workspaces: parseInt(workspacesResult.rows[0].count),
-                total_research_jobs: parseInt(researchResult.rows[0].count),
-                active_research_jobs: parseInt(activeResearchResult.rows[0].count)
+                total_research_jobs: totalResearchJobs,
+                active_research_jobs: activeResearchJobs
             }
         });
     } catch (err) {
@@ -195,12 +218,42 @@ router.get('/logs', (req, res) => {
 router.get('/research', async (req, res) => {
     try {
         const query = `
-            SELECT 
-                rl.*, 
-                u.email as user_email 
-            FROM research_logs rl
-            LEFT JOIN users u ON rl.user_id = u.id
-            ORDER BY rl.created_at DESC
+            SELECT * FROM (
+                SELECT
+                    rl.id,
+                    rl.title,
+                    rl.task AS topic,
+                    rl.status,
+                    rl.current_stage,
+                    rl.created_at,
+                    rl.updated_at,
+                    rl.started_at,
+                    rl.completed_at,
+                    rl.user_id,
+                    u.email AS user_email,
+                    'research_logs' AS source_table
+                FROM research_logs rl
+                LEFT JOIN users u ON rl.user_id = u.id
+
+                UNION ALL
+
+                SELECT
+                    rs.id,
+                    rs.title,
+                    rs.topic,
+                    rs.status,
+                    rs.current_stage,
+                    rs.created_at,
+                    rs.updated_at,
+                    rs.started_at,
+                    rs.completed_at,
+                    rs.user_id,
+                    u.email AS user_email,
+                    'research_sessions' AS source_table
+                FROM research_sessions rs
+                LEFT JOIN users u ON rs.user_id = u.id
+            ) combined
+            ORDER BY combined.created_at DESC
         `;
         const result = await db.query(query);
         res.json({ research_logs: result.rows });

@@ -8,7 +8,11 @@ import time
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from utils.search_service import search_sync, AVAILABLE_PROVIDERS, DEFAULT_PROVIDERS
+from ai_engine.utils.search_service import (
+    search_sync,
+    AVAILABLE_PROVIDERS,
+    DEFAULT_PROVIDERS,
+)
 
 router = APIRouter(prefix="/search", tags=["Search"])
 

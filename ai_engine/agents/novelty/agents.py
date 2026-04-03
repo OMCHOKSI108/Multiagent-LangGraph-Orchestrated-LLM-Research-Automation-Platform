@@ -1,6 +1,6 @@
 from ..base import BaseAgent
-from utils.providers import GoogleSearchProvider
-from utils.embeddings import SimilarityProvider
+from ai_engine.utils.providers import GoogleSearchProvider
+from ai_engine.utils.embeddings import SimilarityProvider
 from langchain_core.messages import SystemMessage, HumanMessage
 from typing import Dict, Any
 
@@ -35,7 +35,10 @@ class InnovationNoveltyAgent(BaseAgent):
             context_str += "No direct matches found (Potential High Novelty)."
         else:
             for r in results:
-                context_str += f"- {r['title']}: {r.get('body', '')[:200]}\n"
+                context_str += (
+                    f"- {r.get('title', 'Untitled')}: "
+                    f"{(r.get('body', '') or r.get('description', ''))[:200]}\n"
+                )
 
         # Add Brain Guidance
         brain_guidance = self._get_brain_guidance(state)
@@ -94,8 +97,11 @@ class BaselineReproductionAgent(BaseAgent):
         
         implementations_found = []
         for r in results:
-            if "github.com" in r['link'] or "paperswithcode.com" in r['link']:
-                implementations_found.append({"title": r['title'], "link": r['link']})
+            link = (r.get("link") or r.get("url") or "").strip()
+            if "github.com" in link or "paperswithcode.com" in link:
+                implementations_found.append(
+                    {"title": r.get("title", "Untitled"), "link": link}
+                )
                 
         # Add Brain Guidance
         brain_guidance = self._get_brain_guidance(state)

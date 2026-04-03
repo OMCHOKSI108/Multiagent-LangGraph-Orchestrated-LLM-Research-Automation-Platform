@@ -26,10 +26,10 @@ import re
 import time
 
 # Import event emitter for live transparency
-from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_error
+from ai_engine.utils.event_emitter import emit_agent_start, emit_agent_complete, emit_error
 # Import token tracking
-from utils.token_tracker import track_agent_usage
-from utils.metrics import inc as metrics_inc, timing as metrics_timing
+from ai_engine.utils.token_tracker import track_agent_usage
+from ai_engine.utils.metrics import inc as metrics_inc, timing as metrics_timing
 
 logger = logging.getLogger("ai_engine.agents")
 

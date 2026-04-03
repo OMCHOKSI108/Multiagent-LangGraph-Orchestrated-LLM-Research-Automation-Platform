@@ -15,7 +15,7 @@ class MemoryKnowledgeGraphAgent(BaseAgent):
             **kwargs
         )
         # Import internally to avoid circular dependency issues during init if utils not ready
-        from utils.graph_manager import GraphManager
+        from ai_engine.utils.graph_manager import GraphManager
         self.graph_manager = GraphManager()
 
     def run(self, state: dict) -> dict:
@@ -86,7 +86,7 @@ class CitationGraphAnalysisAgent(BaseAgent):
             """,
             **kwargs
         )
-        from utils.graph_manager import GraphManager
+        from ai_engine.utils.graph_manager import GraphManager
         self.graph_manager = GraphManager()
 
     def run(self, state: dict) -> dict:

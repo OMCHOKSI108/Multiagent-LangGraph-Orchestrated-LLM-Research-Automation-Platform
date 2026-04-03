@@ -13,7 +13,7 @@ import os
 import re
 import subprocess
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 from .domain_templates import detect_domain, get_template, DomainType, DomainTemplate
 from .context_manager import get_section_context
@@ -24,7 +24,7 @@ from .cleanup_agent import AcademicEditorAgent, StructureValidator
 
 # Import event emitter for granular updates
 try:
-    from utils.event_emitter import emit_event
+    from ai_engine.utils.event_emitter import emit_event
 except ImportError:
     def emit_event(*args, **kwargs): pass
 
@@ -55,7 +55,14 @@ class ReportPipeline:
         self.model_name = model_name  # Will use default if None
         os.makedirs(self.output_dir, exist_ok=True)
         
-    def generate_report(self, findings: dict, task: str, job_id: str = "unknown", depth: str = "deep") -> dict:
+    def generate_report(
+        self,
+        findings: dict,
+        task: str,
+        job_id: str = "unknown",
+        depth: str = "deep",
+        brain_context: Optional[Dict[str, Any]] = None,
+    ) -> dict:
         """
         Generate a complete research report from findings.
         
@@ -99,12 +106,25 @@ class ReportPipeline:
             emit_event("writing", f"Drafting Section: {section_name.replace('_', ' ').title()}", research_id=int(job_id) if str(job_id).isdigit() else None)
             
             # Get focused context for this section
+            writer_draft = ""
+            sw = findings.get("scientific_writing", {})
+            if isinstance(sw, dict):
+                sw_resp = sw.get("response", sw)
+                if isinstance(sw_resp, dict):
+                    writer_draft = (
+                        sw_resp.get("markdown_report")
+                        or sw_resp.get("response")
+                        or ""
+                    )
+
             context = get_section_context(
                 section_name=section_name,
                 task=task,
                 findings=findings,
                 previous_sections=sections,
-                template=template
+                template=template,
+                brain_context=brain_context or {},
+                writer_draft=writer_draft,
             )
             
             # Get section-specific prompt
@@ -570,7 +590,9 @@ class ReportPipeline:
             parts.append("\n## 🖼️ Image Analysis Insights")
             for img in vision["response"]["image_analysis"]:
                 if img.get("success"):
-                    parts.append(f"#### Analysis for image: {img['url']}")
+                    parts.append(
+                        f"#### Analysis for image: {img.get('url', 'unknown source')}"
+                    )
                     parts.append(str(img["analysis"]))
         
         parts.append("\n## 🏁 Conclusion")
@@ -584,7 +606,11 @@ class ReportPipeline:
 
 # Import event emitter for live transparency
 try:
-    from utils.event_emitter import emit_agent_start, emit_agent_complete, emit_stage_change
+    from ai_engine.utils.event_emitter import (
+        emit_agent_start,
+        emit_agent_complete,
+        emit_stage_change,
+    )
 except ImportError:
     # Fallback if running standalone
     def emit_agent_start(*args, **kwargs): pass
@@ -619,7 +645,13 @@ class MultiStageReportAgent:
         emit_stage_change("report_generation", research_id=research_id)
         
         try:
-            result = self.pipeline.generate_report(findings, task, job_id, depth=state.get("depth", "deep"))
+            result = self.pipeline.generate_report(
+                findings,
+                task,
+                job_id,
+                depth=state.get("depth", "deep"),
+                brain_context=state.get("brain_context", {}),
+            )
             
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)

@@ -69,8 +69,13 @@ export default function DashboardPage() {
     if (!newName.trim()) { setCreateErr('Name required'); return; }
     setCreating(true);
     try {
-      await wsApi.create(newName.trim(), newDesc.trim() || undefined);
+      const created = await wsApi.create(newName.trim(), newDesc.trim() || undefined);
       setNewName(''); setNewDesc(''); setShowCreate(false);
+      const newId = created.workspace?.id;
+      if (newId) {
+        router.push(`/workspace/${newId}`);
+        return;
+      }
       await loadWS();
     } catch (e: unknown) {
       setCreateErr(e instanceof Error ? e.message : 'Failed');

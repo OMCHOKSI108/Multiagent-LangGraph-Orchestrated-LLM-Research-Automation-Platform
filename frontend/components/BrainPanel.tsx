@@ -18,18 +18,26 @@ interface BrainPanelProps {
 
 // ─── Step Config ─────────────────────────────────────────────────────────────
 
-const STEP_CONFIG: Record<string, { emoji: string; label: string; color: string; bg: string; border: string }> = {
-  analyzing:     { emoji: '🔍', label: 'Analyzing',     color: '#60A5FA', bg: 'rgba(96,165,250,0.08)',   border: 'rgba(96,165,250,0.2)' },
-  hypothesizing: { emoji: '💡', label: 'Hypothesizing', color: '#FBBF24', bg: 'rgba(251,191,36,0.08)',   border: 'rgba(251,191,36,0.2)' },
-  planning:      { emoji: '📋', label: 'Planning',      color: '#34D399', bg: 'rgba(52,211,153,0.08)',   border: 'rgba(52,211,153,0.2)' },
-  images:        { emoji: '🖼️', label: 'Image Strategy', color: '#A78BFA', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.2)' },
-  structure:     { emoji: '🏗️', label: 'Structuring',   color: '#F472B6', bg: 'rgba(244,114,182,0.08)', border: 'rgba(244,114,182,0.2)' },
-  reflecting:    { emoji: '🌀', label: 'Reflecting',    color: '#00F5D4', bg: 'rgba(0,245,212,0.08)',    border: 'rgba(0,245,212,0.2)' },
-  default:       { emoji: '🧠', label: 'Thinking',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)',   border: 'rgba(139,92,246,0.2)' },
+const STEP_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  analyzing:     { label: 'Analyzing',     color: '#60A5FA', bg: 'rgba(96,165,250,0.08)',   border: 'rgba(96,165,250,0.2)' },
+  hypothesizing: { label: 'Hypothesizing', color: '#FBBF24', bg: 'rgba(251,191,36,0.08)',   border: 'rgba(251,191,36,0.2)' },
+  planning:      { label: 'Planning',      color: '#34D399', bg: 'rgba(52,211,153,0.08)',   border: 'rgba(52,211,153,0.2)' },
+  images:        { label: 'Image Strategy', color: '#A78BFA', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.2)' },
+  structure:     { label: 'Structuring',   color: '#F472B6', bg: 'rgba(244,114,182,0.08)', border: 'rgba(244,114,182,0.2)' },
+  reflecting:    { label: 'Reflecting',    color: '#00F5D4', bg: 'rgba(0,245,212,0.08)',    border: 'rgba(0,245,212,0.2)' },
+  default:       { label: 'Thinking',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)',   border: 'rgba(139,92,246,0.2)' },
 };
 
 function getStepConfig(step: string) {
   return STEP_CONFIG[step.toLowerCase()] || STEP_CONFIG.default;
+}
+
+function BrainIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  );
 }
 
 // ─── Animated dots (thinking indicator) ──────────────────────────────────────
@@ -75,7 +83,7 @@ function ThoughtCard({ thought, index }: { thought: BrainThought; index: number 
         className="w-full flex items-center justify-between p-3 text-left"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base select-none flex-shrink-0">{cfg.emoji}</span>
+          <span className="flex-shrink-0" style={{ color: cfg.color }}><BrainIcon className="w-4 h-4" /></span>
           <span
             className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: cfg.border, color: cfg.color }}
@@ -121,13 +129,13 @@ function EmptyBrain({ isActive }: { isActive: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center px-6">
       <div
-        className="w-16 h-16 rounded-full flex items-center justify-center mb-4 text-2xl"
+        className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
         style={{
           background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)',
           border: '1px solid rgba(139,92,246,0.2)',
         }}
       >
-        🧠
+        <span style={{ color: '#8B5CF6' }}><BrainIcon className="w-7 h-7" /></span>
       </div>
       {isActive ? (
         <>
@@ -169,7 +177,7 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
         style={{ borderColor: 'rgba(255,255,255,0.06)' }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-base">🧠</span>
+          <span style={{ color: '#8B5CF6' }}><BrainIcon className="w-4 h-4" /></span>
           <span className="text-sm font-semibold" style={{ color: '#F9FAFB' }}>
             AI Reasoning
           </span>
@@ -211,7 +219,7 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
                     border: filterStep === step ? `1px solid ${cfg.border}` : '1px solid transparent',
                   }}
                 >
-                  {cfg.emoji} {cfg.label}
+                  {cfg.label}
                 </button>
               );
             })}
@@ -236,7 +244,7 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
                   borderColor: 'rgba(139,92,246,0.15)',
                 }}
               >
-                <span className="text-base">🧠</span>
+                <span style={{ color: '#8B5CF6' }}><BrainIcon className="w-4 h-4" /></span>
                 <span className="text-xs" style={{ color: '#8B5CF6' }}>
                   Thinking…
                 </span>

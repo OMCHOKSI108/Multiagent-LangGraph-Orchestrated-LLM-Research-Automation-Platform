@@ -2,6 +2,7 @@ import io
 import time
 import json
 import logging
+import re
 import requests
 from typing import List, Dict, Any
 from urllib.parse import quote_plus
@@ -61,6 +62,171 @@ class SearchProvider:
 
     def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         raise NotImplementedError
+
+
+def _compact_query_seed(query: str) -> str:
+    q = " ".join((query or "").split())
+    if not q:
+        return ""
+
+    # Keep the principal title; drop explanatory tails that reduce hit rate.
+    markers = [" explores ", " analyzes ", " examines ", " investigates "]
+    q_lower = q.lower()
+    for marker in markers:
+        idx = q_lower.find(marker)
+        if idx > 0:
+            q = q[:idx].strip(" :;,.\"")
+            break
+
+    if "." in q:
+        q = q.split(".", 1)[0].strip()
+
+    words = q.split()
+    if len(words) > 18:
+        q = " ".join(words[:18])
+    return q
+
+
+def _build_query_variants(query: str) -> List[str]:
+    """Build provider query variants to recover from strict zero-hit phrases."""
+    base = _compact_query_seed(query)
+    if not base:
+        return []
+
+    simplified = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in base)
+    simplified = " ".join(simplified.split())
+
+    variants = [base]
+    if simplified and simplified.lower() != base.lower():
+        variants.append(simplified)
+
+    ql = simplified.lower()
+    has_ai = any(k in ql for k in [" ai ", "ai ", " ai", "artificial intelligence", "machine learning"]) or ql.startswith("ai")
+    has_war_domain = any(
+        k in ql
+        for k in ["war", "wars", "warfare", "military", "defense", "combat", "battle", "armed conflict"]
+    )
+
+    if has_ai and has_war_domain:
+        variants.extend(
+            [
+                "artificial intelligence military applications",
+                "autonomous weapons systems machine learning",
+                "AI defense strategy warfare",
+            ]
+        )
+    elif has_war_domain:
+        variants.extend(
+            [
+                f"{simplified} military",
+                f"{simplified} defense",
+            ]
+        )
+    elif has_ai:
+        variants.extend(
+            [
+                f"{simplified} applications",
+                f"{simplified} survey",
+            ]
+        )
+
+    out = []
+    seen = set()
+    for v in variants:
+        key = v.lower().strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(v)
+    return out
+
+
+def _is_domain_relevant(query: str, title: str, description: str) -> bool:
+    """Keep only items that match the user's domain intent, not random hits."""
+    ql = (query or "").lower()
+    text = f"{title or ''} {description or ''}".lower()
+
+    ai_terms = [
+        "ai",
+        "artificial intelligence",
+        "machine learning",
+        "deep learning",
+        "autonomous",
+    ]
+    finance_terms = [
+        "stock",
+        "market",
+        "trading",
+        "finance",
+        "financial",
+        "portfolio",
+        "price prediction",
+        "equity",
+    ]
+    war_terms = [
+        "war",
+        "wars",
+        "warfare",
+        "military",
+        "defense",
+        "combat",
+        "battle",
+        "armed conflict",
+        "weapon",
+    ]
+
+    def _contains(term: str, haystack: str) -> bool:
+        term = term.strip().lower()
+        if not term:
+            return False
+        # Whole-word/phrase match to avoid false positives like "towards" -> "war".
+        pattern = r"\b" + re.escape(term).replace(r"\ ", r"\s+") + r"\b"
+        return re.search(pattern, haystack) is not None
+
+    wants_ai = any(_contains(k, ql) for k in ai_terms)
+    wants_finance = any(_contains(k, ql) for k in finance_terms)
+    wants_war = any(_contains(k, ql) for k in war_terms)
+
+    has_ai = any(_contains(k, text) for k in ai_terms)
+    has_finance = any(_contains(k, text) for k in finance_terms)
+    has_war = any(_contains(k, text) for k in war_terms)
+
+    # If user asks for AI + finance, require both signals.
+    if wants_ai and wants_finance:
+        return has_ai and has_finance
+
+    if wants_ai and wants_war:
+        return has_ai and has_war
+    if wants_ai:
+        # If query has AI plus extra domain terms, avoid broad "any AI" matches.
+        stop = {
+            "the", "a", "an", "in", "on", "for", "of", "to", "and", "or",
+            "is", "are", "used", "use", "with", "by", "from", "at",
+        }
+        ai_term_tokens = {
+            "ai", "artificial", "intelligence", "machine", "learning",
+            "deep", "autonomous",
+        }
+        query_tokens = [
+            t for t in re.findall(r"[a-z0-9]+", ql)
+            if t not in stop and len(t) > 2
+        ]
+        non_ai_tokens = [t for t in query_tokens if t not in ai_term_tokens]
+        if non_ai_tokens:
+            return has_ai and any(_contains(t, text) for t in non_ai_tokens)
+        return has_ai
+    if wants_war:
+        return has_war
+    if wants_finance:
+        return has_finance
+
+    # Generic fallback: at least one meaningful token overlap.
+    stop = {
+        "the", "a", "an", "in", "on", "for", "of", "to", "and", "or",
+        "is", "are", "used", "use",
+    }
+    terms = [t for t in re.findall(r"[a-z0-9]+", ql) if t not in stop and len(t) > 2]
+    return any(_contains(t, text) for t in terms)
 
 
 # =========================
@@ -165,37 +331,56 @@ class ArxivProvider(SearchProvider):
             logger.error("[ArxivProvider] arxiv package not installed")
             return [{"error": "arxiv package not installed"}]
 
-        emit_search(query, "arxiv")
         results = []
+        seen_urls = set()
 
         try:
-            search_obj = arxiv.Search(
-                query=query,
-                max_results=max_results,
-                sort_by=arxiv.SortCriterion.Relevance,
-            )
             client = arxiv.Client()
+            variants = _build_query_variants(query)
 
-            for r in client.results(search_obj):
-                item = {
-                    "title": r.title,
-                    "url": r.pdf_url,
-                    "description": r.summary[:300],
-                    "source": "arxiv",
-                    "published": r.published.strftime("%Y-%m-%d"),
-                    "authors": [a.name for a in r.authors],
-                }
-                results.append(item)
-
-                emit_source(
-                    source_type="arxiv",
-                    domain="arxiv.org",
-                    url=item["url"],
-                    title=item["title"],
-                    description=item["description"],
-                    published_date=item["published"],
-                    items_found=1,
+            for qv in variants:
+                emit_search(qv, "arxiv")
+                search_obj = arxiv.Search(
+                    query=qv,
+                    max_results=max(max_results * 2, 8),
+                    sort_by=arxiv.SortCriterion.Relevance,
                 )
+
+                for r in client.results(search_obj):
+                    pdf_url = r.pdf_url or ""
+                    if pdf_url in seen_urls:
+                        continue
+
+                    if not _is_domain_relevant(query, r.title, r.summary):
+                        continue
+
+                    seen_urls.add(pdf_url)
+
+                    item = {
+                        "title": r.title,
+                        "url": pdf_url,
+                        "description": r.summary[:300],
+                        "source": "arxiv",
+                        "published": r.published.strftime("%Y-%m-%d"),
+                        "authors": [a.name for a in r.authors],
+                    }
+                    results.append(item)
+
+                    emit_source(
+                        source_type="arxiv",
+                        domain="arxiv.org",
+                        url=item["url"],
+                        title=item["title"],
+                        description=item["description"],
+                        published_date=item["published"],
+                        items_found=1,
+                    )
+
+                    if len(results) >= max_results:
+                        break
+
+                if len(results) >= max_results:
+                    break
         except Exception as e:
             logger.error(f"[ArxivProvider] Search failed: {e}")
             return [{"error": f"Arxiv search failed: {str(e)}"}]
@@ -290,59 +475,83 @@ class OpenAlexProvider(SearchProvider):
         super().__init__("openalex")
 
     def search(self, query: str, max_results: int = 5):
-        emit_search(query, "openalex")
-        url = (
-            f"https://api.openalex.org/works"
-            f"?search={quote_plus(query)}"
-            f"&per-page={max_results}&sort=publication_date:desc"
-        )
+        results = []
+        seen_urls = set()
 
         try:
-            resp = http_get(url, timeout=10, retries=3)
-            data = resp.json()
+            variants = _build_query_variants(query)
 
-            results = []
-            for item in data.get("results", []):
-                landing = item.get("primary_location", {}).get("landing_page_url")
-                pub_year = item.get("publication_year", "")
-                abstract_inv = item.get("abstract_inverted_index", {})
-                abstract_text = ""
-                if abstract_inv and isinstance(abstract_inv, dict):
-                    try:
-                        word_positions = []
-                        for word, positions in abstract_inv.items():
-                            for pos in positions:
-                                word_positions.append((pos, word))
-                        word_positions.sort()
-                        abstract_text = " ".join(w for _, w in word_positions)[:300]
-                    except Exception:
-                        pass
-                desc = (
-                    abstract_text
-                    or f"Year {pub_year} | Citations {item.get('cited_by_count')}"
+            for qv in variants:
+                emit_search(qv, "openalex")
+                url = (
+                    f"https://api.openalex.org/works"
+                    f"?search={quote_plus(qv)}"
+                    f"&per-page={max(max_results * 2, 10)}"
+                    f"&sort=publication_date:desc"
                 )
-                result = {
-                    "title": item.get("title", ""),
-                    "url": landing,
-                    "description": desc,
-                    "summary": desc,
-                    "source": "openalex",
-                    "published": str(pub_year),
-                    "published_date": str(pub_year),
-                }
-                results.append(result)
 
-                emit_source(
-                    source_type="openalex",
-                    domain="openalex.org",
-                    url=landing,
-                    title=result["title"],
-                    description=result["description"],
-                    published_date=str(item.get("publication_year")),
-                    items_found=1,
-                )
-            metrics_inc("provider_openalex_success")
-            if not results:
+                resp = http_get(url, timeout=10, retries=3)
+                data = resp.json()
+
+                for item in data.get("results", []):
+                    landing = item.get("primary_location", {}).get("landing_page_url")
+                    if landing and landing in seen_urls:
+                        continue
+                    if landing:
+                        seen_urls.add(landing)
+
+                    pub_year = item.get("publication_year", "")
+                    abstract_inv = item.get("abstract_inverted_index", {})
+                    abstract_text = ""
+                    if abstract_inv and isinstance(abstract_inv, dict):
+                        try:
+                            word_positions = []
+                            for word, positions in abstract_inv.items():
+                                for pos in positions:
+                                    word_positions.append((pos, word))
+                            word_positions.sort()
+                            abstract_text = " ".join(w for _, w in word_positions)[:300]
+                        except Exception:
+                            pass
+                    desc = (
+                        abstract_text
+                        or f"Year {pub_year} | Citations {item.get('cited_by_count')}"
+                    )
+                    result = {
+                        "title": item.get("title", ""),
+                        "url": landing,
+                        "description": desc,
+                        "summary": desc,
+                        "source": "openalex",
+                        "published": str(pub_year),
+                        "published_date": str(pub_year),
+                    }
+
+                    if not _is_domain_relevant(query, result["title"], desc):
+                        continue
+
+                    results.append(result)
+
+                    emit_source(
+                        source_type="openalex",
+                        domain="openalex.org",
+                        url=landing,
+                        title=result["title"],
+                        description=result["description"],
+                        published_date=str(item.get("publication_year")),
+                        items_found=1,
+                    )
+
+                    if len(results) >= max_results:
+                        break
+
+                if len(results) >= max_results:
+                    break
+
+            if results:
+                metrics_inc("provider_openalex_success")
+            else:
+                metrics_inc("provider_openalex_empty")
                 logger.warning(f"[OpenAlexProvider] No results for query: {query}")
             return results
         except Exception as e:
@@ -401,6 +610,10 @@ class PubMedProvider(SearchProvider):
                     "published": pubdate,
                     "published_date": pubdate,
                 }
+
+                if not _is_domain_relevant(query, result["title"], desc):
+                    continue
+
                 results.append(result)
 
                 emit_source(
@@ -504,12 +717,17 @@ class NewsSearchProvider(SearchProvider):
                 }
                 results.append(item)
 
+                description = item.get("description") or ""
+                url = item.get("url") or ""
+                title = item.get("title") or ""
+                source_domain = item.get("source") or "news"
+
                 emit_source(
                     source_type="news",
-                    domain=item["source"],
-                    url=item["url"],
-                    title=item["title"],
-                    description=item["description"][:200],
+                    domain=source_domain,
+                    url=url,
+                    title=title,
+                    description=description[:200],
                     published_date=item["published"],
                     items_found=1,
                 )

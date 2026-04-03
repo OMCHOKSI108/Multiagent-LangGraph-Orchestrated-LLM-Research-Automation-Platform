@@ -184,6 +184,16 @@ async function processQueue() {
 
             const finalResult = aiResponse.data;
 
+            // If user cancelled while AI was running, do not overwrite cancelled status.
+            const statusCheck = await db.query(
+                `SELECT status FROM ${table} WHERE id = $1`,
+                [job.id]
+            );
+            if (statusCheck.rows[0]?.status === 'cancelled') {
+                logger.info(`[Worker] Job #${job.id} was cancelled mid-run. Skipping result write.`);
+                return;
+            }
+
             // Determine final status based on AI engine state
             let status = 'completed';
             const state = finalResult.final_state || {};
@@ -192,16 +202,21 @@ async function processQueue() {
             }
 
             // Mark job with detected status
-            await db.query(
+            const finalUpdate = await db.query(
                 `UPDATE ${table}
                  SET status = $1,
                      result_json = $2,
                      report_markdown = $3,
                      completed_at = ${status === 'completed' ? 'NOW()' : 'NULL'},
                      updated_at = NOW()
-                 WHERE id = $4`,
+                 WHERE id = $4 AND status <> 'cancelled'`,
                 [status, finalResult, finalResult.report_markdown || "", job.id]
             );
+
+            if (finalUpdate.rowCount === 0) {
+                logger.info(`[Worker] Job #${job.id} final update skipped because status is cancelled.`);
+                return;
+            }
 
             // === NEW: Split and save report sections if status is completed ===
             if (status === 'completed' && useNewTable) {
@@ -231,27 +246,40 @@ async function processQueue() {
             const errorMsg = aiErr.response?.data?.detail || aiErr.message;
             logger.error(`[Worker] Job #${job.id} Failed: ${errorMsg}`);
 
+            const statusCheck = await db.query(
+                `SELECT status FROM ${table} WHERE id = $1`,
+                [job.id]
+            );
+            if (statusCheck.rows[0]?.status === 'cancelled') {
+                logger.info(`[Worker] Job #${job.id} failed after user cancellation. Skipping retry/fail transitions.`);
+                return;
+            }
+
             if (job.retry_count >= MAX_RETRIES - 1) {
                 await db.query(
                     `UPDATE ${table}
                      SET status = 'failed',
                          result_json = $1,
                          updated_at = NOW()
-                     WHERE id = $2`,
+                     WHERE id = $2 AND status <> 'cancelled'`,
                     [{ error: errorMsg, retries: job.retry_count + 1 }, job.id]
                 );
                 logger.error(`[Worker] Job #${job.id} permanently failed after ${job.retry_count + 1} attempts`);
             } else {
-                await db.query(
+                const requeueResult = await db.query(
                     `UPDATE ${table}
                      SET status = 'queued',
                          retry_count = $1,
                          trigger_source = 'retry',
                          updated_at = NOW()
-                     WHERE id = $2`,
+                     WHERE id = $2 AND status <> 'cancelled'`,
                     [job.retry_count + 1, job.id]
                 );
-                logger.warn(`[Worker] Job #${job.id} requeued for retry (attempt ${job.retry_count + 2})`);
+                if (requeueResult.rowCount > 0) {
+                    logger.warn(`[Worker] Job #${job.id} requeued for retry (attempt ${job.retry_count + 2})`);
+                } else {
+                    logger.info(`[Worker] Job #${job.id} retry skipped because it was cancelled.`);
+                }
             }
         }
 

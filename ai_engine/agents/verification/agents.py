@@ -1,5 +1,5 @@
 from ..base import BaseAgent
-from utils.providers import ArxivProvider, GoogleSearchProvider
+from ai_engine.utils.providers import ArxivProvider, GoogleSearchProvider
 from langchain_core.messages import SystemMessage, HumanMessage
 
 class TechnicalVerificationAgent(BaseAgent):
@@ -33,7 +33,10 @@ class TechnicalVerificationAgent(BaseAgent):
         
         context = "\nExternal Validation:\n"
         for r in results:
-            context += f"- {r['title']}: {r.get('body', '')}\n"
+            context += (
+                f"- {r.get('title', 'Untitled')}: "
+                f"{r.get('body', '') or r.get('description', '')}\n"
+            )
 
         enhanced_prompt = f"{self.system_prompt}\n\nVERIFICATION CONTEXT:\n{context}"
         
@@ -87,11 +90,21 @@ class DataSourceValidationAgent(BaseAgent):
             for ds in datasets:
                 print(f"[{self.name}] Verifying dataset: {ds}")
                 results = self.google_provider.search(f"{ds} dataset download", max_results=2)
-                is_available = any("github" in r['link'] or "kaggle" in r['link'] or "huggingface" in r['link'] or "edu" in r['link'] for r in results)
+                is_available = any(
+                    "github" in ((r.get("link") or r.get("url") or "").lower())
+                    or "kaggle" in ((r.get("link") or r.get("url") or "").lower())
+                    or "huggingface" in ((r.get("link") or r.get("url") or "").lower())
+                    or "edu" in ((r.get("link") or r.get("url") or "").lower())
+                    for r in results
+                )
                 validated_datasets.append({
                     "name": ds,
                     "available": is_available,
-                    "links": [r['link'] for r in results[:1]]
+                    "links": [
+                        (r.get("link") or r.get("url") or "")
+                        for r in results[:1]
+                        if (r.get("link") or r.get("url"))
+                    ],
                 })
         except Exception as ex:
             print(f"[{self.name}] Extraction Warning: {ex}")

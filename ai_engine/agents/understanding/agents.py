@@ -1,5 +1,5 @@
 from ..base import BaseAgent
-from utils.providers import PDFReaderProvider
+from ai_engine.utils.providers import PDFReaderProvider
 from langchain_core.messages import SystemMessage, HumanMessage
 
 class PaperDecompositionAgent(BaseAgent):
