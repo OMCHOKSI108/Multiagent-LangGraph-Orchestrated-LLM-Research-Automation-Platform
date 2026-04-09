@@ -410,4 +410,16 @@ export const admin = {
   generateApiKey: (user_email: string, key_name?: string) =>
     req<{ key: any }>('POST', '/admin/api-keys/generate', { user_email, key_name }),
   revokeApiKey: (id: number) => req<{ success: boolean }>('DELETE', `/admin/api-keys/${id}`),
+
+  // Monitoring endpoints
+  systemMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/system'),
+  apiUsageMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/api-usage'),
+  databaseMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/database'),
+  serviceMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/services'),
+  aiModelMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/ai-model'),
+  llmMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/llm'),
+  allMetrics: () => req<{ metrics: any }>('GET', '/admin/metrics/all'),
+  alerts: () => req<{ alerts: any }>('GET', '/admin/alerts'),
+  acknowledgeAlert: (alertId: string) => req<{ success: boolean }>('POST', `/admin/alerts/${alertId}/acknowledge`),
+  logs: (lines?: number, service?: string) => req<{ logs: any }>('GET', '/admin/logs', { lines, service }),
 };

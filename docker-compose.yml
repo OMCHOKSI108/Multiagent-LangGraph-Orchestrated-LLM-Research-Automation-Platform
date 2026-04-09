@@ -34,7 +34,7 @@ services:
       context: ./ai_engine
     environment:
       PORT: 8000
-      LLM_STATUS: ${LLM_STATUS:-OFFLINE}
+      LLM_STATUS: ${LLM_STATUS:-HUGGINGFACE}
 
       # Networking fix
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -42,7 +42,14 @@ services:
       REDIS_URL: redis://redis:6379/0
       AI_ENGINE_SECRET: ${AI_ENGINE_SECRET}
 
-      # ===== LOCAL MODELS =====
+      # ===== HUGGINGFACE MODELS =====
+      MODEL_HF_REASONING: ${MODEL_HF_REASONING:-microsoft/phi-3-medium-4k-instruct}
+      MODEL_HF_WRITING: ${MODEL_HF_WRITING:-microsoft/phi-3-medium-4k-instruct}
+      MODEL_HF_CODING: ${MODEL_HF_CODING:-Qwen/Qwen2.5-Coder-7B-Instruct}
+      HUGGINGFACE_DEVICE: ${HUGGINGFACE_DEVICE:-auto}
+      HUGGINGFACE_QUANTIZATION: ${HUGGINGFACE_QUANTIZATION:-true}
+
+      # ===== LOCAL MODELS (Fallback) =====
       MODEL_LOCAL_REASONING: ${MODEL_LOCAL_REASONING:-mistral:7b-instruct}
       MODEL_LOCAL_WRITING: ${MODEL_LOCAL_WRITING:-gemma2:2b}
       MODEL_LOCAL_CODING: ${MODEL_LOCAL_CODING:-qwen2.5-coder:latest}

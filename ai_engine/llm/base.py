@@ -131,9 +131,14 @@ class LLMProvider(ABC):
 
         for attempt in range(max_retries):
             try:
+                # Track API usage for monitoring
+                self._record_api_call_start()
                 llm = self.get_langchain_llm()
-                return llm.invoke(messages)
+                result = llm.invoke(messages)
+                self._record_api_call_success(result)
+                return result
             except Exception as e:
+                self._record_api_call_error(e)
                 classification = self.classify_error(e)
                 if classification != "retryable":
                     raise e
@@ -148,6 +153,42 @@ class LLMProvider(ABC):
                 last_exception = e
 
         logger.error(f"[{self.provider_name}] All {max_retries} sync retry attempts exhausted.")
+        raise last_exception
+
+    async def ainvoke_with_retry(self, messages: list) -> Any:
+        """
+        Asynchronous LLM invocation with retry logic for transient failures.
+        """
+        import asyncio
+
+        max_retries = 3
+        backoff = 1.0
+        last_exception = None
+
+        for attempt in range(max_retries):
+            try:
+                # Track API usage for monitoring
+                self._record_api_call_start()
+                llm = self.get_langchain_llm()
+                result = await llm.ainvoke(messages)
+                self._record_api_call_success(result)
+                return result
+            except Exception as e:
+                self._record_api_call_error(e)
+                classification = self.classify_error(e)
+                if classification != "retryable":
+                    raise e
+
+                logger.warning(
+                    f"[{self.provider_name}] Transient failure. "
+                    f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s. Error: {e}"
+                )
+                self.rotate_key()
+                await asyncio.sleep(backoff)
+                backoff *= 2.0
+                last_exception = e
+
+        logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
         raise last_exception or RuntimeError(f"All {self.provider_name} sync API retries exhausted")
 
     async def astream_with_retry(self, messages: list):
@@ -213,6 +254,118 @@ class LLMProvider(ABC):
 
         logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
         raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
+
+    def _record_api_call_start(self) -> None:
+        """Record the start of an API call for monitoring."""
+        try:
+            import time
+            self._call_start_time = time.time()
+        except:
+            pass
+
+    def _record_api_call_success(self, result: Any) -> None:
+        """Record a successful API call for monitoring."""
+        try:
+            import time
+            import requests
+            import json
+
+            end_time = time.time()
+            response_time = end_time - getattr(self, '_call_start_time', end_time)
+
+            # Extract token usage
+            tokens_input, tokens_output = self._extract_token_usage(result)
+
+            # Send to monitoring backend
+            monitoring_url = "http://localhost:5000/admin/metrics/llm/request"
+            payload = {
+                "provider": self.provider_name,
+                "model": self.model_name,
+                "timestamp": int(end_time * 1000),
+                "response_time_ms": int(response_time * 1000),
+                "tokens_input": tokens_input,
+                "tokens_output": tokens_output,
+                "error": None,
+                "success": True
+            }
+
+            # Non-blocking HTTP call
+            def send_metric():
+                try:
+                    requests.post(monitoring_url, json=payload, timeout=2.0)
+                except:
+                    pass  # Silently fail if monitoring backend is unavailable
+
+            import threading
+            thread = threading.Thread(target=send_metric, daemon=True)
+            thread.start()
+
+        except Exception as e:
+            # Silently fail monitoring to avoid impacting LLM performance
+            pass
+
+    def _record_api_call_error(self, error: Exception) -> None:
+        """Record a failed API call for monitoring."""
+        try:
+            import time
+            import requests
+            import json
+
+            end_time = time.time()
+            response_time = end_time - getattr(self, '_call_start_time', end_time)
+
+            # Send to monitoring backend
+            monitoring_url = "http://localhost:5000/admin/metrics/llm/request"
+            payload = {
+                "provider": self.provider_name,
+                "model": self.model_name,
+                "timestamp": int(end_time * 1000),
+                "response_time_ms": int(response_time * 1000),
+                "tokens_input": 0,
+                "tokens_output": 0,
+                "error": str(error),
+                "success": False
+            }
+
+            # Non-blocking HTTP call
+            def send_metric():
+                try:
+                    requests.post(monitoring_url, json=payload, timeout=2.0)
+                except:
+                    pass  # Silently fail if monitoring backend is unavailable
+
+            import threading
+            thread = threading.Thread(target=send_metric, daemon=True)
+            thread.start()
+
+        except Exception as e:
+            # Silently fail monitoring to avoid impacting LLM performance
+            pass
+
+    def _extract_token_usage(self, response: Any) -> tuple[int, int]:
+        """Extract token usage from LLM response if available."""
+        try:
+            # Try to extract from response metadata
+            if hasattr(response, 'usage_metadata'):
+                usage = response.usage_metadata
+                input_tokens = getattr(usage, 'input_tokens', 0)
+                output_tokens = getattr(usage, 'output_tokens', 0)
+                return input_tokens, output_tokens
+
+            # Try LangChain response format
+            if hasattr(response, 'usage'):
+                usage = response.usage
+                input_tokens = getattr(usage, 'prompt_tokens', 0) or getattr(usage, 'input_tokens', 0)
+                output_tokens = getattr(usage, 'completion_tokens', 0) or getattr(usage, 'output_tokens', 0)
+                return input_tokens, output_tokens
+
+            # Try direct attributes
+            input_tokens = getattr(response, 'prompt_tokens', 0) or getattr(response, 'input_tokens', 0)
+            output_tokens = getattr(response, 'completion_tokens', 0) or getattr(response, 'output_tokens', 0)
+            return input_tokens, output_tokens
+
+        except Exception as e:
+            return 0, 0
 
 
 class RetryLLMWrapper:

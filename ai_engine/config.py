@@ -42,9 +42,11 @@ elif LLM_STATUS in ("ONLINE", "ON"):
     LLM_STATUS = "ONLINE"
 elif LLM_STATUS in ("HYBRID", "AUTO", "MIXED"):
     LLM_STATUS = "HYBRID"
+elif LLM_STATUS in ("HUGGINGFACE", "HF", "LOCAL"):
+    LLM_STATUS = "HUGGINGFACE"
 else:
     _INVALID_LLM_STATUS = LLM_STATUS
-    LLM_STATUS = "OFFLINE"
+    LLM_STATUS = "HUGGINGFACE"
 
 # Also keep LLM_MODE for any code that still references it
 LLM_MODE = "offline" if LLM_STATUS == "OFFLINE" else "online"
@@ -83,15 +85,23 @@ GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else None
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 
 # ============================
-# Offline Model Settings (Ollama)
+# HuggingFace Model Settings (Local Inference)
 # ============================
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+HUGGINGFACE_DEVICE = os.getenv("HUGGINGFACE_DEVICE", "auto")  # auto, cuda, cpu
+HUGGINGFACE_QUANTIZATION = os.getenv("HUGGINGFACE_QUANTIZATION", "true").lower() in ("true", "1", "yes", "on")
 
-# Specialized Models (optimized for low storage / efficient performance)
-MODEL_REASONING = os.getenv("MODEL_REASONING", "phi3:mini")  # Logic, reasoning
-MODEL_WRITING = os.getenv("MODEL_WRITING", "gemma2:2b")  # Prose
-MODEL_CODING = os.getenv("MODEL_CODING", "qwen2.5-coder:latest")  # Code/JSON
-MODEL_CRITICAL = os.getenv("MODEL_CRITICAL", "phi3:mini")  # Critique
+# Specialized Models (optimized for different tasks)
+MODEL_HF_REASONING = os.getenv("MODEL_HF_REASONING", "microsoft/phi-3-medium-4k-instruct")  # Logic, reasoning
+MODEL_HF_WRITING = os.getenv("MODEL_HF_WRITING", "microsoft/phi-3-medium-4k-instruct")  # Prose
+MODEL_HF_CODING = os.getenv("MODEL_HF_CODING", "Qwen/Qwen2.5-Coder-7B-Instruct")  # Code/JSON
+MODEL_HF_CRITICAL = os.getenv("MODEL_HF_CRITICAL", "microsoft/phi-3-medium-4k-instruct")  # Critique
+
+# Override Ollama models when using HuggingFace mode
+if LLM_STATUS == "HUGGINGFACE":
+    MODEL_REASONING = MODEL_HF_REASONING
+    MODEL_WRITING = MODEL_HF_WRITING
+    MODEL_CODING = MODEL_HF_CODING
+    MODEL_CRITICAL = MODEL_HF_CRITICAL
 
 # Active Groq fallback models used when ONLINE/HYBRID routing selects Groq.
 DEPRECATED_GROQ_MODELS = {

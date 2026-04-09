@@ -20,7 +20,9 @@ from .ollama_provider import OllamaProvider
 from .groq_provider import GroqProvider
 from .openrouter_provider import OpenRouterProvider
 from .gemini_provider import GeminiProvider
+from .huggingface_provider import HuggingFaceProvider
 from .base import LLMProvider
+# from .monitoring_wrapper import wrap_provider_with_monitoring
 
 logger = logging.getLogger("ai_engine.llm.factory")
 
@@ -54,17 +56,22 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
         model_name = getattr(cfg, "MODEL_REASONING", "phi3:mini")
 
     llm_status = getattr(cfg, "LLM_STATUS", "OFFLINE").upper()
-    if llm_status not in ("OFFLINE", "ONLINE", "HYBRID"):
+    if llm_status not in ("OFFLINE", "ONLINE", "HYBRID", "HUGGINGFACE"):
         logger.warning(
-            f"[Factory] Unknown LLM_STATUS='{llm_status}'. Defaulting to OFFLINE (Ollama)."
+            f"[Factory] Unknown LLM_STATUS='{llm_status}'. Defaulting to HUGGINGFACE."
         )
-        llm_status = "OFFLINE"
+        llm_status = "HUGGINGFACE"
 
     cache_key = f"{llm_status}:{model_name}"
     if cache_key in _PROVIDER_CACHE:
         return _PROVIDER_CACHE[cache_key]
 
-    if llm_status == "OFFLINE":
+    if llm_status == "HUGGINGFACE":
+        provider = _create_huggingface_provider(cfg, model_name)
+        if not provider.is_available():
+            logger.warning("[Factory] HuggingFace model unavailable. Falling back to Ollama.")
+            provider = _create_ollama_provider(cfg, model_name)
+    elif llm_status == "OFFLINE":
         provider = _create_ollama_provider(cfg, model_name)
         if not provider.is_available():
             groq_keys = getattr(cfg, "GROQ_API_KEYS", [])
@@ -79,22 +86,28 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
         provider = _resolve_online_provider(cfg, model_name)
         if provider is None or not provider.is_available():
             logger.warning(
-                f"[Factory] Selected ONLINE provider for {model_name} is unavailable. Falling back to Ollama."
+                f"[Factory] Selected ONLINE provider for {model_name} is unavailable. Falling back to HuggingFace."
             )
-            provider = _create_ollama_provider(cfg, model_name)
-    else:
+            provider = _create_huggingface_provider(cfg, model_name)
+    else:  # HYBRID
         provider = _resolve_online_provider(cfg, model_name)
         if provider is None or not provider.is_available():
             logger.info(
-                f"[Factory] HYBRID mode: no available cloud provider for {model_name}. Falling back to Ollama."
+                f"[Factory] HYBRID mode: no available cloud provider for {model_name}. Falling back to HuggingFace."
             )
-            provider = _create_ollama_provider(cfg, model_name)
+            provider = _create_huggingface_provider(cfg, model_name)
 
     _PROVIDER_CACHE[cache_key] = provider
     logger.info(
         f"[Factory] Provider created: {provider.provider_name} "
         f"(model: {model_name}, mode: {llm_status})"
     )
+
+    # Wrap with monitoring for API usage tracking
+    # monitored_provider = wrap_provider_with_monitoring(provider)
+    # logger.info(f"[Factory] Provider wrapped with monitoring: {monitored_provider.provider_name}")
+    # return monitored_provider
+
     return provider
 
 
@@ -166,6 +179,40 @@ def _create_gemini_provider(cfg, model_name: str) -> 'GeminiProvider':
         api_keys=gemini_keys,
         model_name=model_name,
         temperature=0.7,
+    )
+
+
+def _create_huggingface_provider(cfg, model_name: str) -> HuggingFaceProvider:
+    # Map common model names to HuggingFace model IDs
+    model_mapping = {
+        "phi3:mini": "microsoft/phi-3-mini-4k-instruct",
+        "phi3:medium": "microsoft/phi-3-medium-4k-instruct",
+        "phi3:large": "microsoft/phi-3-large-128k-instruct",
+        "gemma2:2b": "google/gemma-2-2b-it",
+        "gemma2:9b": "google/gemma-2-9b-it",
+        "qwen2.5-coder": "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "qwen2.5-coder:latest": "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "llama3.2:3b": "meta-llama/Llama-3.2-3B-Instruct",
+        "llama3.1:8b": "meta-llama/Llama-3.1-8B-Instruct",
+        "mistral:7b": "mistralai/Mistral-7B-Instruct-v0.1",
+    }
+
+    hf_model_name = model_mapping.get(model_name, model_name)
+
+    # If it's already a HuggingFace model ID, use it directly
+    if "/" in hf_model_name:
+        final_model = hf_model_name
+    else:
+        # Default to Phi-3 mini for unknown models
+        final_model = "microsoft/phi-3-mini-4k-instruct"
+
+    device = getattr(cfg, "HUGGINGFACE_DEVICE", "auto")
+    use_quantization = getattr(cfg, "HUGGINGFACE_QUANTIZATION", True)
+
+    return HuggingFaceProvider(
+        model_name=final_model,
+        device=device,
+        use_quantization=use_quantization
     )
 
 

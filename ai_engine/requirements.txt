@@ -21,13 +21,16 @@ beautifulsoup4>=4.12
 duckduckgo-search
 googlesearch-python
 arxiv
+bitsandbytes>=0.46.1
 wikipedia
 pypdf
 pymupdf
 pikepdf
 unstructured[all-docs]
 sentence-transformers
-transformers
+transformers>=4.36.0
+accelerate>=0.25.0
+torch>=2.1.0
 scikit-learn
 numpy
 chromadb>=0.4

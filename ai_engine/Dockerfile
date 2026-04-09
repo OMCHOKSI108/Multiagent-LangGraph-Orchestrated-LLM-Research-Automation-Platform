@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for HuggingFace models
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libmagic-dev \
@@ -13,17 +13,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     libgl1 \
     libglib2.0-0 \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-# Force CPU versions of PyTorch to prevent massive 2.5GB CUDA layers that time out Railway free tier builder
+# Install PyTorch with CUDA support first (for GPU acceleration)
 RUN pip install --no-cache-dir --no-deps \
     --trusted-host download.pytorch.org --trusted-host download-r2.pytorch.org \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 RUN pip install --no-cache-dir \
     --trusted-host pypi.org --trusted-host files.pythonhosted.org \
     --trusted-host download.pytorch.org --trusted-host download-r2.pytorch.org \
-    -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+    -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
 
 COPY . .
 

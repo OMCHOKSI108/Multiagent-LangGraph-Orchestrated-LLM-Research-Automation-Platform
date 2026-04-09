@@ -96,6 +96,20 @@ app.use('/api/usage', auth, require('./routes/usage.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/sources', require('./routes/sources.routes'));
 
+// Initialize monitoring services
+const MetricsCollector = require('./services/monitoring/metrics_collector');
+const ApiKeyManager = require('./services/api_key_manager');
+const { initializeMonitoringServices } = require('./routes/monitoring.routes');
+
+// Initialize database connection for monitoring
+const db = require('./config/db');
+const metricsCollector = new MetricsCollector(db);
+const apiKeyManager = new ApiKeyManager();
+
+// Initialize monitoring routes with services
+initializeMonitoringServices(db, metricsCollector, apiKeyManager);
+app.use('/api/admin', require('./routes/monitoring.routes').router);
+
 // Initialize Redis client if REDIS_URL is provided
 if (process.env.REDIS_URL) {
     const { createClient } = require('redis');
