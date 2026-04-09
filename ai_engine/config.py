@@ -6,8 +6,11 @@ logger = logging.getLogger("ai_engine.config")
 
 # Set Hugging Face Cache to project-local directory
 # MUST BE SET BEFORE IMPORTING TRANSFORMERS
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-hf_cache_dir = os.path.join(project_root, "data", "huggingface")
+engine_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(engine_root)
+# Store HF assets inside the mounted ai_engine cache volume so downloads
+# survive container restarts/recreates.
+hf_cache_dir = os.path.join(engine_root, "cache", "huggingface")
 os.makedirs(hf_cache_dir, exist_ok=True)
 os.environ["HF_HOME"] = hf_cache_dir
 print(f"[Config] HF_HOME set to: {hf_cache_dir}")
@@ -48,10 +51,16 @@ else:
     _INVALID_LLM_STATUS = LLM_STATUS
     LLM_STATUS = "HUGGINGFACE"
 
-# Also keep LLM_MODE for any code that still references it
-LLM_MODE = "offline" if LLM_STATUS == "OFFLINE" else "online"
+# Also keep LLM_MODE for legacy callers, but expose the true runtime mode too.
+LLM_RUNTIME_MODE = {
+    "OFFLINE": "offline",
+    "ONLINE": "online",
+    "HYBRID": "hybrid",
+    "HUGGINGFACE": "huggingface",
+}.get(LLM_STATUS, "huggingface")
+LLM_MODE = LLM_RUNTIME_MODE
 
-print(f"[Config] LLM_STATUS = {LLM_STATUS} (mode={LLM_MODE})")
+print(f"[Config] LLM_STATUS = {LLM_STATUS} (runtime={LLM_RUNTIME_MODE})")
 
 # ============================
 # API Keys (for Online Mode)
@@ -84,11 +93,18 @@ GEMINI_API_KEY = GEMINI_API_KEYS[0] if GEMINI_API_KEYS else None
 # Serper.dev (Alternative Search)
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 
+# Local Ollama endpoint used for OFFLINE mode and HuggingFace fallback.
+# In Docker this should point to host.docker.internal or an ollama service,
+# not localhost inside the ai_engine container.
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip() or "http://localhost:11434"
+
 # ============================
 # HuggingFace Model Settings (Local Inference)
 # ============================
 HUGGINGFACE_DEVICE = os.getenv("HUGGINGFACE_DEVICE", "auto")  # auto, cuda, cpu
 HUGGINGFACE_QUANTIZATION = os.getenv("HUGGINGFACE_QUANTIZATION", "true").lower() in ("true", "1", "yes", "on")
+HUGGINGFACE_PRELOAD_ON_STARTUP = os.getenv("HUGGINGFACE_PRELOAD_ON_STARTUP", "true").lower() in ("true", "1", "yes", "on")
+HUGGINGFACE_PRELOAD_STRATEGY = (os.getenv("HUGGINGFACE_PRELOAD_STRATEGY", "download_only").strip().lower() or "download_only")
 
 # Specialized Models (optimized for different tasks)
 MODEL_HF_REASONING = os.getenv("MODEL_HF_REASONING", "microsoft/phi-3-medium-4k-instruct")  # Logic, reasoning
@@ -96,12 +112,40 @@ MODEL_HF_WRITING = os.getenv("MODEL_HF_WRITING", "microsoft/phi-3-medium-4k-inst
 MODEL_HF_CODING = os.getenv("MODEL_HF_CODING", "Qwen/Qwen2.5-Coder-7B-Instruct")  # Code/JSON
 MODEL_HF_CRITICAL = os.getenv("MODEL_HF_CRITICAL", "microsoft/phi-3-medium-4k-instruct")  # Critique
 
-# Override Ollama models when using HuggingFace mode
+# Local/Ollama models
+MODEL_LOCAL_REASONING = os.getenv("MODEL_LOCAL_REASONING", "mistral:7b-instruct")
+MODEL_LOCAL_WRITING = os.getenv("MODEL_LOCAL_WRITING", "gemma2:2b")
+MODEL_LOCAL_CODING = os.getenv("MODEL_LOCAL_CODING", "qwen2.5-coder:latest")
+MODEL_LOCAL_CRITICAL = os.getenv("MODEL_LOCAL_CRITICAL", MODEL_LOCAL_REASONING)
+
+# Online/provider-routed models
+MODEL_ONLINE_REASONING = os.getenv("MODEL_ONLINE_REASONING", "openrouter/anthropic/claude-3.5-sonnet")
+MODEL_ONLINE_WRITING = os.getenv("MODEL_ONLINE_WRITING", "openrouter/openai/gpt-4o-mini")
+MODEL_ONLINE_CODING = os.getenv("MODEL_ONLINE_CODING", "openrouter/deepseek/deepseek-coder")
+MODEL_ONLINE_CRITICAL = os.getenv("MODEL_ONLINE_CRITICAL", "gemini/gemini-2.0-flash")
+
+# Select the active model profile based on the configured mode.
 if LLM_STATUS == "HUGGINGFACE":
     MODEL_REASONING = MODEL_HF_REASONING
     MODEL_WRITING = MODEL_HF_WRITING
     MODEL_CODING = MODEL_HF_CODING
     MODEL_CRITICAL = MODEL_HF_CRITICAL
+elif LLM_STATUS == "OFFLINE":
+    MODEL_REASONING = MODEL_LOCAL_REASONING
+    MODEL_WRITING = MODEL_LOCAL_WRITING
+    MODEL_CODING = MODEL_LOCAL_CODING
+    MODEL_CRITICAL = MODEL_LOCAL_CRITICAL
+else:
+    MODEL_REASONING = MODEL_ONLINE_REASONING
+    MODEL_WRITING = MODEL_ONLINE_WRITING
+    MODEL_CODING = MODEL_ONLINE_CODING
+    MODEL_CRITICAL = MODEL_ONLINE_CRITICAL
+
+# HYBRID is the only mode that enables cross-family fallback by default.
+LLM_ALLOW_CROSS_MODE_FALLBACKS = os.getenv(
+    "LLM_ALLOW_CROSS_MODE_FALLBACKS",
+    "true" if LLM_STATUS == "HYBRID" else "false",
+).lower() in ("true", "1", "yes", "on")
 
 # Active Groq fallback models used when ONLINE/HYBRID routing selects Groq.
 DEPRECATED_GROQ_MODELS = {
@@ -195,10 +239,17 @@ def validate_env():
     elif LLM_STATUS == "OFFLINE":
         print(f"[Config] Ollama base URL: {OLLAMA_BASE_URL}")
 
+    elif LLM_STATUS == "HUGGINGFACE":
+        print(
+            "[Config] HuggingFace preload: "
+            f"{'enabled' if HUGGINGFACE_PRELOAD_ON_STARTUP else 'disabled'} "
+            f"(strategy={HUGGINGFACE_PRELOAD_STRATEGY})"
+        )
+
     elif _INVALID_LLM_STATUS:
         warnings.append(
-            f"Unknown LLM_STATUS='{_INVALID_LLM_STATUS}'. Expected 'OFFLINE', 'ONLINE', or 'HYBRID'. "
-            f"Defaulting to OFFLINE."
+            f"Unknown LLM_STATUS='{_INVALID_LLM_STATUS}'. Expected 'OFFLINE', 'ONLINE', 'HYBRID', or 'HUGGINGFACE'. "
+            f"Defaulting to HUGGINGFACE."
         )
 
     for w in warnings:
@@ -206,6 +257,31 @@ def validate_env():
         logger.warning(w)
 
     return len(warnings) == 0
+
+
+def get_active_model_profile():
+    """Return the active model IDs for the currently selected LLM mode."""
+    return {
+        "reasoning": MODEL_REASONING,
+        "writing": MODEL_WRITING,
+        "coding": MODEL_CODING,
+        "critical": MODEL_CRITICAL,
+    }
+
+
+def get_huggingface_preload_models():
+    """Return unique Hugging Face model IDs that should be warmed on startup."""
+    models = [
+        MODEL_HF_REASONING,
+        MODEL_HF_WRITING,
+        MODEL_HF_CODING,
+        MODEL_HF_CRITICAL,
+    ]
+    unique = []
+    for model in models:
+        if model and model not in unique:
+            unique.append(model)
+    return unique
 
 
 # Run validation on import

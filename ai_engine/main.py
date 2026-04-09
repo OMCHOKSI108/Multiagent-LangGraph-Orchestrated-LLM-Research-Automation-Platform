@@ -111,6 +111,48 @@ app = FastAPI(
     ],
 )
 
+
+@app.on_event("startup")
+async def preload_huggingface_models_on_startup():
+    """
+    Warm Hugging Face model assets at startup so the first research request
+    does not pay the download penalty.
+    """
+    from config import (
+        LLM_STATUS,
+        HUGGINGFACE_PRELOAD_ON_STARTUP,
+        HUGGINGFACE_PRELOAD_STRATEGY,
+        get_huggingface_preload_models,
+    )
+
+    if LLM_STATUS != "HUGGINGFACE" or not HUGGINGFACE_PRELOAD_ON_STARTUP:
+        return
+
+    from llm.factory import _get_config, _create_huggingface_provider, cache_provider_instance
+
+    cfg = _get_config()
+    models = get_huggingface_preload_models()
+    if not models:
+        return
+
+    logger.info(
+        f"[Startup] Preloading {len(models)} Hugging Face model(s) "
+        f"with strategy '{HUGGINGFACE_PRELOAD_STRATEGY}'."
+    )
+
+    loop = asyncio.get_running_loop()
+    for model_name in models:
+        provider = _create_huggingface_provider(cfg, model_name)
+        try:
+            await loop.run_in_executor(
+                executor,
+                lambda p=provider: p.prepare_for_startup(HUGGINGFACE_PRELOAD_STRATEGY),
+            )
+            cache_provider_instance("HUGGINGFACE", model_name, provider)
+            logger.info(f"[Startup] Hugging Face model ready: {provider.model_name}")
+        except Exception as e:
+            logger.warning(f"[Startup] Failed to preload {model_name}: {e}")
+
 # ============================
 # CORS Middleware
 # ============================
@@ -1637,11 +1679,12 @@ for agent_slug, agent_instance in AGENTS.items():
     endpoint_func = make_handler()
     endpoint_func.__annotations__["request"] = AgentSpecificRequest
 
+    agent_label = agent_slug.replace("_", " ").title()
     app.post(
         f"/agent/{agent_slug}",
         tags=["Agents"],
-        summary=f"🤖 {agent_instance.name}",
-        description=f"Test the {agent_instance.name} agent with default input: '{default_input}'. Click 'Try it out' to test immediately!",
+        summary=f"🤖 {agent_label}",
+        description=f"Test the {agent_label} agent with default input: '{default_input}'. Click 'Try it out' to test immediately!",
     )(endpoint_func)
 
 

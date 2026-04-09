@@ -29,6 +29,25 @@ logger = logging.getLogger("ai_engine.llm.factory")
 _PROVIDER_CACHE: Dict[str, LLMProvider] = {}
 
 
+def _allow_cross_mode_fallbacks(cfg) -> bool:
+    value = getattr(cfg, "LLM_ALLOW_CROSS_MODE_FALLBACKS", False)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes", "on")
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return False
+
+
+def _cache_key(llm_status: str, model_name: str) -> str:
+    return f"{llm_status}:{model_name}"
+
+
+def cache_provider_instance(llm_status: str, model_name: str, provider: LLMProvider):
+    _PROVIDER_CACHE[_cache_key(llm_status.upper(), model_name)] = provider
+
+
 def _get_config():
     """
     Lazily imports config to avoid circular imports.
@@ -62,18 +81,29 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
         )
         llm_status = "HUGGINGFACE"
 
-    cache_key = f"{llm_status}:{model_name}"
+    cache_key = _cache_key(llm_status, model_name)
     if cache_key in _PROVIDER_CACHE:
         return _PROVIDER_CACHE[cache_key]
 
     if llm_status == "HUGGINGFACE":
         provider = _create_huggingface_provider(cfg, model_name)
-        if not provider.is_available():
+        if not provider.is_available() and _allow_cross_mode_fallbacks(cfg):
             logger.warning("[Factory] HuggingFace model unavailable. Falling back to Ollama.")
             provider = _create_ollama_provider(cfg, model_name)
+            if not provider.is_available():
+                fallback_provider = _resolve_online_provider(cfg, model_name)
+                if fallback_provider is not None and fallback_provider.is_available():
+                    logger.warning(
+                        "[Factory] Ollama fallback is unreachable. Falling back to an ONLINE provider."
+                    )
+                    provider = fallback_provider
+                else:
+                    logger.warning(
+                        "[Factory] Ollama fallback is unreachable and no ONLINE provider is available."
+                    )
     elif llm_status == "OFFLINE":
         provider = _create_ollama_provider(cfg, model_name)
-        if not provider.is_available():
+        if not provider.is_available() and _allow_cross_mode_fallbacks(cfg):
             groq_keys = getattr(cfg, "GROQ_API_KEYS", [])
             if groq_keys:
                 logger.warning("[Factory] Ollama unreachable. Falling back to Groq.")
@@ -84,7 +114,18 @@ def get_llm_provider(model_name: str = None) -> LLMProvider:
                 )
     elif llm_status == "ONLINE":
         provider = _resolve_online_provider(cfg, model_name)
-        if provider is None or not provider.is_available():
+        if provider is None:
+            if _allow_cross_mode_fallbacks(cfg):
+                logger.warning(
+                    f"[Factory] No ONLINE provider configured for {model_name}. Falling back to HuggingFace."
+                )
+                provider = _create_huggingface_provider(cfg, model_name)
+            else:
+                raise RuntimeError(
+                    f"No ONLINE provider configured for model '{model_name}'. "
+                    "Configure GROQ/OPENROUTER/GEMINI keys or switch LLM_STATUS."
+                )
+        elif not provider.is_available() and _allow_cross_mode_fallbacks(cfg):
             logger.warning(
                 f"[Factory] Selected ONLINE provider for {model_name} is unavailable. Falling back to HuggingFace."
             )
@@ -216,13 +257,79 @@ def _create_huggingface_provider(cfg, model_name: str) -> HuggingFaceProvider:
     )
 
 
+def _lightweight_provider_status(cfg, llm_status: str, model_name: str) -> Dict[str, Any]:
+    """
+    Build provider metadata for /llm/status without triggering model loads
+    or provider availability probes.
+    """
+    cache_key = f"{llm_status}:{model_name}"
+    cached_provider = _PROVIDER_CACHE.get(cache_key)
+
+    if cached_provider is not None:
+        try:
+            return cached_provider.get_status()
+        except Exception as e:
+            return {
+                "provider": getattr(cached_provider, "provider_name", "unknown"),
+                "model": getattr(cached_provider, "model_name", model_name),
+                "available": False,
+                "error": str(e),
+                "cached": True,
+            }
+
+    if llm_status == "HUGGINGFACE":
+        hf_provider = _create_huggingface_provider(cfg, model_name)
+        return {
+            "provider": "huggingface",
+            "model": hf_provider.model_name,
+            "device": getattr(cfg, "HUGGINGFACE_DEVICE", "auto"),
+            "available": False,
+            "loaded": False,
+            "quantization": getattr(cfg, "HUGGINGFACE_QUANTIZATION", True),
+            "cached": False,
+        }
+
+    if llm_status == "OFFLINE":
+        return {
+            "provider": "ollama",
+            "model": model_name,
+            "base_url": getattr(cfg, "OLLAMA_BASE_URL", "http://localhost:11434"),
+            "available": False,
+            "cached": False,
+        }
+
+    if llm_status in ("ONLINE", "HYBRID"):
+        if model_name.startswith("groq/") or getattr(cfg, "GROQ_API_KEYS", []):
+            provider_name = "groq"
+        elif model_name.startswith("openrouter/") or getattr(cfg, "OPENROUTER_API_KEYS", []):
+            provider_name = "openrouter"
+        elif model_name.startswith("gemini/") or getattr(cfg, "GEMINI_API_KEYS", []):
+            provider_name = "gemini"
+        else:
+            provider_name = "unconfigured"
+
+        return {
+            "provider": provider_name,
+            "model": model_name,
+            "available": provider_name != "unconfigured",
+            "cached": False,
+        }
+
+    return {
+        "provider": "unknown",
+        "model": model_name,
+        "available": False,
+        "cached": False,
+    }
+
+
 def get_llm_status() -> Dict[str, Any]:
     cfg = _get_config()
     llm_status = getattr(cfg, "LLM_STATUS", "OFFLINE").upper()
+    model_name = getattr(cfg, "MODEL_REASONING", "phi3:mini")
 
     try:
-        provider = get_llm_provider()
-        provider_status = provider.get_status()
+        provider_status = _lightweight_provider_status(cfg, llm_status, model_name)
     except Exception as e:
         provider_status = {"error": str(e), "available": False}
 

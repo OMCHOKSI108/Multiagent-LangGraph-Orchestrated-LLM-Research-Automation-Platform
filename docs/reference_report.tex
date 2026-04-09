@@ -1,0 +1,727 @@
+\documentclass[12pt, a4paper]{article}
+
+% ---------------------------------------------------------------
+% Packages
+% ---------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{parskip}
+
+\geometry{
+  top=2.5cm,
+  bottom=2.5cm,
+  left=2.5cm,
+  right=2.5cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+% ---------------------------------------------------------------
+% Document
+% ---------------------------------------------------------------
+\begin{document}
+
+% ---------------------------------------------------------------
+% Title & Author
+% ---------------------------------------------------------------
+\begin{center}
+  {\Large \textbf{Obesity Level Prediction Using Machine Learning}}\\[1em]
+  Hardikkumar Jayswal\textsuperscript{3}~\orcidlink{0000-0002-2224-5258}\\[0.5em]
+  \small
+  Department of Information Technology, Devang Patel Institute of Advanced Technology and Research,\\
+  Charotar University of Science and Technology, Anand (Gujarat), India\\[0.3em]
+  \texttt{hardikjayswal.it@charusat.ac.in}
+\end{center}
+
+% ---------------------------------------------------------------
+% Abstract
+% ---------------------------------------------------------------
+\begin{abstract}
+Obesity has become a significant global health concern due to its association with
+various non-communicable diseases. Traditional methods for obesity assessment,
+such as BMI, often fail to capture the complexity of the condition, highlighting the
+need for more accurate predictive tools. This research utilizes machine learning
+algorithms, including Random Forest, Gradient Boosting, Support Vector Machines,
+and Neural Networks, in a stacking ensemble model to predict obesity levels.
+Utilizing datasets from diverse populations, the model achieved a high accuracy of
+96.69\%. Key features such as BMI, age, and dietary habits were identified as critical
+predictors through Recursive Feature Elimination. The research findings demonstrate
+the potential of advanced data-driven techniques in providing personalized insights
+into obesity management and underscore the transformative role of machine learning
+in public health initiatives.
+
+\textbf{Keywords:} Machine Learning, Recursive Feature Elimination, Obesity.
+\end{abstract}
+
+% ---------------------------------------------------------------
+\section{Introduction}
+% ---------------------------------------------------------------
+
+Obesity poses a major public health challenge worldwide, having escalated to epidemic
+levels and affecting a vast number of individuals globally. As per the World Health
+Organization, more than 650 million adults met the obesity criteria in 2016, defined by a
+Body Mass Index exceeding 30~kg/m\textsuperscript{2}~\cite{who2016}. The consequences
+of obesity extend beyond aesthetics, contributing substantially to the global burden of
+disease, with direct links to type~2 diabetes, cardiovascular diseases, musculoskeletal
+disorders, and certain types of cancer~\cite{who2016}. The global rise in obesity poses
+severe health risks and imposes an enormous financial burden on healthcare systems across
+both developed and developing nations~\cite{hammond2010}.
+
+\subsection{The Global Obesity Epidemic}
+
+The prevalence of obesity has worsened significantly in recent decades, with various
+socioeconomic, environmental, and lifestyle changes fueling the increase in rates of
+obesity worldwide~\cite{ng2014}. Urbanization and the rapid adoption of sedentary
+lifestyles in both developed and developing nations have led to a dramatic shift in
+dietary patterns. Increased consumption of energy-dense, nutrient-poor processed foods
+and reduced physical activity have become common features of modern life~\cite{popkin2012}.
+These lifestyle shifts have driven the rise of obesity-related diseases, such as type~2
+diabetes and cardiovascular conditions, which are now some of the leading causes of
+mortality globally~\cite{swinburn2011}.
+
+In many low and middle-income countries, the obesity epidemic is particularly concerning,
+as it coexists with undernutrition, creating a double burden of disease~\cite{tzioumis2014}.
+The rapid spread of fast food, sugary beverages, and ultra-processed products has
+exacerbated this trend, leading to an alarming increase in obesity rates, even among
+children and adolescents~\cite{lobstein2015}. Despite various public health campaigns and
+initiatives aimed at promoting healthier lifestyles, global efforts to curb the obesity
+epidemic have had limited success~\cite{swinburn2011}. The persistence of the epidemic
+underscores the need for innovative and scalable solutions that can address the root
+causes of obesity and offer effective prevention and management strategies.
+
+\subsection{Limitations of Traditional Approaches}
+
+Traditional methods for assessing and managing obesity, such as BMI calculations
+and general lifestyle assessments, have proven insufficient in addressing the complex
+and multifaceted nature of the condition~\cite{hruby2015}. BMI, though widely used,
+is a simplistic measure that does not account for variations in muscle mass, fat
+distribution, or metabolic health. Furthermore, traditional approaches often fail to
+account for individual variability in genetic predisposition, metabolic rates, and the
+socio-environmental factors influencing weight gain~\cite{wells2012}. These
+limitations can lead to misclassifications and delayed interventions, reducing the
+overall effectiveness of obesity management strategies.
+
+Moreover, manual assessments, which typically involve dietary surveys and physical
+activity logs, are time-consuming and prone to human error~\cite{pierson2000}.
+Healthcare professionals face the additional challenge of trying to tailor treatment
+and prevention strategies to individual patients without the necessary data insights.
+The growing complexity of obesity highlights the inadequacy of these conventional
+methods, emphasizing the need for more advanced, data-driven approaches that can
+provide timely and personalized interventions~\cite{burton2005}.
+
+\subsection{Promise of Machine Learning and Big Data Analysis}
+
+In the face of these challenges, machine learning~\cite{jayswal2023plant} and big data
+analytics offer promising alternatives for improving obesity prediction, prevention,
+and management. By analyzing vast and complex datasets, ML algorithms can uncover
+patterns and relationships that are not immediately apparent through traditional
+statistical methods~\cite{ferdowsy2021}. These advanced techniques allow for more
+precise and accurate predictions of obesity risk, enabling earlier detection and
+intervention~\cite{esteva2019}. Furthermore, ML-based models can handle a wide range
+of variables, such as genetic information, behavioral data, and environmental
+factors, to create a more holistic understanding of obesity's root causes and
+progression~\cite{esteva2019}.
+
+ML algorithms, such as decision trees, support vector machines, and neural networks,
+have been shown to outperform traditional models in classifying and predicting obesity
+levels based on large, diverse datasets~\cite{cervantes2020}. These algorithms can
+integrate multiple types of data, including demographic information, lifestyle habits,
+and medical history, allowing for the development of personalized prevention and
+treatment plans tailored to individual needs~\cite{ferdowsy2021}. Additionally, big
+data analysis enables healthcare providers to identify high-risk populations, monitor
+trends over time, and allocate resources more effectively in the fight against
+obesity~\cite{esteva2019}.
+
+In conclusion, the integration of machine learning and big data analytics into obesity
+research presents a significant opportunity to address the limitations of traditional
+approaches. These technologies offer the potential for more accurate, personalized, and
+scalable solutions that could have a transformative impact on global obesity prevention
+and management efforts.
+
+% ---------------------------------------------------------------
+\section{Literature Review}
+% ---------------------------------------------------------------
+
+Current advances in ML have significantly enhanced the predictive modelling of obesity,
+a major global health concern linked to numerous non-communicable diseases. In their
+2022 study, Bimantara and Supriana explored the integration of Case-Based Reasoning
+with K-Means clustering to estimate obesity levels, demonstrating the method's
+efficiency by reducing computation time during the retrieval of similar cases, achieving
+an accuracy of 88.27\%~\cite{bimantara2022}. Concurrently, Manna et al.\ in 2014
+utilized fuzzy signatures to predict early childhood obesity risks, emphasizing the
+importance of capturing complex, nonlinear interactions within data, which traditional
+statistical methods might overlook~\cite{manna2014}. In their 2018 study, Pavlyshenko
+investigated stacking approaches in machine learning to enhance the predictive accuracy
+of obesity models, illustrating how combining multiple predictive models could lead to
+more robust and accurate predictions~\cite{pavlyshenko2018}. In a similar vein,
+Ferdowsy et al.\ in 2021 employed various advanced machine learning techniques,
+including neural networks and decision trees, on large-scale datasets from electronic
+health records and mobile devices to classify and predict obesity, demonstrating the
+potential of big data in healthcare~\cite{ferdowsy2021}. Lastly, Cervantes and Palacio
+in 2020 developed a logistic regression model to predict the likelihood of different BMI
+categories among children in rural areas using publicly available datasets, which aids
+in identifying and implementing effective local interventions~\cite{cervantes2020}.
+These studies collectively highlight a shift towards leveraging complex machine learning
+techniques and big data to address the multifaceted challenges of obesity, suggesting a
+trend towards more personalized and precise public health strategies.
+
+% ---------------------------------------------------------------
+\section{Materials and Method}
+% ---------------------------------------------------------------
+
+\subsection{Dataset Description}
+
+\begin{table}[ht]
+\centering
+\caption{Details of Dataset.}
+\label{tab:dataset_details}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Dataset Name} & \textbf{Dataset Source} & \textbf{No.\ of Instances} &
+\textbf{No.\ of Instances After Pre-processing} & \textbf{No.\ of Attributes} \\
+\midrule
+Dataset 1~\cite{palechor2019} & Study from Colombia, Peru, and Mexico & 2{,}111 & 2{,}111 & 17 \\
+Dataset 2~\cite{cdc2023}      & Centers for Disease Control and Prevention & 840 & 5{,}000 & 16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{a.\ Dataset 1}
+
+This study utilizes a dataset designed to estimate obesity levels in individuals from
+Colombia, Peru, and Mexico. The dataset includes responses from 2,111 participants aged
+between 14 and 61, capturing variables related to diet, physical activity, and lifestyle
+habits~\cite{ferdowsy2021,cervantes2020}. The study utilized a stratified sampling
+approach to select participants, ensuring diverse representation across various age
+brackets, genders, and socioeconomic backgrounds~\cite{cervantes2020}. The dataset is
+divided into seven obesity categories, ranging from Insufficient Weight to Obesity Type
+III, based on BMI calculations~\cite{who2000}.
+
+The data were collected through a web-based survey, which included questions about
+eating habits, physical activity, and personal health history. To address class
+imbalance, Synthetic Minority Over-sampling Technique (SMOTE) was applied, ensuring
+balanced representation across all obesity categories~\cite{ferdowsy2021,chawla2002}.
+This approach enhances the model's ability to learn from minority classes, improving
+prediction accuracy for underrepresented obesity levels.
+
+The features in the dataset encompass a wide range of factors influencing obesity:
+
+\begin{enumerate}[label=\textbf{\roman*.}]
+  \item \textbf{Demographic Variables}: Gender and Age.
+  \item \textbf{Anthropometric Measurements}: Height and Weight.
+  \item \textbf{Family Health History}: Family History of Overweight.
+  \item \textbf{Dietary Habits}: Regular intake of high-calorie foods, frequency of
+        vegetable intake, number of primary meals, snacking habits, daily water intake,
+        and monitoring of caloric intake.
+  \item \textbf{Lifestyle Factors}: Smoking Status, Frequency of physical activity,
+        duration of technology use, frequency of alcohol intake, and preferred mode of
+        transportation.
+\end{enumerate}
+
+These features provide a comprehensive view of each participant's health profile,
+enabling the model to capture complex interactions between different risk factors.
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 1 -- Physical Activity Frequency by Obesity Levels
+  \includegraphics[width=0.45\textwidth]{fig1_physical_activity.png}
+  \caption{Physical Activity Frequency by Obesity Levels.}
+  \label{fig:physical_activity}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 2 -- Height vs Weight by Obesity
+  \includegraphics[width=0.45\textwidth]{fig2_height_weight.png}
+  \caption{Height vs Weight by Obesity.}
+  \label{fig:height_weight}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 3 -- Age vs Frequency by Obesity
+  \includegraphics[width=0.45\textwidth]{fig3_age_frequency.png}
+  \caption{Age vs Frequency by Obesity.}
+  \label{fig:age_frequency}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 4 -- Count Vs Gender Distribution
+  \includegraphics[width=0.45\textwidth]{fig4_gender_distribution.png}
+  \caption{Count Vs Gender Distribution.}
+  \label{fig:gender_distribution}
+\end{figure}
+
+\subsubsection*{b.\ Dataset 2}
+
+The second dataset focuses on the occurrence of obesity among kids and youths aged 2 to
+19 years in the United States, containing 840 original entries and expanded to 5,840
+instances after applying SMOTE~\cite{chawla2002,cdc2023}. The dataset includes
+demographic factors such as age, sex, race, and Hispanic origin, allowing for an
+analysis of obesity trends across different population subgroups. The data were collected
+through national health surveys and physical examinations, ensuring accurate assessment
+of obesity status based on BMI percentiles appropriate for children and
+adolescents~\cite{cdc2023}.
+
+By including this dataset, the study extends the predictive modeling to younger
+populations, addressing the critical issue of childhood obesity. Early identification of
+at-risk individuals can lead to timely interventions, reducing the likelihood of
+obesity-related complications later in life~\cite{reilly2011}.
+
+\noindent Features of the Dataset:
+\begin{itemize}
+  \item \textbf{Demographic Variables}: Age, Sex, Race, and Hispanic Origin.
+  \item \textbf{Health Indicators}: BMI Percentile, Obesity Status (Overweight, Obese,
+        Severely Obese).
+  \item \textbf{Survey Data}: Dietary Intake, Physical Activity Levels, Socioeconomic
+        Factors.
+  \item \textbf{Year}: Data collection period (e.g., 2007--2010).
+\end{itemize}
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 5 -- Trend of Average Obesity Estimate over the Years
+  \includegraphics[width=0.45\textwidth]{fig5_obesity_trend.png}
+  \caption{Trend of Average Obesity Estimate over the years.}
+  \label{fig:obesity_trend}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 6 -- Pie Chart of Distribution of Different Factors of Obesity
+  \includegraphics[width=0.45\textwidth]{fig6_pie_chart.png}
+  \caption{Pie Chart of Distributing of different factor of obesity.}
+  \label{fig:pie_chart}
+\end{figure}
+
+% ---------------------------------------------------------------
+\section{Data Preprocessing}
+% ---------------------------------------------------------------
+
+It is one of the decisive steps in ML, as it preprocesses the raw data for modeling by
+addressing missing values, transforming categorical variables, and normalizing numerical
+features~\cite{kotsiantis2006}. In this study, we performed the following preprocessing
+steps:
+
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item \textbf{Handling Missing Values}: Missing numerical data were imputed using the
+        mean of the respective feature, while missing categorical data were filled using
+        the mode. This approach preserves the dataset's size and reduces potential biases
+        introduced by missing data~\cite{guyon2002}.
+
+  \item \textbf{Addressing Class Imbalance}: Both datasets exhibited class imbalance,
+        with certain obesity categories underrepresented. We applied SMOTE to
+        synthetically generate new instances for minority classes, resulting in a
+        balanced dataset that enhances the model's ability to learn from all
+        classes~\cite{chawla2002}.
+
+  \item \textbf{Encoding Categorical Variables}: Categorical variables were encoded
+        using one-hot encoding, transforming them into binary vectors suitable for
+        machine learning algorithms~\cite{pedregosa2011}. This method prevents the
+        introduction of ordinal relationships where none exist.
+
+  \item \textbf{Feature Scaling}: Numerical features were standardized using Standard
+        Scaler, which scales the data to have a mean of 0 and a standard deviation of 1.
+        Standardization is essential for algorithms that rely on the magnitude of
+        features, such as SVM and neural networks~\cite{jain2000}.
+
+  \item \textbf{Feature Engineering}: We created polynomial features to identify
+        non-linear relationships within the data by incorporating interaction terms and
+        features of higher degrees. This process enables the model to recognize more
+        intricate patterns~\cite{rumelhart1986}.
+
+  \item \textbf{Data Splitting}: The datasets were split into training and testing sets
+        using an 80--20 ratio. Stratified sampling was used to maintain the class
+        distribution in both sets, ensuring that each obesity category is adequately
+        represented~\cite{he2009}.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Feature Selection}
+% ---------------------------------------------------------------
+
+Feature selection improves the performance of the model by minimizing overfitting,
+enhancing accuracy, and lowering computational expenses~\cite{kohavi1997}. We utilized
+Recursive Feature Elimination (RFE) alongside cross-validation to determine the most
+important features~\cite{guyon2002,kohavi1997}. RFE operates by systematically
+eliminating less relevant features and constructing a model based on the features that
+remain. This process is repeated until the ideal number of features is achieved.
+
+The RFE process revealed that features such as BMI, Age, Physical Activity Frequency,
+Time Spent Using Technology, and Consumption of High-Calorie Foods were among the most
+influential in predicting obesity levels. By focusing on these critical features, the
+model becomes more interpretable and efficient.
+
+% ---------------------------------------------------------------
+\section{Model Development}
+% ---------------------------------------------------------------
+
+\textbf{Stacking Model:} In this study, a stacking ensemble learning approach was
+applied to improve the accuracy of predicting obesity levels. Stacking combines multiple
+classification models to optimize predictive performance by leveraging the strengths of
+each model~\cite{breiman1996,friedman2001}.
+
+\subsubsection*{a.\ Base Models}
+
+\begin{itemize}
+  \item \textbf{Random Forest Classifier (RF):} An ensemble of decision trees that
+        reduces variance through averaging, mitigating overfitting~\cite{breiman1996}.
+  \item \textbf{Gradient Boosting Classifier (GB):} Builds additive models in a
+        forward stage-wise fashion, allowing for the optimization of arbitrary
+        differentiable loss functions~\cite{friedman2001,ferdowsy2021}.
+  \item \textbf{Support Vector Machine (SVM):} Effective in high-dimensional spaces and
+        uses kernel functions to capture non-linear relationships~\cite{cortes1995}.
+  \item \textbf{Neural Network (NN):} A multi-layer perceptron capable of modeling
+        complex non-linear relationships through multiple hidden layers and activation
+        functions~\cite{bishop1995,rumelhart1986}.
+\end{itemize}
+
+\subsubsection*{b.\ Meta-Model}
+
+The outputs from the base models are combined using a Logistic Regression model, which
+acts as the meta-learner~\cite{breiman1996,friedman2001}. Logistic Regression is
+suitable for classification problems and provides probabilistic outputs, making it
+effective for combining predictions.
+
+\subsubsection*{c.\ Training Process}
+
+\begin{itemize}
+  \item \textbf{Cross-Validation}: The training data were split into folds, and base
+        models were trained on different subsets to prevent overfitting~\cite{he2009,pedregosa2011}.
+  \item \textbf{Blending Predictions}: The predictions of the base models were used as
+        input features for the meta-model. This approach allows the meta-model to learn
+        how to best combine the base models' outputs~\cite{breiman1996}.
+\end{itemize}
+
+\begin{figure}[ht]
+  \centering
+  % Placeholder: Fig. 7 -- Process Flow to predict the obesity level
+  \includegraphics[width=0.85\textwidth]{fig7_process_flow.png}
+  \caption{Process Flow to predict the obesity level~\cite{kumar2024,kumar2023}.}
+  \label{fig:process_flow}
+\end{figure}
+
+% ---------------------------------------------------------------
+\section{Performance and Evaluation}
+% ---------------------------------------------------------------
+
+\begin{table}[ht]
+\centering
+\caption{Model and its Performance.}
+\label{tab:model_performance}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{Dataset 1} & \textbf{Dataset 2} \\
+\midrule
+Random Forest        & 0.93  & 0.9   \\
+Gradient Boosting    & 0.94  & 0.84  \\
+SVM                  & 0.93  & 0.839 \\
+Neural Network       & 0.926 & 0.91  \\
+Logistic Regression  & 0.87  & 0.67  \\
+Stacking             & 0.969 & 0.899 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The performance of the stacking model was evaluated using the testing set and
+cross-validation scores. Key metrics included accuracy, precision, recall, F1-score,
+and confusion matrices~\cite{sokolova2009}.
+
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item \textbf{Accuracy}: The stacking model achieved an overall accuracy of 96.69\%,
+        indicating that it correctly classified obesity levels in the majority of cases.
+  \item \textbf{Precision and Recall:} High precision and recall values across most
+        classes suggest that the model is both accurate and sensitive in predicting
+        obesity levels~\cite{sokolova2009}.
+  \item \textbf{F1-Score:} The harmonic mean of precision and recall, F1-scores were
+        consistently high, demonstrating balanced performance.
+  \item \textbf{Confusion Matrix:} Visual analysis of confusion matrices showed minimal
+        misclassifications, with most instances correctly identified~\cite{sokolova2009}.
+  \item \textbf{Cross-Validation Scores:} The mean cross-validation score was 97.57\%,
+        confirming the model's robustness and generalizability~\cite{he2009}.
+\end{enumerate}
+
+\subsubsection*{For dataset 1:}
+
+\begin{table}[ht]
+  \centering
+  \caption{Confusion Matrix for the dataset 1.}
+  \label{tab:confusion_dataset1}
+  % Placeholder: The confusion matrix images for dataset 1 are presented as figures.
+  % Four confusion matrices (RF, GB, SVM, NN) were included in the original paper.
+  \begin{tabular}{c}
+    \includegraphics[width=\textwidth]{fig_confusion_dataset1.png}
+    % Uncertain content: confusion matrix image for dataset 1
+  \end{tabular}
+\end{table}
+
+\subsubsection*{For dataset 2:}
+
+\begin{table}[ht]
+  \centering
+  \caption{Confusion Matrix for the dataset 2.}
+  \label{tab:confusion_dataset2}
+  % Placeholder: The confusion matrix images for dataset 2 are presented as figures.
+  \begin{tabular}{c}
+    \includegraphics[width=\textwidth]{fig_confusion_dataset2.png}
+    % Uncertain content: confusion matrix image for dataset 2
+  \end{tabular}
+\end{table}
+
+\subsubsection*{For stacking model:}
+
+\begin{table}[ht]
+  \centering
+  \caption{Confusion Matrix for the Dataset 1 and Dataset 2.}
+  \label{tab:confusion_stacking}
+  % Placeholder: Stacking model confusion matrices for both datasets.
+  \begin{tabular}{c}
+    \includegraphics[width=\textwidth]{fig_confusion_stacking.png}
+    % Uncertain content: stacking confusion matrix image
+  \end{tabular}
+\end{table}
+
+\subsubsection*{Comparison with Individual Models:}
+
+The stacking model outperformed individual base models, which had lower accuracy scores
+when used alone. This result highlights the effectiveness of stacking in leveraging the
+strengths of different algorithms to improve predictive
+performance~\cite{breiman1996,pavlyshenko2018}.
+
+% ---------------------------------------------------------------
+\section{Discussion}
+% ---------------------------------------------------------------
+
+The high performance of the stacking model demonstrates the potential of ensemble
+learning methods in predicting obesity levels. By combining models that capture
+different aspects of the data, the stacking approach addresses the complexity inherent
+in obesity prediction~\cite{breiman1996,pavlyshenko2018}. The use of SMOTE effectively
+handled class imbalance, ensuring that minority classes were adequately
+represented~\cite{chawla2002}.
+
+Feature selection through RFE contributed to model efficiency by focusing on the most
+relevant features~\cite{kohavi1997}. The identified significant features align with
+established risk factors for obesity, such as dietary habits, physical activity, and
+sedentary behavior~\cite{tzioumis2014,lobstein2015}. This alignment enhances the
+model's interpretability and applicability in real-world settings.
+
+\textbf{Limitations:}
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item \textbf{Data Sources}: The datasets used may have inherent biases due to
+        self-reported data and the specific populations studied~\cite{cervantes2020,cdc2023}.
+  \item \textbf{Generalizability}: While the model performed well on the provided
+        datasets, its applicability to other populations requires further validation.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Conclusion}
+% ---------------------------------------------------------------
+
+This study successfully developed a stacking ensemble model for predicting obesity
+levels, achieving high accuracy and demonstrating the effectiveness of combining
+multiple machine learning algorithms. The integration of SMOTE, careful data
+preprocessing, and feature selection contributed to the model's performance.
+
+The findings suggest that machine learning models can be valuable tools in public health
+for early detection and intervention in obesity. Future work includes validating the
+model on diverse populations, integrating additional relevant features, and exploring
+the use of explainable AI techniques to enhance model transparency.
+
+% ---------------------------------------------------------------
+% References
+% ---------------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{who2016}
+World Health Organization (2016). \url{https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight}.
+
+\bibitem{hammond2010}
+Hammond, R.~A., \& Levine, R.: The economic impact of obesity in the United States.
+\textit{Diabetes, Metabolic Syndrome and Obesity: Targets and Therapy}, 2010, 3, 285--295.
+
+\bibitem{ng2014}
+Ng, M., Fleming, T., Robinson, M., et al.: Global, regional, and national prevalence of
+overweight and obesity in children and adults during 1980--2013: A systematic analysis.
+\textit{The Lancet}, 2014, 384(9945), 766--781.
+
+\bibitem{popkin2012}
+Popkin, B.~M., Adair, L.~S., \& Ng, S.~W.: Global nutrition transition and the pandemic
+of obesity in developing countries. \textit{Nutrition Reviews}, 2012, 70(1), 3--21.
+
+\bibitem{swinburn2011}
+Swinburn, B.~A., et al.: The global obesity pandemic: Shaped by global drivers and local
+environments. \textit{The Lancet}, 2011, 378(9793), 804--814.
+
+\bibitem{tzioumis2014}
+Tzioumis, E., \& Adair, L.~S.: Childhood dual burden of under- and overnutrition in
+low- and middle-income countries: A critical review. \textit{Food and Nutrition Bulletin},
+2014, 35(2), 230--243.
+
+\bibitem{lobstein2015}
+Lobstein, T., Jackson-Leach, R., Moodie, M.~L., et al.: Child and adolescent obesity:
+Part of a bigger picture. \textit{The Lancet}, 2015, 385(9986), 2510--2520.
+
+\bibitem{hruby2015}
+Hruby, A., \& Hu, F.~B.: The epidemiology of obesity: A big picture.
+\textit{Pharmacoeconomics}, 2015, 33(7), 673--689.
+
+\bibitem{wells2012}
+Wells, J.~C.~K., et al.: Beyond the BMI: Prospects for the use of body composition
+indices in the assessment of health risk. \textit{Obesity Reviews}, 2012, 13(s2),
+108--120.
+
+\bibitem{pierson2000}
+Pierson, R.~N., Jr., \& Wang, J.: The assessment of body composition in severe obesity.
+\textit{Obesity Surgery}, 2000, 10(2), 103--104.
+
+\bibitem{burton2005}
+Burton, N.~W., et al.: Reliability and validity of a modified version of the Active
+Australia physical activity survey. \textit{Annals of Leisure Research}, 2005, 8(3--4),
+205--218.
+
+\bibitem{ferdowsy2021}
+Ferdowsy, F., Rahman, M.~A., \& Adnan, M.~N.: A machine learning approach for obesity
+risk prediction. \textit{Current Research in Behavioral Sciences}, 2021, 2, 100053.
+
+\bibitem{esteva2019}
+Esteva, A., Robicquet, A., Ramsundar, B., et al.: A guide to deep learning in
+healthcare. \textit{Nature Medicine}, 2019, 25(1), 24--29.
+
+\bibitem{cervantes2020}
+Cervantes, R.~C., \& Palacio, U.~M.: Estimation of obesity levels based on
+computational intelligence. \textit{Informatics in Medicine Unlocked}, 2020, 21, 100472.
+
+\bibitem{bimantara2022}
+Bimantara, I.~M.~S., \& Supriana, I.~W.: Case-Based Reasoning (CBR) for Obesity Level
+Estimation Using K-Means Indexing Method. \textit{Jurnal Ilmiah Kursor}, 2022, 11(4),
+145--156.
+
+\bibitem{manna2014}
+Manna, S., Rana, S., Saha, G., \& Singh, P.~K.: Understanding early childhood obesity
+risks using fuzzy signatures. In \textit{2014 IEEE International Conference on Fuzzy
+Systems}, 2014, pp.\ 2480--2487, IEEE.
+
+\bibitem{pavlyshenko2018}
+Pavlyshenko, B.~M.: Using stacking approaches for machine learning models. In
+\textit{2018 IEEE Second International Conference on Data Stream Mining \& Processing
+(DSMP)}, 2018, pp.\ 255--258, IEEE.
+
+\bibitem{who2000}
+World Health Organization, 2000, \textit{Obesity: Preventing and Managing the Global
+Epidemic} (No.\ 894).
+
+\bibitem{chawla2002}
+Chawla, N.~V., Bowyer, K.~W., Hall, L.~O., \& Kegelmeyer, W.~P.: SMOTE: Synthetic
+minority over-sampling technique. \textit{Journal of Artificial Intelligence Research},
+2002, 16, 321--357.
+
+\bibitem{cdc2023}
+Centers for Disease Control and Prevention (CDC), 2023, Obesity among children and
+adolescents aged 2--19 years: United States. Retrieved from CDC website.
+
+\bibitem{reilly2011}
+Reilly, J.~J., \& Kelly, J.: Long-term impact of overweight and obesity in childhood and
+adolescence on morbidity and premature mortality in adulthood: Systematic review.
+\textit{International Journal of Obesity}, 2011, 35(7), 891--898.
+
+\bibitem{kotsiantis2006}
+Kotsiantis, S., Kanellopoulos, D., \& Pintelas, P.: Data preprocessing for supervised
+learning. \textit{International Journal of Computer Science}, 2006, 1(2), 111--117.
+
+\bibitem{guyon2002}
+Guyon, I., Weston, J., Barnhill, S., \& Vapnik, V.: Gene selection for cancer
+classification using support vector machines. \textit{Machine Learning}, 2002,
+46(1--3), 389--422.
+
+\bibitem{pedregosa2011}
+Pedregosa, F., Varoquaux, G., Gramfort, A., et al.: Scikit-learn: Machine learning in
+Python. \textit{Journal of Machine Learning Research}, 2011, 12, 2825--2830.
+
+\bibitem{jain2000}
+Jain, A.~K., Duin, R.~P., \& Mao, J.: Statistical pattern recognition: A review.
+\textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2000, 22(1),
+4--37.
+
+\bibitem{rumelhart1986}
+Rumelhart, D.~E., Hinton, G.~E., \& Williams, R.~J.: Learning representations by
+back-propagating errors. \textit{Nature}, 1986, 323(6088), 533--536.
+
+\bibitem{he2009}
+He, H., \& Garcia, E.~A.: Learning from imbalanced data. \textit{IEEE Transactions on
+Knowledge and Data Engineering}, 2009, 21(9), 1263--1284.
+
+\bibitem{kohavi1997}
+Kohavi, R., \& John, G.~H.: Wrappers for feature subset selection.
+\textit{Artificial Intelligence}, 1997, 97(1--2), 273--324.
+
+\bibitem{breiman1996}
+Breiman, L.: Stacked regressions. \textit{Machine Learning}, 1996, 24(1), 49--64.
+
+\bibitem{friedman2001}
+Friedman, J.~H.: Greedy function approximation: A gradient boosting machine.
+\textit{Annals of Statistics}, 2001, 29(5), 1189--1232.
+
+\bibitem{cortes1995}
+Cortes, C., \& Vapnik, V.: Support-vector networks. \textit{Machine Learning}, 1995,
+20(3), 273--297.
+
+\bibitem{bishop1995}
+Bishop, C.~M.: \textit{Neural Networks for Pattern Recognition}. Oxford University
+Press, 1995.
+
+\bibitem{sokolova2009}
+Sokolova, M., \& Lapalme, G.: A systematic analysis of performance measures for
+classification tasks. \textit{Information Processing \& Management}, 2009, 45(4),
+427--437.
+
+\bibitem{palechor2019}
+Palechor, F.~M., \& de la Hoz Manotas, A.: Dataset for estimation of obesity levels
+based on eating habits and physical condition in individuals from Colombia, Peru and
+Mexico. \textit{Data in Brief, 25}, 104344.
+\url{https://doi.org/10.1016/j.dib.2019.104344}
+
+\bibitem{kumar2024}
+Kumar, A., Radhika, R., \& Kumar, K.: Obesity Prediction Using Machine Learning
+Technique. In \textit{2024 2nd International Conference on Networking and
+Communications (ICNWC)}, 2024, pp.\ 1--7. IEEE.
+
+\bibitem{kumar2023}
+Kumar, Y., Kaur, I., Odeh, M., Bhargav, P., \& Ijaz, M.~F.: Detection and Diagnosis of
+Different Types of Obesity Using Machine Learning-Based Approaches. In \textit{2023 2nd
+International Engineering Conference on Electrical, Energy, and Artificial Intelligence
+(EICEEAI)}, 2023, pp.\ 1--7. IEEE.
+
+\bibitem{jayswal2023plant}
+Jayswal, H.~S., \& Chaudhari, J.~P.: Plant Diseases Detection and Classification Using
+Machine Learning, Deep Learning, Spectroscopy. In: Senjyu, T., So-In, C., Joshi, A.
+(eds) \textit{Smart Trends in Computing and Communications. SmartCom 2023. Lecture
+Notes in Networks and Systems}, vol.\ 650. Springer, Singapore.
+\url{https://doi.org/10.1007/978-981-99-0838-7_51}
+
+\bibitem{jayswal2023leaf}
+Jayswal, H.~S., \& Chaudhari, J.~P.: Plant Leaf Diseases Detection and Classification
+Using Spectroscopy. In: So-In, C., Londhe, N.~D., Bhatt, N., Kitsing, M. (eds)
+\textit{Information Systems for Intelligent Systems. Smart Innovation, Systems and
+Technologies}, vol.\ 324. Springer, Singapore.
+\url{https://doi.org/10.1007/978-981-19-7447-2_42}
+
+\end{thebibliography}
+
+\end{document}

@@ -12,8 +12,10 @@ Features:
 """
 
 import os
+import importlib.util
 import torch
 from typing import Any, Dict, Optional
+from huggingface_hub import snapshot_download
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -75,6 +77,20 @@ class HuggingFaceProvider(LLMProvider):
         if not self.use_quantization:
             return None
 
+        # BitsAndBytes quantization is primarily useful on CUDA and requires the package.
+        if self.device != "cuda":
+            logger.info(
+                f"[HuggingFace] Disabling quantization for {self.model_name}: "
+                f"device '{self.device}' is not CUDA."
+            )
+            return None
+        if importlib.util.find_spec("bitsandbytes") is None:
+            logger.warning(
+                f"[HuggingFace] Disabling quantization for {self.model_name}: "
+                "bitsandbytes is not installed."
+            )
+            return None
+
         config = self.model_configs.get(model_name, {"quantization": "4bit"})
         quant_type = config.get("quantization", "4bit")
 
@@ -92,6 +108,22 @@ class HuggingFaceProvider(LLMProvider):
             )
 
         return None
+
+    def download_model_assets(self):
+        """Download and cache model files without fully loading weights into memory."""
+        logger.info(f"[HuggingFace] Pre-downloading model assets: {self.model_name}")
+        snapshot_download(
+            repo_id=self.model_name,
+            token=os.getenv("HF_TOKEN") or None,
+            local_files_only=False,
+        )
+
+    def prepare_for_startup(self, strategy: str = "download_only"):
+        """Warm the Hugging Face cache during service startup."""
+        normalized = (strategy or "download_only").strip().lower()
+        self.download_model_assets()
+        if normalized == "full_load":
+            self._load_model()
 
     def _load_model(self):
         """Lazy load the model and tokenizer."""
@@ -194,7 +226,9 @@ class HuggingFaceProvider(LLMProvider):
             "provider": "huggingface",
             "model": self.model_name,
             "device": self.device,
-            "available": self.is_available(),
+            # Keep /llm/status lightweight: do not force a full model load here.
+            "available": self._model is not None,
+            "loaded": self._model is not None,
             "quantization": self.use_quantization,
             "max_memory": torch.cuda.get_device_properties(0).total_memory if torch.cuda.is_available() else None
         }

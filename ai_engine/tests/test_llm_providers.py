@@ -196,6 +196,7 @@ class TestFactory:
         mock_cfg.MODEL_REASONING = "phi3:mini"
         mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"
         mock_cfg.GROQ_API_KEYS = []
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = False
         mock_config.return_value = mock_cfg
 
         provider = get_llm_provider("phi3:mini")
@@ -211,26 +212,29 @@ class TestFactory:
         mock_cfg.LLM_STATUS = "ONLINE"
         mock_cfg.MODEL_REASONING = "phi3:mini"
         mock_cfg.GROQ_API_KEYS = ["key1", "key2"]
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = False
         mock_config.return_value = mock_cfg
 
         provider = get_llm_provider("llama-3.1-70b-versatile")
         assert isinstance(provider, GroqProvider)
 
     @patch("llm.factory._get_config")
-    def test_online_fallback_to_ollama_when_no_keys(self, mock_config):
-        """ONLINE mode without keys should fall back to OllamaProvider."""
+    def test_online_mode_without_keys_raises_in_strict_mode(self, mock_config):
+        """ONLINE mode without keys should fail fast unless fallback is explicitly enabled."""
         from llm.factory import get_llm_provider
-        from llm.ollama_provider import OllamaProvider
 
         mock_cfg = MagicMock()
         mock_cfg.LLM_STATUS = "ONLINE"
         mock_cfg.MODEL_REASONING = "phi3:mini"
         mock_cfg.GROQ_API_KEYS = []
         mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"
+        mock_cfg.OPENROUTER_API_KEYS = []
+        mock_cfg.GEMINI_API_KEYS = []
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = False
         mock_config.return_value = mock_cfg
 
-        provider = get_llm_provider("phi3:mini")
-        assert isinstance(provider, OllamaProvider)
+        with pytest.raises(RuntimeError, match="No ONLINE provider configured"):
+            get_llm_provider("phi3:mini")
 
     @patch("llm.factory._get_config")
     def test_get_llm_status_structure(self, mock_config):
@@ -246,6 +250,7 @@ class TestFactory:
         mock_cfg.MAX_TOKENS = 4096
         mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"
         mock_cfg.GROQ_API_KEYS = []
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = False
         mock_config.return_value = mock_cfg
 
         status = get_llm_status()
@@ -265,11 +270,120 @@ class TestFactory:
         mock_cfg.MODEL_REASONING = "phi3:mini"
         mock_cfg.OLLAMA_BASE_URL = "http://localhost:11434"
         mock_cfg.GROQ_API_KEYS = []
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = False
         mock_config.return_value = mock_cfg
 
         provider1 = get_llm_provider("phi3:mini")
         provider2 = get_llm_provider("phi3:mini")
         assert provider1 is provider2  # Same object from cache
+
+    @patch("llm.factory.get_llm_provider")
+    @patch("llm.factory._get_config")
+    def test_get_llm_status_does_not_create_provider_in_huggingface_mode(
+        self,
+        mock_config,
+        mock_get_llm_provider,
+    ):
+        """Status endpoint should not trigger heavyweight provider creation."""
+        from llm.factory import get_llm_status
+
+        mock_cfg = MagicMock()
+        mock_cfg.LLM_STATUS = "HUGGINGFACE"
+        mock_cfg.MODEL_REASONING = "microsoft/phi-3-medium-4k-instruct"
+        mock_cfg.MODEL_WRITING = "microsoft/phi-3-medium-4k-instruct"
+        mock_cfg.MODEL_CODING = "Qwen/Qwen2.5-Coder-7B-Instruct"
+        mock_cfg.MODEL_CRITICAL = "microsoft/phi-3-medium-4k-instruct"
+        mock_cfg.HUGGINGFACE_DEVICE = "cpu"
+        mock_cfg.HUGGINGFACE_QUANTIZATION = True
+        mock_cfg.DEFAULT_MODELS = []
+        mock_cfg.MAX_TOKENS = 4096
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = False
+        mock_config.return_value = mock_cfg
+
+        status = get_llm_status()
+
+        mock_get_llm_provider.assert_not_called()
+        assert status["mode"] == "HUGGINGFACE"
+        assert status["provider"]["provider"] == "huggingface"
+        assert status["provider"]["loaded"] is False
+
+    @patch("llm.factory._create_ollama_provider")
+    @patch("llm.factory._create_huggingface_provider")
+    @patch("llm.factory._get_config")
+    def test_huggingface_fallback_uses_configured_ollama_url(
+        self,
+        mock_config,
+        mock_create_hf,
+        mock_create_ollama,
+    ):
+        """HUGGINGFACE fallback should use the configured Ollama endpoint."""
+        from llm.factory import get_llm_provider
+
+        mock_cfg = MagicMock()
+        mock_cfg.LLM_STATUS = "HUGGINGFACE"
+        mock_cfg.MODEL_REASONING = "phi3:mini"
+        mock_cfg.OLLAMA_BASE_URL = "http://host.docker.internal:11434"
+        mock_cfg.GROQ_API_KEYS = []
+        mock_cfg.OPENROUTER_API_KEYS = []
+        mock_cfg.GEMINI_API_KEYS = []
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = True
+        mock_config.return_value = mock_cfg
+
+        hf_provider = MagicMock()
+        hf_provider.is_available.return_value = False
+        mock_create_hf.return_value = hf_provider
+
+        ollama_provider = MagicMock()
+        ollama_provider.is_available.return_value = True
+        ollama_provider.provider_name = "ollama"
+        mock_create_ollama.return_value = ollama_provider
+
+        provider = get_llm_provider("phi3:mini")
+
+        mock_create_ollama.assert_called_once_with(mock_cfg, "phi3:mini")
+        assert provider is ollama_provider
+
+    @patch("llm.factory._resolve_online_provider")
+    @patch("llm.factory._create_ollama_provider")
+    @patch("llm.factory._create_huggingface_provider")
+    @patch("llm.factory._get_config")
+    def test_huggingface_fallback_uses_online_provider_when_ollama_unreachable(
+        self,
+        mock_config,
+        mock_create_hf,
+        mock_create_ollama,
+        mock_resolve_online,
+    ):
+        """HUGGINGFACE mode should recover with an ONLINE provider if Ollama is down."""
+        from llm.factory import get_llm_provider
+
+        mock_cfg = MagicMock()
+        mock_cfg.LLM_STATUS = "HUGGINGFACE"
+        mock_cfg.MODEL_REASONING = "phi3:mini"
+        mock_cfg.OLLAMA_BASE_URL = "http://host.docker.internal:11434"
+        mock_cfg.GROQ_API_KEYS = ["key1"]
+        mock_cfg.OPENROUTER_API_KEYS = []
+        mock_cfg.GEMINI_API_KEYS = []
+        mock_cfg.LLM_ALLOW_CROSS_MODE_FALLBACKS = True
+        mock_config.return_value = mock_cfg
+
+        hf_provider = MagicMock()
+        hf_provider.is_available.return_value = False
+        mock_create_hf.return_value = hf_provider
+
+        ollama_provider = MagicMock()
+        ollama_provider.is_available.return_value = False
+        ollama_provider.provider_name = "ollama"
+        mock_create_ollama.return_value = ollama_provider
+
+        online_provider = MagicMock()
+        online_provider.is_available.return_value = True
+        online_provider.provider_name = "groq"
+        mock_resolve_online.return_value = online_provider
+
+        provider = get_llm_provider("phi3:mini")
+
+        assert provider is online_provider
 
 
 
