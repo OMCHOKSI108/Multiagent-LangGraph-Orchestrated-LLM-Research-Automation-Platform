@@ -48,6 +48,7 @@ services:
       MODEL_HF_CODING: ${MODEL_HF_CODING:-Qwen/Qwen2.5-Coder-7B-Instruct}
       HUGGINGFACE_DEVICE: ${HUGGINGFACE_DEVICE:-auto}
       HUGGINGFACE_QUANTIZATION: ${HUGGINGFACE_QUANTIZATION:-true}
+      HUGGINGFACE_PRELOAD_ON_STARTUP: ${HUGGINGFACE_PRELOAD_ON_STARTUP:-false}
 
       # ===== LOCAL MODELS (Fallback) =====
       MODEL_LOCAL_REASONING: ${MODEL_LOCAL_REASONING:-mistral:7b-instruct}
@@ -91,7 +92,7 @@ services:
 
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
-      start_period: 900s
+      start_period: 30s
       interval: 15s
       timeout: 5s
       retries: 10
