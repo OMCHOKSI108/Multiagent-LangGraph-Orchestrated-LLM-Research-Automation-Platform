@@ -1,7 +1,8 @@
-# Paperguide Backend Documentation
+# Backend API Documentation
 
 ## Overview
-Multi-agent research automation backend built with Node.js/Express, PostgreSQL, and optional Redis. Provides APIs for user management, workspace isolation, research orchestration, chat, and admin operations.
+
+The backend is a Node.js/Express API server that provides the interface between the frontend and the AI Engine. It handles user management, workspace isolation, research orchestration, chat, and admin operations.
 
 ---
 
@@ -28,9 +29,9 @@ Multi-agent research automation backend built with Node.js/Express, PostgreSQL, 
 ## Architecture
 
 ### Services
-- **API Server**: Express.js on port 5000
+- **API Server**: Express.js on port 5000 (configurable via `PORT` env var)
 - **Database**: PostgreSQL (persistent)
-- **Cache**: Redis (optional, for SSE tokens)
+- **Cache**: Redis (optional, for SSE tokens and pub/sub)
 - **AI Engine**: Python/FastAPI on port 8000 (orchestrates research)
 - **Worker**: Node.js process that polls research_sessions and forwards to AI Engine
 
@@ -41,6 +42,16 @@ Multi-agent research automation backend built with Node.js/Express, PostgreSQL, 
 - **Soft Deletes**: Workspaces are archived, not deleted
 - **Cascade Deletes**: FK constraints ensure cleanup
 - **JWT + API Keys**: Users authenticate via JWT; external access via per-user API keys
+- **Multi-Key LLM Support**: API keys for Groq, OpenRouter, Gemini with automatic rotation
+
+### Technology Stack
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Database**: PostgreSQL with pg driver
+- **Cache**: Redis (optional)
+- **Auth**: JWT with bcrypt password hashing
+- **Rate Limiting**: express-rate-limit
+- **OAuth**: Passport.js with Google and GitHub strategies
 
 ---
 
@@ -924,10 +935,10 @@ AI_ENGINE_SECRET=shared-secret-with-ai-engine
 ### Optional
 ```bash
 # CORS
-CORS_ORIGIN=https://yourdomain.com
+CORS_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
 FRONTEND_URL=https://yourdomain.com
 
-# Redis (for SSE tokens)
+# Redis (for SSE tokens and pub/sub)
 REDIS_URL=redis://localhost:6379/0
 
 # AI Engine
@@ -938,6 +949,10 @@ ADMIN_SECRET_KEY=dr_admin_super_secret_108
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS_PER_MIN=60
+
+# Performance
+QUEUE_CONCURRENCY=4
+AI_REQUEST_TIMEOUT_MS=1800000
 ```
 
 ---

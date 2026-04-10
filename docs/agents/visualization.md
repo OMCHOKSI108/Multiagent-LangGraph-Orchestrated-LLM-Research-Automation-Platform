@@ -1,24 +1,39 @@
 # Visualization Agent
 
-The **Visualization Agent** adds visual depth to the reports. It scans the data for numerical trends and generates appropriate charts and graphs.
+The **Visualization Agent** adds visual depth to reports. It scans data for numerical trends and generates appropriate charts, graphs, and diagrams.
 
 ## Supported Visualizations
 
-- **Line Charts**: For time-series data (e.g., Stock prices, historical trends).
-- **Bar Charts**: For categorical comparison (e.g., Market share, population).
-- **Pie Charts**: For proportional data.
-- **Network Graphs**: For relationship mapping.
+- **Line Charts**: Time-series data (trends, historical analysis)
+- **Bar Charts**: Categorical comparison (market share, performance metrics)
+- **Pie Charts**: Proportional data (distribution, composition)
+- **Network Graphs**: Relationship mapping (citation networks, concept connections)
+- **Mermaid Diagrams**: Flowcharts and process diagrams
 
 ## Technology Stack
 
-- **Matplotlib**: The core plotting library.
-- **Seaborn**: For statistical data visualization.
-- **Mermaid**: For flowcharts and diagrams.
+- **Matplotlib**: Core plotting library
+- **Seaborn**: Statistical data visualization
+- **ECharts**: Interactive charts for web display
+- **Mermaid**: Flowcharts and diagrams
 
 ## Workflow
 
-1. **Data Detection**: The agent analyzes the research data to find structured numerical content.
-2. **Chart Selection**: Decides the best visualization type for the data.
-3. **Code Generation**: Writes Python code to generate the plot.
-4. **Execution**: Runs the code in a sandboxed environment to produce an image file.
-5. **Embedding**: Returns the image path to be embedded in the final report.
+1. **Data Detection**: Analyze research data for structured numerical content
+2. **Chart Selection**: Decide best visualization type for the data
+3. **Code Generation**: Write code to generate the visualization
+4. **Execution**: Produce image files
+5. **Embedding**: Return image paths for report inclusion
+
+## Image Intelligence
+
+The `ImageIntelligenceAgent` provides:
+- Academic suitability scoring for images
+- Alt text generation
+- Figure caption generation
+
+## Output Locations
+
+Generated images are stored in:
+- `ai_engine/output/research_images/`
+- Served via `/research_images` endpoint in backend

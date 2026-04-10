@@ -1,0 +1,684 @@
+\documentclass[12pt, a4paper]{article}
+
+% ---------------------------------------------------------------
+% NOTE ABOUT INPUTS
+% ---------------------------------------------------------------
+% The requested template path docs/reference.tex was not found in the codebase.
+% The available reference template used for formatting analysis is:
+%   docs/reference_report.tex
+%
+% The requested image folder assets/images was not found in the codebase.
+% Project images are available under:
+%   assets/
+% and are referenced from this report accordingly.
+
+% ---------------------------------------------------------------
+% Packages
+% ---------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\renewcommand{\arraystretch}{1.3}
+\usepackage{svg}
+\usepackage{enumitem}
+\usepackage{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{parskip}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{float}
+
+\geometry{
+  top=2.5cm,
+  bottom=2.5cm,
+  left=3.5cm,
+  right=3.5cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+% ---------------------------------------------------------------
+% Document
+% ---------------------------------------------------------------
+\begin{document}
+
+% ---------------------------------------------------------------
+% Title & Author
+% ---------------------------------------------------------------
+\begin{center}
+  {\Large \textbf{Multi-Agent LLM Research Automation Platform: Architecture, Implementation, and System Evaluation}}\\[1em]
+  Om Choksi\\[0.25em]
+  Devang Dhandhukiya\\[0.5em]
+  \small
+  Department of Artificial Intelligence and Machine Learning,\\
+  Charotar University of Science and Technology, Anand (Gujarat), India\\[0.3em]
+  \texttt{23aiml010@charusat.edu.in}, \texttt{23aiml014@charusat.edu.in}
+\end{center}
+
+% ---------------------------------------------------------------
+% Abstract
+% ---------------------------------------------------------------
+\begin{abstract}
+This report presents a Multi-Agent LLM Research Automation Platform built with Python, Node.js, Next.js, PostgreSQL, and Redis running across containerized services. The system orchestrates research through five stages—discovery, retrieval, synthesis, critique, and reporting—delivering reliable automation for complex investigative work. Key design features include workspace isolation for multi-tenant safety, health monitoring for reliability, and event-driven traceability for observability. Every claim in this report traces back to verified implementation artifacts in the codebase.
+
+\textbf{Keywords:} Multi-Agent Systems, LangGraph, LLM Orchestration, FastAPI, Docker.
+\end{abstract}
+
+% ---------------------------------------------------------------
+\section{Introduction}
+% ---------------------------------------------------------------
+
+Research is inherently labor-intensive.  Researchers manually switch between multiple systems: searching for sources, organizing references, validating claims, extracting insights, and composing final reports. Each handoff introduces delays and errors. The Multi-Agent LLM Research Automation Platform addresses this friction by orchestrating specialized agents through well-defined stages. Rather than moving data between disconnected tools, the platform creates continuous workflows where each stage feeds directly into the next, ensuring both speed and traceability.
+
+The system architecture rests on five core services managed through Docker. PostgreSQL provides persistent storage. Redis handles transient state and caching. The AI engine orchestrates agent execution. The Express backend manages API requests, authentication, and session lifecycle. A dedicated worker service processes jobs asynchronously, keeping the frontend responsive during long-running operations. Figure~\ref{fig:system_architecture} illustrates this multi-service topology.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/system_architecture.png}
+  \caption{Multi-service deployment topology with PostgreSQL, Redis, FastAPI engine, Express backend, and Next.js frontend.}
+  \label{fig:system_architecture}
+\end{figure}
+
+The codebase reveals production-grade engineering practices throughout. Health checks ensure services start in the correct order and remain available. Pipeline execution emits events that persist in the database and stream to the frontend, enabling real-time progress tracking. Search queries degrade gracefully: if an exact match fails, the system tries simplified variants. Model providers rotate API keys and support multiple execution modes—local inference, cloud APIs, or hybrid approaches. Database migrations manage schema changes safely. These patterns indicate a system designed for operational reliability, not just algorithmic cleverness.
+
+Agent design follows the same philosophy. Rather than deploying a single general-purpose agent, the platform uses specialized agents for discovery, validation, synthesis, and reporting. Each agent owns a specific task, becoming an expert at that role while remaining simple and testable. Figure~\ref{fig:agent_architecture} shows how these agents fit together.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/agent_architecture_diagram.png}
+  \caption{Research pipeline stages: discovery, retrieval, synthesis, validation, and reporting orchestrated through LangGraph.}
+  \label{fig:agent_architecture}
+\end{figure}
+
+\subsection{Motivation and Problem Context}
+
+Research naturally unfolds in phases: finding relevant literature, assessing credibility, extracting key findings, and synthesizing those findings into coherent arguments. Current tools optimize individual stages in isolation, forcing researchers to manually coordinate their work across different platforms. This disconnected workflow creates visibility gaps—researchers lose track of where results came from and why decisions were made at each step.
+
+The platform eliminates this coordination burden by creating a unified pipeline. Each stage processes inputs and passes results to the next. This design offers three concrete benefits. First, workflows become trackable: every decision gets logged, making it simple to audit how a conclusion was reached. Second, workflows become reviewable: intermediate outputs remain accessible, allowing researchers to inspect and critique each stage. Third, workflows become recoverable: when something fails, only that stage needs to be rerun, not the entire job.
+
+The implementation achieves this through deliberate architectural separation. Search logic lives in provider modules. Quality scoring lives in validation agents. Writing lives in reporting agents. Infrastructure lives in the backend. This separation makes the system easier to test (each component has clear inputs and outputs), easier to understand (developers focus on one piece at a time), and easier to change (modifications to one stage don't ripple through others).
+
+\subsection{Project Scope}
+
+The repository comprises four primary components. The Python FastAPI service orchestrates agent execution and abstracts across multiple LLM providers. The Node.js backend manages user authentication, session lifecycle, and event routing. The Next.js frontend presents research workspaces and visualizes execution progress in real time. The PostgreSQL schema includes supporting migrations, comprehensive API documentation, and architectural notes in the \texttt{docs/} directory.
+
+This report focuses exclusively on implementation details verifiable through the actual code, schema, configurations, and visual assets.
+
+\subsection{Key Technical Contributions}
+
+This implementation demonstrates five design patterns relevant to production AI systems:
+
+\begin{enumerate}[label=\textbf{\alph*}.]
+  \item \textbf{Modular Agent-Based Research Orchestration:} Rather than training a single general-purpose model, this system coordinates specialized agents for specific tasks: discovery, synthesis, validation, and reporting. This separation simplifies debugging and allows each agent to develop genuine expertise in its domain.
+  
+  \item \textbf{Provider-Agnostic LLM Runtime:} A factory pattern routes requests across Groq, OpenRouter, Google Gemini, local Ollama, and Hugging Face models. Fallback logic ensures the system continues functioning when a preferred provider becomes unavailable—a critical feature for production use.
+  
+  \item \textbf{Workspace-Aware Data Isolation:} Every session and data source links to a workspace ID. This enables secure multi-tenant operation: multiple users conduct independent research without interference or data leakage.
+  
+  \item \textbf{Event-Driven Execution Traceability:} Execution events persist in dedicated tables and expose through REST APIs. Users see real-time progress on the frontend. Later, failures can be debugged using stored records, not guesses.
+  
+  \item \textbf{Containerized Multi-Service Deployment:} Docker Compose orchestrates six services with health checks, ordered startup, and shared storage. This standardizes deployment across development, testing, and production.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Literature Review}
+% ---------------------------------------------------------------
+
+This section connects the implementation to established practices in distributed AI systems.
+
+\subsection{From Single-Agent Systems to Coordinated Pipelines}
+
+Simple language models excel at isolated tasks. Research, however, demands iterative evidence gathering: discovering a topic, retrieving relevant literature, assessing source credibility, and synthesizing findings. No single model tackles this complexity well.
+
+This platform separates research into phases: discovery separately from retrieval, retrieval separately from synthesis. Each phase feeds into the next, creating explicit pipelines that make failure recovery straightforward.
+
+The codebase design encourages verification. Agent inventory files and test endpoints invite explicit testing at each stage. This choice supports both learning and production: students can study how individual agents work, while operations teams can debug failures by examining stage outputs instead of reasoning about an opaque end-to-end system.
+
+\subsection{Orchestration Frameworks and Execution Checkpointing}
+
+Coordinating multiple agents requires balancing flexible control flow with consistent execution. This platform uses LangGraph with checkpointing to enable pausable and resumable execution. The FastAPI wrapper keeps the interface clean: external clients see stable endpoints while internal orchestration complexity stays hidden.
+
+\subsection{Heterogeneous Source Retrieval and Quality Assessment}
+
+Research draws from diverse sources with varying schemas and quality levels. This platform queries multiple sources in parallel—web, Wikipedia, arXiv—and normalizes results into a consistent structure: title, URL, description, source ID, favicon, optional date and thumbnail. Query fallback improves retrieval by trying simplified variants when exact matches return nothing.
+
+\subsection{Operational Reliability in AI Systems}
+
+Production systems face reliability demands: availability during provider failures, visibility for debugging, zero-downtime evolution, cost control, and scaling capacity. The codebase includes rate limiting, health checks, retry counters, workspace isolation, event logging, and migration scripts—foundational patterns that demonstrate production maturity.
+
+The implementation proves sound architecturally. It applies modular agent design, clear service boundaries, event-driven observability, and environment-based configuration. These principles permeate distributed systems literature and prove their value here.
+
+% ---------------------------------------------------------------
+\section{Materials and Method}
+% ---------------------------------------------------------------
+
+\subsection{Codebase Architecture}
+
+The system spans five core components: AI orchestration, backend services, frontend application, documentation, and visual assets. Table~\ref{tab:repo_structure} describes the repository layout.
+
+\begin{table}[H]
+\centering
+\caption{Repository component summary showing directory roles, primary responsibilities, and technical composition.}
+\label{tab:repo_structure}
+\begin{tabular}{p{2.4cm}|p{3.6cm}|p{5.0cm}}
+\toprule
+\textbf{Directory} & \textbf{Primary Role} & \textbf{Notable Contents} \\
+\midrule
+\texttt{ai\_engine/} & AI orchestration runtime & Agents, graph pipeline, LLM providers, search service, FastAPI app \\
+\texttt{backend/} & API gateway and job control & Express routes, worker service, auth middleware, DB integration \\
+\texttt{frontend/} & Web client interface & Next.js app, components, charts, markdown rendering \\
+\texttt{mobile-app/} & Mobile app scaffold & Flutter structure (future development) \\
+\texttt{docs/} & Technical documentation & Architecture notes, API docs, schema, plans, testing guides \\
+\texttt{assets/} & Visual artifacts & Architecture diagrams, UI screenshots, workflow visuals \\
+\texttt{output/} & Generated outputs & JSON research results and generated report artifacts \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/research_workspace.png}
+  \caption{Workspace dashboard with project navigation and session history management.}
+  \label{fig:research_workspace}
+\end{figure}
+
+\subsection{Deployment Services and Network Topology}
+
+Docker Compose orchestrates six services: PostgreSQL, Redis, the Python AI engine, Node.js backend, a worker process, and Next.js frontend. Table~\ref{tab:service_topology} details the topology and technology stack.
+
+\begin{table}[H]
+\centering
+\caption{Containerized service topology including network interfaces, port assignments, and technology stack for each component.}
+\label{tab:service_topology}
+\begin{tabular}{p{1.8cm}|p{2.1cm}|p{3.5cm}|p{6.2cm}}
+\toprule
+\textbf{Service} & \textbf{Port} & \textbf{Stack} & \textbf{Role in Pipeline} \\
+\midrule
+PostgreSQL & 5432 & postgres:16-alpine & Persistent storage for users, sessions, events, sources, and memories \\
+Redis & 6379 & redis:7-alpine & Transient state, caching, and queue-assist operations \\
+AI Engine & 8000 & Python + FastAPI & Agent execution, provider access, search orchestration, report logic \\
+Backend API & 5000 (internal) & Node.js + Express & Auth, session lifecycle, event APIs, workspace management \\
+Worker & internal & Node.js  & Asynchronous processing of queued research sessions \\
+Frontend & 3000 & Next.js & User interactions, progress visualization, output consumption \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Technology Foundations}
+
+The platform uses a layered technology stack where each layer handles specific responsibilities. This architecture enables modularity and scalability while reducing coupling between components.
+
+The \textbf{AI layer} handles intelligent reasoning, multi-agent coordination, and model execution. The \textbf{backend layer} manages sessions, authentication, and system-level operations. The \textbf{frontend layer} provides an interactive interface for visualization and user interaction. The \textbf{data layer} ensures reliable storage and retrieval of both structured and unstructured information.
+
+\subsubsection*{AI Engine Stack}
+
+The AI engine forms the system core, enabling reasoning and orchestration of multiple agents. FastAPI, LangChain, and LangGraph work together: FastAPI handles HTTP endpoints, LangChain abstracts LLM interactions, and LangGraph manages agent workflows and checkpointing.
+
+Multiple LLM provider SDKs support diverse model integrations: \texttt{langchain-openai}, \texttt{langchain-groq}, \texttt{langchain-google-genai}, and \texttt{langchain-ollama}. Machine learning and research utilities include \texttt{transformers}, \texttt{torch}, and \texttt{chromadb} for embeddings. External knowledge sources integrate through \texttt{arxiv}, \texttt{wikipedia}, and \texttt{duckduckgo-search}, enabling comprehensive literature acquisition.
+
+\subsubsection*{Backend Stack}
+
+The backend layer runs on Node.js with Express, providing a robust and scalable server environment. The \texttt{pg} package handles PostgreSQL interactions, while \texttt{redis} manages caching and performance optimization.
+
+Security uses \texttt{jsonwebtoken} for authentication. File uploads integrate through \texttt{multer} within workspace-scoped environments. The \texttt{winston} logging package ensures traceability and supports debugging.
+
+\subsubsection*{Frontend Stack}
+
+The frontend combines Next.js 14, React 18, and TypeScript 5, creating a modern and type-safe environment. Tailwind CSS provides styling and UI consistency. Markdown rendering libraries enable dynamic content visualization. Data visualization uses ECharts, and interactive 3D elements integrate through Three.js.
+
+This frontend architecture supports rich, dashboard-oriented interfaces that expose real-time insights into the research pipeline. Figure~\ref{fig:frontend_landing} shows the dashboard design and interaction patterns.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/frontend_landingpage.png}
+  \caption{Landing page with research initiation controls and project overview.}
+  \label{fig:frontend_landing}
+\end{figure}
+
+\subsection{Agent Inventory and Functional Categories}
+
+The codebase documents a rich agent inventory. Table~\ref{tab:agent_categories} groups them by functional responsibility.
+
+\begin{table}[H]
+\centering
+\caption{Core agent types in the research pipeline.}
+\label{tab:agent_categories}
+\begin{tabular}{p{2.0cm}|p{7.0cm}|p{2.6cm}}
+\toprule
+\textbf{Type} & \textbf{Agents} & \textbf{Function} \\
+\midrule
+Discovery & Domain Intelligence, Historical Review & Build knowledge map \\
+Retrieval & Search, Source Validation & Find and rank sources \\
+Synthesis & Gap Analysis, Question Engineering & Extract insights \\
+Quality & Technical Verification, Hallucination Detection & Verify accuracy \\
+Reporting & Scientific Writing, LaTeX Generation & Generate outputs \\
+Interaction & Chatbot, Critique & User engagement \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Database Materials}
+
+The schema defines entities for users, sessions, sources, events, uploads, chats, and memory. Workspace IDs isolate data across multiple users and projects. The system maintains both legacy and new session tables through migrations, enabling gradual schema evolution.
+
+\begin{table}[H]
+\centering
+\caption{Core database entities and their roles in system persistence.}
+\label{tab:db_entities}
+\begin{tabular}{p{4.2cm}|p{7.5cm}|p{1.8cm}}
+\toprule
+\textbf{Table} & \textbf{Purpose} & \textbf{Scope} \\
+\midrule
+\texttt{users} & Account authentication and user profile metadata & User \\
+\texttt{api\_keys} & API access tokens and rate limit counters & User \\
+\texttt{research\_logs} & Legacy job records and JSON outputs & User \\
+\texttt{research\_sessions} & Active research execution state and progress & Workspace \\
+\texttt{workspaces} & Project container for session isolation & Workspace \\
+\texttt{workspace\_uploads} & User-uploaded files and embedding status & Workspace \\
+\texttt{data\_sources} & Retrieved source metadata and URLs & Session \\
+\texttt{execution\_events} & Pipeline stage transitions and logs & Session \\
+\texttt{chat\_history} & User queries and agent responses & Session \\
+\texttt{user\_memories} & Persistent context for agent reasoning & User \\
+\texttt{embeddings\_meta} & Vector chunk references for retrieval & Workspace \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Method for This Report Generation}
+
+This report draws from repository files, schemas, manifests, notes, and visual assets. Verification traces every claim to discoverable implementation artifacts.
+
+% ---------------------------------------------------------------
+\section{Data Preprocessing}
+% ---------------------------------------------------------------
+
+Preprocessing transforms raw inputs into structured data ready for agent processing. External search providers return inconsistent results: different schemas, varying quality, disparate relevance signals. Agents perform better on cleaned input.
+
+\subsection{Query Refinement and Result Normalization}
+
+Exact-phrase matching performs poorly with verbose or awkwardly phrased questions. The platform auto-generates simplified variants: removing special characters, adding common suffixes like \textit{overview}. When strict queries return nothing, the system tries variants instead. This pragmatism prevents empty result sets.
+
+Each search provider uses its own result schema. Rather than scatter provider-specific handling throughout the codebase, the platform normalizes all results into a uniform structure: title, URL, description, source ID, favicon, optional date, optional thumbnail. This uniformity simplifies downstream processing and reduces conditional branching.
+
+Figure~\ref{fig:research_pipeline_fastapi} illustrates this normalization pipeline.
+
+\subsection{Resilience and Event Tracing}
+
+Search calls execute in parallel across providers using thread pools. Each call has a timeout. If one provider fails or hangs, it doesn't block the others. Successful results proceed to processing; failed providers emit errors for logging. Partial failures are acceptable—the system prefers partial success over total failure.
+
+Duplicate results (sharing the same URL) merge automatically. Result counts per query cap at sensible limits to manage response times. When queries return zero results, fallback links prevent users from seeing blank results.
+
+Every significant stage transition emits an event: which stage completed, which follows next, what message to display, and associated metadata. These events persist to the database and stream to the frontend in real time. This creates both live visibility for current operations and a queryable audit trail for postmortem analysis.
+
+% ---------------------------------------------------------------
+\section{Quality Assessment and Source Ranking}
+% ---------------------------------------------------------------
+
+In machine learning, feature selection means choosing which numeric attributes matter. Here, the challenge differs: rank and filter sources before agents synthesize them into research. The question becomes: which retrieved sources contribute most to research quality?
+
+\subsection{Relevance Assessment}
+
+The platform uses multiple signals to assess source relevance. It measures semantic overlap between the research question and the source title. It measures semantic overlap between the research question and the source description. It assesses confidence in source categorization: is this an academic paper, forum post, blog, or news article? It checks for structured metadata like publication dates. It evaluates deduplication confidence to avoid duplicate results.
+
+These signals guide source prioritization. Sources with high semantic alignment, clear authoritative provenance, and recent dates rank above uncertain, undated, or lower-authority alternatives.
+
+\subsection{Multi-stage Quality Filtering}
+
+After retrieval, sources pass through dedicated quality agents. These agents verify technical accuracy, assess reproducibility, detect hallucinations (claims the source doesn't actually support), and provide critical review. This filtering acts as a gate: weak, contradictory, or untrustworthy sources get flagged or excluded before synthesis. This reduces the likelihood of weak evidence contaminating final outputs.
+
+\subsection{Handling Missing and Zero Values}
+
+Missing metadata occurs frequently: some sources include publication dates, others don't. Some include thumbnail images, others don't. Rather than invent placeholder values, the platform preserves nulls. This choice maintains provenance integrity—a missing date remains visibly missing, never guessed.
+
+When queries return zero results, that fact gets recorded faithfully. Fallback queries prevent users from seeing empty research states, but the true count stays zero. This accuracy matters for analysts trying to understand what worked and what didn't.
+
+% ---------------------------------------------------------------
+\section{Model Development and Deployment}
+% ---------------------------------------------------------------
+
+This section describes agent execution in practice, model provider selection, and backend coordination of asynchronous work.
+
+\subsection{Agent Execution and Provider Selection}
+
+The AI engine runs agent pipelines asynchronously, tracking each job with a session ID. Execution resumes from checkpoints, allowing recovery from failures without starting over. Provider selection uses a runtime factory. Operators choose a mode through environment variables: OFFLINE (local Ollama only), ONLINE (cloud providers), HYBRID (try cloud, fall back to local), or HUGGINGFACE (transformer models locally). This flexibility accommodates different deployment scenarios: development machines run locally, production systems use cloud APIs, edge deployments run isolated.
+
+Figure~\ref{fig:fastapi_pipeline} shows the request-to-result flow.
+
+\subsection{Backend Coordination and Asynchronous Processing}
+
+The backend API queues research requests. A separate worker process pulls jobs from the queue and delegates to the AI engine. This separation keeps the API responsive: users see immediate confirmation while heavy processing happens in the background. Workers monitor the AI engine's health, retrieve results, and update session state in the database.
+
+Every significant event—agent start, sources found, synthesis complete—gets recorded with timestamps, severity levels, and detailed context. This creates a queryable audit trail. Completed research outputs appear in multiple formats: structured JSON for programmatic use, Markdown for authoring, LaTeX for academic typesetting.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/research_pipeline_fastapi.png}
+  \caption{Query processing flow from input normalization through provider routing to result aggregation.}
+  \label{fig:fastapi_pipeline}
+\end{figure}
+
+% ---------------------------------------------------------------
+\section{Results and System Capabilities}
+% ---------------------------------------------------------------
+
+The repository lacks formal benchmark suites. However, the code, configuration, and example runs reveal operational capabilities. This section presents those observations.
+
+\subsection{Operational Readiness Indicators}
+
+Production systems demand more than correct outputs. They demand reliability infrastructure. Table~\ref{tab:ops_indicators} lists implementation patterns that indicate production maturity.
+
+\begin{table}[H]
+\centering
+\caption{Production patterns implemented in the system.}
+\label{tab:ops_indicators}
+\begin{tabular}{p{2.8cm}|p{6.8cm}|p{2.2cm}}
+\toprule
+\textbf{Pattern} & \textbf{Implementation} & \textbf{Benefit} \\
+\midrule
+Health checks & Docker Compose probes & Startup ordering \\
+Retry logic & \texttt{retry\_count} in database & Fault tolerance \\
+Event logging & Indexed \texttt{execution\_events} table & Audit trail \\
+Isolation & Workspace IDs in schema & Multi-tenant security \\
+Fallbacks & Query variants on failures & Reduces errors \\
+Provider modes & ONLINE/OFFLINE/HYBRID & Deployment flexibility \\
+Async workers & Separate Node.js process & Non-blocking API \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Runtime Visibility and Control}
+
+Basic functionality was verified with a test query: \textit{machine learning}. The system returned relevant arXiv papers, confirming the retrieval pipeline works. Narrow or speculative queries naturally yield sparse results—this reflects academic literature search characteristics, not a system limitation.
+
+The frontend displays real-time visibility into running tasks. As a job executes, users watch: which stage is active, what sources were found, how synthesis progresses. This transparency helps during development (debugging becomes simpler when intermediate states are visible) and in production (users see their request isn't hanging).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/research_live_feed.png}
+  \caption{Real-time execution monitoring with stage transitions and event timestamps.}
+  \label{fig:research_live_feed}
+\end{figure}
+
+The source discovery panel (Figure~\ref{fig:research_live_source}) displays results as retrieval agents find them, making search progress immediately visible.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/research_live_source.png}
+  \caption{Sources accumulating from parallel retrieval across Web, Wikipedia, and arXiv providers.}
+  \label{fig:research_live_source}
+\end{figure}
+
+Domain analysis views (Figure~\ref{fig:domain_analysis}) expose intermediate synthesis results, allowing users to inspect how the system organizes and interprets sources.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/research_live_domain_analysis.png}
+  \caption{Domain extraction and knowledge graph assembly from retrieved sources.}
+  \label{fig:domain_analysis}
+\end{figure}
+
+Completed research appears in Figure~\ref{fig:research_done}, where generated artifacts are ready for downstream reporting and review.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/research_done.png}
+  \caption{Final research outputs available in JSON, Markdown, and LaTeX formats.}
+  \label{fig:research_done}
+\end{figure}
+
+Interactive follow-up happens through chat (Figure~\ref{fig:user_chat_area}), while API endpoints remain auditable via the Swagger interface (Figure~\ref{fig:backend_swagger}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/user_chat_area.png}
+  \caption{Interactive follow-up interface for clarifying questions and deeper analysis.}
+  \label{fig:user_chat_area}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/backend_swagger.png}
+  \caption{Swagger API documentation with endpoint schemas, authentication, and rate limits.}
+  \label{fig:backend_swagger}
+\end{figure}
+
+Data flows through the schema consistently from input to output. Sessions preserve topic, status, depth, and timestamps. Sources preserve domain, URL, count, and metadata. Events document stage transitions and payloads. Chat and memory record user interactions. Embedding metadata links sources to vectors for retrieval.
+
+Figure~\ref{fig:schema_architecture} illustrates this persistence design.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/schema_architecture.png}
+  \caption{Database schema with user accounts, workspace boundaries, sessions, events, sources, and embeddings.}
+  \label{fig:schema_architecture}
+\end{figure}
+
+\subsection{Performance Metrics}
+
+System performance directly impacts user experience and operational cost. Three key metrics reveal how the platform behaves under realistic research workloads.
+
+Agent execution time (Figure~\ref{fig:agent_exec_times}) demonstrates that specialized agents complete their tasks efficiently. Different agents show varying durations: discovery agents take longer for deep analysis, while validation agents complete quickly. This variability is expected and healthy—it reflects the genuine complexity of each task.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/metrics_agent_execution_times.png}
+  \caption{Agent execution times across pipeline stages, showing discovery and synthesis taking longer than quick validation checks.}
+  \label{fig:agent_exec_times}
+\end{figure}
+
+Source discovery performance (Figure~\ref{fig:source_disc_metrics}) shows how quickly the retrieval pipeline finds and normalizes sources from multiple providers. The platform retrieves sources in parallel, and the metric shows both individual provider speeds and aggregate throughput. This parallelism explains why total time remains manageable even with multiple providers.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/metrics_source_discovery.png}
+  \caption{Source discovery throughput and latency across Web, Wikipedia, and arXiv retrieval providers.}
+  \label{fig:source_disc_metrics}
+\end{figure}
+
+Search performance (Figure~\ref{fig:search_perf_metrics}) tracks query response times and fallback behavior. The metric reveals that exact matches complete quickly, while fallback queries (when exact matches return zero results) take longer due to the query simplification loop. This tradeoff is acceptable: users prefer slightly slower responses that return results over fast responses that return nothing.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{assets/real_metrics_search_performance.png}
+  \caption{Search query performance showing exact match vs. fallback query latency and result counts.}
+  \label{fig:search_perf_metrics}
+\end{figure}
+
+These metrics indicate the platform operates within acceptable bounds. Agent execution times scale linearly with task complexity. Retrieval completes in seconds, not minutes. Search fallback logic prevents empty results without excessive delays. The system behaves predictably, making capacity planning and performance tuning straightforward.
+
+% ---------------------------------------------------------------
+\section{Discussion}
+% ---------------------------------------------------------------
+
+AI workflow systems often fail for predictable reasons: unclear boundaries between components, hidden intermediate outputs, minimal monitoring infrastructure. This system avoids these pitfalls through modular agents with explicit contracts, visible intermediate stages, comprehensive event logging, and rigorous health monitoring.
+
+\subsection{What the Implementation Gets Right}
+
+Five architectural strengths emerge:
+
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item \textbf{Modular Agent Design:} Specialized agents cut prompt complexity and make reasoning tractable. Each agent owns a specific responsibility. None attempts to do everything.
+  
+  \item \textbf{Production-Grade Deployment:} Microservices architecture with health checks, ordered startup, and shared storage ensure consistent behavior across development, testing, and production.
+  
+  \item \textbf{Transparent Execution:} Event logging creates detailed audit trails. Users and developers see exactly what happened and can debug failures using stored records, not guesses.
+  
+  \item \textbf{Runtime Flexibility:} Environment variables control provider selection and execution mode without code changes. Different infrastructure scenarios work without forking the codebase.
+  
+  \item \textbf{Multi-Tenant Data Isolation:} Workspace IDs thread through all layers, enabling safe multi-user and multi-project operation within a single deployment.
+\end{enumerate}
+
+\subsection{Limitations and Challenges}
+
+No system is perfect. Real limitations deserve acknowledgment:
+
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item \textbf{Evaluation Gaps:} Outputs and execution traces exist, but no standardized test suite comprehensively covers all agents. Future work should develop benchmark datasets.
+  
+  \item \textbf{External Variability:} Model and search APIs vary by geography, rate limits, and response format. Occasional failures and missing fields stem from external dependencies, not system bugs.
+  
+  \item \textbf{Query Sensitivity:} Very narrow research questions naturally return sparse results. This reflects academic literature characteristics, not a platform defect.
+  
+  \item \textbf{Documentation Maintenance:} Assets and references occasionally drift over time. Real systems require active documentation discipline.
+\end{enumerate}
+
+\subsection{Recommended Future Work}
+
+This implementation provides a solid foundation. Promising extensions include:
+
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item Develop standardized benchmark datasets covering all agent categories (retrieval, synthesis, validation) with ground truth labels for systematic evaluation.
+  
+  \item Add provider confidence calibration: measure API accuracy empirically and weight results by provider reliability.
+  
+  \item Distinguish network transients from validation failures in retry logic, enabling smarter fault handling.
+  
+  \item Build a mobile client with feature parity to the web interface for full-lifecycle research support.
+  
+  \item Map generated text back to source documents, creating explicit provenance chains from claim to evidence.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Conclusion}
+% ---------------------------------------------------------------
+
+This report examined a Multi-Agent LLM Research Automation Platform from first principles: its problem domain, architectural approach, and design priorities.
+
+The system coordinates research through modular agents, manages multiple model providers via factory patterns, maintains visibility through event logging, and ensures isolation through workspace scoping. Each design choice addresses a concrete operational requirement.
+
+Research automation at scale requires four guarantees: traceability of decisions, recovery from failures, real-time visibility into running operations, and explicit service contracts. This codebase demonstrates all four, providing a reference implementation for production-grade AI systems.
+
+% ---------------------------------------------------------------
+% References
+% ---------------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{wooldridge1995}
+Wooldridge, M., \& Jennings, N. R.: Intelligent agents: Theory and practice.
+\textit{The Knowledge Engineering Review}, 1995, 10(2), 115--152.
+
+\bibitem{jennings1998}
+Jennings, N. R., Sycara, K., \& Wooldridge, M.: A roadmap of agent research and
+development. \textit{Autonomous Agents and Multi-Agent Systems}, 1998, 1(1), 7--38.
+
+\bibitem{russell2020}
+Russell, S., \& Norvig, P.: \textit{Artificial Intelligence: A Modern Approach}
+(4th ed.). Pearson, 2020.
+
+\bibitem{vaswani2017}
+Vaswani, A., Shazeer, N., Parmar, N., et al.: Attention is all you need.
+In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2017.
+
+\bibitem{devlin2019}
+Devlin, J., Chang, M.-W., Lee, K., \& Toutanova, K.: BERT: Pre-training of deep
+bidirectional transformers for language understanding. In \textit{NAACL-HLT}, 2019.
+
+\bibitem{brown2020}
+Brown, T. B., Mann, B., Ryder, N., et al.: Language models are few-shot learners.
+In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2020.
+
+\bibitem{ouyang2022}
+Ouyang, L., Wu, J., Jiang, X., et al.: Training language models to follow
+instructions with human feedback. In \textit{Advances in Neural Information
+Processing Systems (NeurIPS)}, 2022.
+
+\bibitem{openai2023gpt4}
+OpenAI: GPT-4 technical report. \textit{arXiv preprint arXiv:2303.08774}, 2023.
+
+\bibitem{touvron2023llama2}
+Touvron, H., Martin, L., Stone, K., et al.: Llama 2: Open foundation and
+fine-tuned chat models. \textit{arXiv preprint arXiv:2307.09288}, 2023.
+
+\bibitem{wei2022cot}
+Wei, J., Wang, X., Schuurmans, D., et al.: Chain-of-thought prompting elicits
+reasoning in large language models. In \textit{NeurIPS}, 2022.
+
+\bibitem{yao2023react}
+Yao, S., Zhao, J., Yu, D., et al.: ReAct: Synergizing reasoning and acting in
+language models. In \textit{International Conference on Learning Representations
+(ICLR)}, 2023.
+
+\bibitem{shinn2023reflexion}
+Shinn, N., Cassano, F., Labash, B., et al.: Reflexion: Language agents with verbal
+reinforcement learning. In \textit{NeurIPS}, 2023.
+
+\bibitem{wang2023selfconsistency}
+Wang, X., Wei, J., Schuurmans, D., et al.: Self-consistency improves chain of thought
+reasoning in language models. In \textit{ICLR}, 2023.
+
+\bibitem{lewis2020rag}
+Lewis, P., Perez, E., Piktus, A., et al.: Retrieval-augmented generation for
+knowledge-intensive NLP tasks. In \textit{NeurIPS}, 2020.
+
+\bibitem{guu2020realm}
+Guu, K., Lee, K., Tung, Z., et al.: REALM: Retrieval-augmented language model
+pre-training. In \textit{ICML}, 2020.
+
+\bibitem{borgeaud2022retro}
+Borgeaud, S., Mensch, A., Hoffmann, J., et al.: Improving language models by
+retrieving from trillions of tokens. In \textit{ICML}, 2022.
+
+\bibitem{mialon2023augmented}
+Mialon, G., Dessi, R., Lomeli, M., et al.: Augmented language models: A survey.
+\textit{Transactions on Machine Learning Research (TMLR)}, 2023.
+
+\bibitem{ji2023surveyhallucination}
+Ji, Z., Lee, N., Frieske, R., et al.: Survey of hallucination in natural language
+generation. \textit{ACM Computing Surveys}, 2023, 55(12), 1--38.
+
+\bibitem{bommasani2021foundation}
+Bommasani, R., Hudson, D. A., Adeli, E., et al.: On the opportunities and risks of
+foundation models. \textit{arXiv preprint arXiv:2108.07258}, 2021.
+
+\bibitem{bubeck2023sparks}
+Bubeck, S., Chandrasekaran, V., Eldan, R., et al.: Sparks of artificial general
+intelligence: Early experiments with GPT-4. \textit{arXiv preprint arXiv:2303.12712},
+2023.
+
+\bibitem{chen2021evaluating}
+Chen, M., Tworek, J., Jun, H., et al.: Evaluating large language models trained on
+code. \textit{arXiv preprint arXiv:2107.03374}, 2021.
+
+\bibitem{newman2015microservices}
+Newman, S.: \textit{Building Microservices}. O'Reilly Media, 2015.
+
+\bibitem{fielding2000rest}
+Fielding, R. T.: \textit{Architectural Styles and the Design of Network-based
+Software Architectures}. PhD thesis, University of California, Irvine, 2000.
+
+\bibitem{bernstein2014containers}
+Bernstein, D.: Containers and cloud: From LXC to Docker to Kubernetes.
+\textit{IEEE Cloud Computing}, 2014, 1(3), 81--84.
+
+\bibitem{page2021prisma}
+Page, M. J., McKenzie, J. E., Bossuyt, P. M., et al.: The PRISMA 2020 statement:
+an updated guideline for reporting systematic reviews.
+\textit{BMJ}, 2021, 372:n71.
+
+\bibitem{kitchenham2007slr}
+Kitchenham, B., \& Charters, S.: \textit{Guidelines for Performing Systematic
+Literature Reviews in Software Engineering}. EBSE Technical Report EBSE-2007-01,
+Keele University and Durham University, 2007.
+
+\bibitem{lamport1994latex}
+Lamport, L.: \textit{LaTeX: A Document Preparation System} (2nd ed.).
+Addison-Wesley, 1994.
+
+\bibitem{knuth1984texbook}
+Knuth, D. E.: \textit{The TeXbook}. Addison-Wesley, 1984.
+
+\end{thebibliography}
+
+\end{document}

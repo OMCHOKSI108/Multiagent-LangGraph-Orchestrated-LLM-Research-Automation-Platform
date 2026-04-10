@@ -1,0 +1,29 @@
+{
+  "evaluation_metadata": {
+    "duration_minutes": 20,
+    "timestamp": "2026-04-10T14:41:33.135844",
+    "actual_duration_seconds": 1201.8229055404663,
+    "ai_engine_reachable": true,
+    "backend_reachable": true
+  },
+  "research_metrics": {
+    "total_queries": 0,
+    "successful_queries": 0,
+    "success_rate": 0,
+    "avg_latency_ms": 0,
+    "total_sources_found": 0,
+    "avg_sources_per_query": 0
+  },
+  "search_metrics": {
+    "total_queries": 296,
+    "successful_queries": 296,
+    "avg_latency_ms": 2024.7442907578236,
+    "avg_results_count": 4.601351351351352
+  },
+  "agent_metrics": {},
+  "error_count": 1,
+  "generated_charts": {
+    "search_performance": "D:\\SEM 6\\AIML317_PROJECT_III\\project_sgp\\output\\evaluation\\real_metrics_search_performance.png",
+    "comprehensive_dashboard": "D:\\SEM 6\\AIML317_PROJECT_III\\project_sgp\\output\\evaluation\\real_metrics_comprehensive_dashboard.png"
+  }
+}

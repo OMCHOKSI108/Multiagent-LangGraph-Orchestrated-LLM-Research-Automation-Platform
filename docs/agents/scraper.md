@@ -1,30 +1,41 @@
 # Scraper Agent
 
-The **Scraper Agent** is the data gathering arm of the engine. It is responsible for intelligently navigating the web to find high-quality information relevant to the research topic.
+The **Scraper Agent** is the data gathering component of the AI Engine. It intelligently navigates the web to find high-quality information relevant to the research topic.
 
 ## Capabilities
 
-- **Multi-Source Search**: Queries Google, Wikipedia, Arxiv, and other sources.
-- **Deep Content Extraction**: Visits URLs and extracts the main content, stripping away ads and navigation implementation details.
-- **Smart Filtering**: Uses heuristics and LLM-based filtering to select the most relevant search results.
-- **PDF Parsing**: Capable of reading and extracting text from PDF documents (e.g., academic papers).
+- **Multi-Provider Search**: Queries DuckDuckGo, Google, ArXiv, Wikipedia, OpenAlex, and PubMed
+- **Deep Content Extraction**: Visits URLs and extracts main content, stripping ads and navigation
+- **Smart Filtering**: Uses heuristics and LLM-based filtering to select relevant results
+- **PDF Parsing**: Reads and extracts text from PDF documents (academic papers)
+- **7 Scraping Strategies**: Article extraction, academic APIs, PDF scraping, table data, metadata, multi-page crawling, search engine
 
-## Usage
+## Search Providers
 
-The scraper is typically invoked by the Orchestrator with a search query.
+| Provider | Purpose | Configuration |
+|----------|---------|---------------|
+| DuckDuckGo | Privacy-focused general search | Default |
+| Google | Comprehensive web search | Requires API key |
+| ArXiv | Academic papers and preprints | No key required |
+| Wikipedia | Encyclopedia articles | No key required |
+| OpenAlex | Open access scientific literature | No key required |
+| PubMed | Medical and life science research | Optional email |
+
+## Configuration
+
+The scraper is typically invoked by the Orchestrator with a search query. Provider configuration is in `ai_engine/config.py`:
 
 ```python
-# Agent Tool Interface
-def scrape_tool(query: str):
-    """
-    Scrapes the web for the given query.
-    Returns: A summary of the findings and source URLs.
-    """
-    pass
+SEARCH_PROVIDERS = {
+    "available": ["duckduckgo", "google", "arxiv", "wikipedia", "openalex", "pubmed"],
+    "default": ["duckduckgo", "arxiv"],
+}
 ```
 
 ## Tools Integration
 
-- **Tavily API**: For high-quality search results optimized for LLMs.
-- **Exa (Metaphor)**: for semantic search.
-- **PyPDF2/PDFMiner**: For parsing PDF documents.
+- **Tavily API**: High-quality search results optimized for LLMs
+- **Exa (Metaphor)**: Semantic search capabilities
+- **PyMuPDF/PyPDF**: PDF document parsing
+- **BeautifulSoup**: HTML content extraction
+- **duckduckgo-search**: Privacy-focused search
