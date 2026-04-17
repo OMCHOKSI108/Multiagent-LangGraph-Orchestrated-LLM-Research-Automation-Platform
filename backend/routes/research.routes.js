@@ -170,6 +170,9 @@ router.post('/:id/topic', auth, async (req, res) => {
           selected_topic: normalizedTopic,
           topic_locked: true
         }
+      }, {
+        headers: { 'X-API-Key': process.env.AI_ENGINE_SECRET || '' },
+        timeout: 10000
       });
     } catch (aiErr) {
       logger.warn(`[Node] Failed to update AI Engine state directly: ${aiErr.message}`);

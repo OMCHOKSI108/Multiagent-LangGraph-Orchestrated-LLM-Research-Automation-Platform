@@ -3,8 +3,7 @@ import os
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import logging
-import datetime
-import traceback
+import time
 
 # Add the ai_engine directory to Python path for relative imports
 AI_ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -128,7 +127,11 @@ async def preload_huggingface_models_on_startup():
     if LLM_STATUS != "HUGGINGFACE" or not HUGGINGFACE_PRELOAD_ON_STARTUP:
         return
 
-    from llm.factory import _get_config, _create_huggingface_provider, cache_provider_instance
+    from llm.factory import (
+        _get_config,
+        _create_huggingface_provider,
+        cache_provider_instance,
+    )
 
     cfg = _get_config()
     models = get_huggingface_preload_models()
@@ -152,6 +155,7 @@ async def preload_huggingface_models_on_startup():
             logger.info(f"[Startup] Hugging Face model ready: {provider.model_name}")
         except Exception as e:
             logger.warning(f"[Startup] Failed to preload {model_name}: {e}")
+
 
 # ============================
 # CORS Middleware
@@ -202,6 +206,12 @@ class SearchRequest(BaseModel):
     query: str
     providers: Optional[List[str]] = None
     max_results: int = 10
+
+
+class ScrapeRequest(BaseModel):
+    url: str
+    max_chars: int = 50000
+    timeout_s: float = 55.0
 
 
 @app.get("/health", tags=["Health"])
@@ -659,9 +669,9 @@ async def test_agent(agent_slug: str, request: AgentTestRequest):
             "input": request.task,
             "options": request.options,
             "result": result,
-            "execution_time": result.get("execution_time", 0)
-            if isinstance(result, dict)
-            else 0,
+            "execution_time": (
+                result.get("execution_time", 0) if isinstance(result, dict) else 0
+            ),
             "timestamp": datetime.datetime.now().isoformat(),
         }
 
@@ -672,9 +682,9 @@ async def test_agent(agent_slug: str, request: AgentTestRequest):
             "status": "error",
             "input": request.task,
             "error": str(e),
-            "traceback": traceback.format_exc()
-            if logger.level <= logging.DEBUG
-            else None,
+            "traceback": (
+                traceback.format_exc() if logger.level <= logging.DEBUG else None
+            ),
             "timestamp": datetime.datetime.now().isoformat(),
         }
 
@@ -786,7 +796,11 @@ async def _run_research_pipeline(request: ResearchRequest):
     }
     max_runtime_seconds = timeout_by_depth.get(depth, timeout_by_depth["standard"])
 
-    timeout_label = f"{max_runtime_seconds}s" if max_runtime_seconds and max_runtime_seconds > 0 else "disabled"
+    timeout_label = (
+        f"{max_runtime_seconds}s"
+        if max_runtime_seconds and max_runtime_seconds > 0
+        else "disabled"
+    )
     logger.info(
         f"[Job #{job_id}] Starting research: {request.task[:50]}... "
         f"(depth={depth}, timeout={timeout_label})"
@@ -975,9 +989,7 @@ async def _run_research_pipeline(request: ResearchRequest):
             },
         }
     except asyncio.TimeoutError:
-        timeout_msg = (
-            f"Pipeline exceeded time budget ({max_runtime_seconds}s) for depth='{depth}'."
-        )
+        timeout_msg = f"Pipeline exceeded time budget ({max_runtime_seconds}s) for depth='{depth}'."
         logger.error(f"[Job #{job_id}] {timeout_msg}")
         if research_id:
             emit_event("failed", timeout_msg, severity="error")
@@ -1247,6 +1259,108 @@ async def unified_search(request: SearchRequest):
 
 
 # ============================
+# URL Scrape Endpoint
+# ============================
+
+
+@app.post(
+    "/scrape",
+    tags=["Scraper"],
+    dependencies=[Depends(verify_internal_key)],
+)
+async def scrape_url(request: ScrapeRequest):
+    """Scrape a single URL and return normalized content.
+
+    This endpoint exists to satisfy the backend `POST /sources/scrape` flow.
+
+    Request:
+      - url: URL to scrape
+      - max_chars: cap returned text (default 50k)
+      - timeout_s: overall timeout budget for the scrape call
+
+    Response shape matches `ScrapedContent` fields used by the backend:
+      { url, title, text, authors, published_date, source_type, strategy,
+        metadata, word_count, content_hash, error? }
+    """
+    url = (request.url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(
+            status_code=400, detail="url must start with http:// or https://"
+        )
+
+    max_chars = int(request.max_chars or 0)
+    if max_chars <= 0:
+        max_chars = 50000
+    max_chars = min(max_chars, 200000)
+
+    timeout_s = float(request.timeout_s or 0)
+    if timeout_s <= 0:
+        timeout_s = 55.0
+    timeout_s = min(timeout_s, 60.0)
+
+    start = time.time()
+    try:
+        from scraper.selector import select_strategy
+
+        strategy = select_strategy(url)
+        logger.info(
+            f"[Scrape] url={url} strategy={getattr(strategy, 'name', 'unknown')}"
+        )
+
+        loop = asyncio.get_event_loop()
+        content = await asyncio.wait_for(
+            loop.run_in_executor(executor, lambda: strategy.scrape(url)),
+            timeout=timeout_s,
+        )
+
+        text = content.text or ""
+        if len(text) > max_chars:
+            text = text[:max_chars]
+
+        # Preserve backend-expected keys; include `error` when present.
+        # `content_hash` and `word_count` are derived from returned text.
+        import hashlib
+
+        payload = {
+            "url": getattr(content, "url", url) or url,
+            "title": getattr(content, "title", "") or "",
+            "text": text,
+            "authors": getattr(content, "authors", []) or [],
+            "published_date": getattr(content, "published_date", "") or "",
+            "source_type": getattr(content, "source_type", "web") or "web",
+            "strategy": getattr(
+                content, "strategy", getattr(strategy, "name", "article")
+            )
+            or "article",
+            "metadata": getattr(content, "metadata", {}) or {},
+            "word_count": len(text.split()) if text else 0,
+            "content_hash": (
+                hashlib.sha256(text.encode()).hexdigest()[:16] if text else ""
+            ),
+        }
+        err = getattr(content, "error", None)
+        if err:
+            payload["error"] = str(err)
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        logger.info(f"[Scrape] done url={url} ok={bool(text)} elapsed_ms={elapsed_ms}")
+        return payload
+
+    except asyncio.TimeoutError:
+        elapsed_ms = int((time.time() - start) * 1000)
+        logger.warning(f"[Scrape] timeout url={url} elapsed_ms={elapsed_ms}")
+        raise HTTPException(status_code=504, detail="Scrape timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        elapsed_ms = int((time.time() - start) * 1000)
+        logger.error(f"[Scrape] failed url={url} elapsed_ms={elapsed_ms} err={e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================
 # Research State Management
 # ============================
 
@@ -1256,7 +1370,11 @@ class StateUpdateRequest(BaseModel):
     state_update: Dict[str, Any]
 
 
-@app.post("/research/update-state", tags=["Research"])
+@app.post(
+    "/research/update-state",
+    tags=["Research"],
+    dependencies=[Depends(verify_internal_key)],
+)
 async def update_research_state(request: StateUpdateRequest):
     """
     Update the state of a running research job externally.
@@ -1285,7 +1403,11 @@ async def update_research_state(request: StateUpdateRequest):
 # ============================
 
 
-@app.post("/research/cancel", tags=["Research"])
+@app.post(
+    "/research/cancel",
+    tags=["Research"],
+    dependencies=[Depends(verify_internal_key)],
+)
 async def cancel_research(request: StateUpdateRequest):
     """
     Cancel a running research job.

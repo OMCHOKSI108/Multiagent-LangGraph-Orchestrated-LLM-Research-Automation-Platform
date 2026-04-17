@@ -15,6 +15,7 @@ Critical Rules:
 """
 
 from typing import TypedDict, Dict, Any, List, Optional, Annotated
+import asyncio
 from langgraph.graph import StateGraph, END
 import logging
 import os
@@ -47,6 +48,56 @@ class ResearchState(TypedDict):
 
 
 from agents.registry import AGENTS
+
+
+def _run_coro_sync(coro):
+    """Run an async coroutine from a synchronous context.
+
+    This exists primarily for unit tests that call node functions directly.
+    """
+    try:
+        return asyncio.run(coro)
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(coro)
+
+
+def _merge_state(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge a node update into a base state.
+
+    LangGraph merges partial node outputs into the running state based on the
+    TypedDict annotations. Unit tests call node functions directly, so we
+    emulate the same merge behavior here.
+    """
+    merged: Dict[str, Any] = dict(base)
+
+    base_findings = base.get("findings") or {}
+    update_findings = update.get("findings") or {}
+    if isinstance(base_findings, dict) and isinstance(update_findings, dict):
+        merged["findings"] = {**base_findings, **update_findings}
+    elif "findings" in update:
+        merged["findings"] = update["findings"]
+
+    base_failed = base.get("failed_agents") or {}
+    update_failed = update.get("failed_agents") or {}
+    if isinstance(base_failed, dict) and isinstance(update_failed, dict):
+        if base_failed or update_failed:
+            merged["failed_agents"] = {**base_failed, **update_failed}
+    elif "failed_agents" in update:
+        merged["failed_agents"] = update["failed_agents"]
+
+    base_history = base.get("history") or []
+    update_history = update.get("history") or []
+    if isinstance(base_history, list) and isinstance(update_history, list):
+        merged["history"] = [*base_history, *update_history]
+    elif "history" in update:
+        merged["history"] = update["history"]
+
+    for key, value in update.items():
+        if key in {"findings", "failed_agents", "history"}:
+            continue
+        merged[key] = value
+    return merged
 
 
 async def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -180,7 +231,7 @@ async def run_agent(agent_key: str, state: Dict[str, Any]) -> Dict[str, Any]:
         return failure_payload
 
 
-async def topic_discovery_node(state: ResearchState) -> ResearchState:
+async def _topic_discovery_node_async(state: ResearchState) -> ResearchState:
     result = await run_agent("topic_discovery", state)
     response = (
         result.get("response", {}) if isinstance(result.get("response"), dict) else {}
@@ -195,7 +246,7 @@ async def topic_discovery_node(state: ResearchState) -> ResearchState:
     }
 
 
-async def topic_lock_node(state: ResearchState) -> ResearchState:
+async def _topic_lock_node_async(state: ResearchState) -> ResearchState:
     result = await run_agent("topic_lock", state)
     response = (
         result.get("response", {}) if isinstance(result.get("response"), dict) else {}
@@ -207,7 +258,7 @@ async def topic_lock_node(state: ResearchState) -> ResearchState:
     }
 
 
-async def orchestrator_node(state: ResearchState) -> ResearchState:
+async def _orchestrator_node_async(state: ResearchState) -> ResearchState:
     result = await run_agent("orchestrator", state)
     response = (
         result.get("response", {}) if isinstance(result.get("response"), dict) else {}
@@ -216,7 +267,7 @@ async def orchestrator_node(state: ResearchState) -> ResearchState:
     return {**result, "next_step": next_step}
 
 
-async def domain_node(state):
+async def _domain_node_async(state):
     return await run_agent("domain_intelligence", state)
 
 
@@ -240,8 +291,31 @@ async def innovation_node(state):
     return await run_agent("innovation_novelty", state)
 
 
-async def decomp_node(state):
+async def _decomp_node_async(state):
     return await run_agent("paper_decomposition", state)
+
+
+# ---------------------------------------------------------------------------
+# Synchronous wrappers (used by unit tests)
+# ---------------------------------------------------------------------------
+def topic_discovery_node(state: ResearchState) -> ResearchState:
+    return _merge_state(state, _run_coro_sync(_topic_discovery_node_async(state)))
+
+
+def topic_lock_node(state: ResearchState) -> ResearchState:
+    return _merge_state(state, _run_coro_sync(_topic_lock_node_async(state)))
+
+
+def orchestrator_node(state: ResearchState) -> ResearchState:
+    return _merge_state(state, _run_coro_sync(_orchestrator_node_async(state)))
+
+
+def domain_node(state):
+    return _merge_state(state, _run_coro_sync(_domain_node_async(state)))
+
+
+def decomp_node(state):
+    return _merge_state(state, _run_coro_sync(_decomp_node_async(state)))
 
 
 async def understanding_node(state):
@@ -339,9 +413,9 @@ async def latex_node(state):
 
 
 workflow = StateGraph(ResearchState)
-workflow.add_node("topic_discovery", topic_discovery_node)
-workflow.add_node("topic_lock", topic_lock_node)
-workflow.add_node("orchestrator", orchestrator_node)
+workflow.add_node("topic_discovery", _topic_discovery_node_async)
+workflow.add_node("topic_lock", _topic_lock_node_async)
+workflow.add_node("orchestrator", _orchestrator_node_async)
 
 # 🧠 Brain Node 1: INIT — strategic planning
 workflow.add_node("brain_init", central_brain_node)
@@ -350,13 +424,13 @@ workflow.add_node("brain_synthesize", brain_synthesize_node)
 # 🧠 Brain Node 3: DIRECT — directs the paper before writing
 workflow.add_node("brain_direct", brain_direct_node)
 
-workflow.add_node("domain_intelligence", domain_node)
+workflow.add_node("domain_intelligence", _domain_node_async)
 workflow.add_node("historical_review", historical_node)
 workflow.add_node("slr", slr_node)
 workflow.add_node("news", news_node)
 workflow.add_node("gap_synthesis", gap_node)
 workflow.add_node("innovation", innovation_node)
-workflow.add_node("paper_decomposition", decomp_node)
+workflow.add_node("paper_decomposition", _decomp_node_async)
 workflow.add_node("understanding", understanding_node)
 workflow.add_node("technical_verification", verify_node)
 workflow.add_node("critique", critique_node)
@@ -402,6 +476,11 @@ def route_after_brain_init(state):
     if step == "paper_analysis":
         return "paper_decomposition"
     return "domain_intelligence"
+
+
+def route_strategy(state):
+    """Routing strategy used by unit tests."""
+    return route_after_brain_init(state)
 
 
 workflow.add_conditional_edges(

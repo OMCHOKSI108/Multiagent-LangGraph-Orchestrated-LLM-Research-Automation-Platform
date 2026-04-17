@@ -5,8 +5,11 @@ function normalizeApiBase(baseUrl: string): string {
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
 
-export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+// NOTE: `NEXT_PUBLIC_API_URL` should point at the Node backend base (no trailing `/api` required).
+// In docker-compose dev, backend is exposed on http://localhost:5001 (container:5000).
+export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001');
 export const API_ROOT = API_BASE.replace(/\/api$/, '');
+
 
 function getToken(): string {
   if (typeof window === 'undefined') return '';

@@ -16,7 +16,7 @@ from .base import BaseAgent
 logger = logging.getLogger("ai_engine.registry")
 
 
-class _LazyAgent:
+class _LazyAgent(BaseAgent):
     """
     Defers agent construction until first attribute access or call.
     On first use it imports the module, instantiates the class with
@@ -24,24 +24,81 @@ class _LazyAgent:
     attribute access to the real instance.
     """
 
-    __slots__ = ("_module", "_cls_name", "_kwargs", "_instance")
-
     def __init__(self, module: str, cls_name: str, **kwargs):
-        object.__setattr__(self, "_module", module)
-        object.__setattr__(self, "_cls_name", cls_name)
-        object.__setattr__(self, "_kwargs", kwargs)
-        object.__setattr__(self, "_instance", None)
+        # NOTE: We intentionally do NOT call BaseAgent.__init__ here because that
+        # eagerly constructs an LLM provider. This proxy resolves to a real agent
+        # instance on first use.
+        self._module = module
+        self._cls_name = cls_name
+        self._kwargs = kwargs
+        self._instance = None
+        self._overrides: Dict[str, Any] = {}
+
+        # Provide the attributes tests and call sites expect without forcing
+        # resolution (and thus avoiding side effects at import time).
+        self.name = cls_name
+        self.system_prompt = ""
+        self.model_name = kwargs.get("model_name")
+        self.llm = None
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name.startswith("_"):
+            object.__setattr__(self, name, value)
+            return
+
+        # Always set attributes on the proxy itself so unittest.mock.patch can
+        # reliably clean up via delattr() even if the underlying instance is
+        # already resolved.
+        object.__setattr__(self, name, value)
+        self._overrides[name] = value
+
+        # Best-effort propagation for stateful overrides (e.g. llm mocks) when
+        # the real agent is already resolved. Do NOT propagate patched `run`
+        # into the underlying instance to avoid cross-test leakage.
+        inst = self.__dict__.get("_instance")
+        if inst is not None and name != "run":
+            try:
+                setattr(inst, name, value)
+            except Exception:
+                pass
+
+    def __delattr__(self, name: str) -> None:
+        if name.startswith("_"):
+            object.__delattr__(self, name)
+            return
+
+        overrides = self.__dict__.get("_overrides")
+        if isinstance(overrides, dict):
+            overrides.pop(name, None)
+
+        if name in self.__dict__:
+            object.__delattr__(self, name)
+            return
+        raise AttributeError(name)
+
+    def _apply_overrides(self, inst: BaseAgent) -> None:
+        for key, value in self._overrides.items():
+            if key == "run":
+                # `run` may be patched on the proxy via unittest.mock.patch.
+                # Applying it to the underlying instance makes patch cleanup
+                # unreliable and can leak across tests.
+                continue
+            try:
+                setattr(inst, key, value)
+            except Exception:
+                # Best-effort: overrides are primarily for tests (e.g. llm mocks)
+                pass
 
     def _resolve(self):
-        inst = object.__getattribute__(self, "_instance")
+        inst = self._instance
         if inst is not None:
             return inst
-        mod_path = object.__getattribute__(self, "_module")
-        cls_name = object.__getattribute__(self, "_cls_name")
-        kwargs = object.__getattribute__(self, "_kwargs")
+        mod_path = self._module
+        cls_name = self._cls_name
+        kwargs = self._kwargs
         logger.info(f"Lazy-loading agent: {cls_name} from {mod_path}")
 
-        # Try to resolve module path. 
+        # Try to resolve module path.
         # In Docker, WORKDIR is the engine root, so 'agents.topic' is correct.
         # In some local dev setups, 'ai_engine.agents.topic' might be expected.
         full_module = mod_path
@@ -62,7 +119,8 @@ class _LazyAgent:
             mod = importlib.import_module(full_module)
         cls = getattr(mod, cls_name)
         inst = cls(**kwargs) if kwargs else cls()
-        object.__setattr__(self, "_instance", inst)
+        self._apply_overrides(inst)
+        self._instance = inst
         return inst
 
     def __getattr__(self, name):
@@ -70,6 +128,9 @@ class _LazyAgent:
 
     def __call__(self, *args, **kwargs):
         return self._resolve()(*args, **kwargs)
+
+    def run(self, state: dict) -> dict:
+        return self._resolve().run(state)
 
 
 def _lazy(module: str, cls_name: str, **kwargs) -> _LazyAgent:

@@ -441,6 +441,9 @@ router.post('/:wid/research/:sid/topic', auth, async (req, res) => {
                     selected_topic: normalizedTopic,
                     topic_locked: true
                 }
+            }, {
+                headers: { 'X-API-Key': AI_ENGINE_SECRET },
+                timeout: 10000
             });
         } catch (aiErr) {
             logger.warn(`[Workspace] Failed to update AI Engine state: ${aiErr.message}`);

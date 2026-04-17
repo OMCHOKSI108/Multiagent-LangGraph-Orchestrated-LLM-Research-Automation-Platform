@@ -141,22 +141,6 @@ router.delete('/users/:id', async (req, res) => {
 });
 
 /**
- * 3. DELETE /admin/users/:id
- * Delete a user and cascade.
- */
-router.delete('/users/:id', async (req, res) => {
-    try {
-        const userId = parseInt(req.params.id);
-        await db.query('DELETE FROM users WHERE id = $1', [userId]);
-        // Note: DELETE Cascade should handle workspaces, research_logs, chat_history, etc.
-        res.json({ message: 'User deleted successfully' });
-    } catch (err) {
-        console.error('[Admin] Error deleting user:', err);
-        res.status(500).json({ error: 'Failed to delete user' });
-    }
-});
-
-/**
  * 4. GET /admin/stats/overview
  * Combined stats for the dashboard.
  */
@@ -308,10 +292,10 @@ router.get('/workspaces', async (req, res) => {
 });
 
 /**
- * 7.5 DELETE /admin/workspaces/:id
- * Force delete a workspace.
+ * 7.5 DELETE /admin/workspaces/:id/hard
+ * Hard delete a workspace.
  */
-router.delete('/workspaces/:id', async (req, res) => {
+router.delete('/workspaces/:id/hard', async (req, res) => {
     try {
         const { id } = req.params;
         await db.query('DELETE FROM workspaces WHERE id = $1', [id]);
@@ -323,18 +307,18 @@ router.delete('/workspaces/:id', async (req, res) => {
 });
 
 /**
- * 8. DELETE /admin/workspaces/:wid
+ * 8. DELETE /admin/workspaces/:id
  * Soft delete a workspace globally.
  */
-router.delete('/workspaces/:wid', async (req, res) => {
+router.delete('/workspaces/:id', async (req, res) => {
     try {
-        const { wid } = req.params;
+        const { id } = req.params;
         const result = await db.query(
             `UPDATE workspaces
              SET status = 'archived', updated_at = NOW()
              WHERE id = $1 AND status = 'active'
              RETURNING id`,
-            [wid]
+            [id]
         );
         if (result.rows.length === 0) return res.status(404).json({ error: 'Workspace not found' });
         res.json({ success: true, message: 'Workspace archived by admin' });
@@ -427,7 +411,6 @@ router.get('/memories', async (req, res) => {
 router.post('/memories/search', async (req, res) => {
     try {
         const { query } = req.body;
-        const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000';
 
         // Use ILIKE for basic text search if AI engine isn't integrated for global search,
         // but since AI engine usually handles semantic search, we will emulate it with ILIKE for admin to be safe
