@@ -18,9 +18,14 @@ function initializeMonitoringServices(databaseConnection, collector, keyManager)
     apiKeyManager = keyManager;
 }
 
-// Apply authentication middleware to all routes
-router.use(auth);
-router.use(adminAuth);
+function requireInternalEngineKey(req, res, next) {
+    const expected = process.env.AI_ENGINE_SECRET || '';
+    const provided = req.header('X-API-Key') || '';
+    if (!expected || provided !== expected) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    return next();
+}
 
 /**
  * GET /api/admin/metrics/system
@@ -96,7 +101,7 @@ router.get('/metrics/ai-model', async (req, res) => {
  * POST /api/admin/metrics/llm/:metricType
  * Receive LLM usage metrics from AI engine
  */
-router.post('/metrics/llm/:metricType', async (req, res) => {
+router.post('/metrics/llm/:metricType', requireInternalEngineKey, async (req, res) => {
     try {
         const { metricType } = req.params;
         const metricData = req.body;
@@ -124,6 +129,10 @@ router.post('/metrics/llm/:metricType', async (req, res) => {
         res.status(500).json({ error: 'Failed to store LLM metrics' });
     }
 });
+
+// Apply authentication middleware to all remaining routes
+router.use(auth);
+router.use(adminAuth);
 
 /**
  * GET /api/admin/metrics/llm

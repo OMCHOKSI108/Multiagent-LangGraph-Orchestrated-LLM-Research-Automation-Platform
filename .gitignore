@@ -28,6 +28,13 @@ lib/
 lib64/
 parts/
 
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+backend/node_modules/
+dumb.rdp
+
 sdist/
 var/
 

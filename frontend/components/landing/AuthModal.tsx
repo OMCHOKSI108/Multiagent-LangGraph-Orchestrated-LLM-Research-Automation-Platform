@@ -15,7 +15,7 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
-  const [success, setSuccess]   = useState('');
+  const [success, setSuccess]    = useState('');
   const { login, signup }       = useAuth();
   const router = useRouter();
 
@@ -50,39 +50,33 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
   return (
     /* ── Backdrop ── */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       {/* ── Modal Card ── */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-xl w-full max-w-sm mx-4 p-8">
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
-          {(['login', 'signup'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setError(''); setSuccess(''); }}
-              className={`flex-1 py-2 text-sm font-medium capitalize transition-colors ${
-                tab === t
-                  ? 'border-b-2 border-gray-900 text-gray-900'
-                  : 'text-gray-400 hover:text-gray-700'
-              }`}
-            >
-              {t === 'login' ? 'Login' : 'Sign Up'}
-            </button>
-          ))}
+      <div className="surface-card w-full max-w-md mx-4 p-8 relative animate-slide-up">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-semibold gradient-text mb-1">
+            {tab === 'login' ? 'Welcome back' : 'Create account'}
+          </h2>
+          <p className="text-sm text-[var(--text-muted)]">
+            {tab === 'login' 
+              ? 'Sign in to continue to MARP' 
+              : 'Join MARP to start researching'}
+          </p>
         </div>
 
         {/* Success notice */}
         {success && (
-          <div className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+          <div className="mb-4 text-sm text-[var(--accent-emerald)] bg-[var(--accent-emerald)]/10 border border-[var(--accent-emerald)]/30 rounded-lg px-4 py-3">
             {success}
           </div>
         )}
 
         {/* Error notice */}
         {error && (
-          <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+          <div className="mb-4 text-sm text-[var(--accent-rose)] bg-[var(--accent-rose)]/10 border border-[var(--accent-rose)]/30 rounded-lg px-4 py-3">
             {error}
           </div>
         )}
@@ -91,33 +85,33 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
         {tab === 'login' && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Email</label>
               <input
                 type="email" required autoFocus
                 value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+                className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Password</label>
               <input
                 type="password" required
                 value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Your password"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+                className="input-field"
               />
             </div>
             <button
               type="submit" disabled={loading}
-              className="w-full bg-gray-900 text-white rounded py-2 text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              className="btn-primary w-full py-2.5"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-sm text-[var(--text-tertiary)]">
               No account?{' '}
-              <button type="button" onClick={() => setTab('signup')} className="text-gray-700 underline">
-                Sign Up
+              <button type="button" onClick={() => setTab('signup')} className="text-[var(--accent-teal)] hover:underline">
+                Sign up
               </button>
             </p>
           </form>
@@ -127,42 +121,42 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
         {tab === 'signup' && (
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Full name</label>
               <input
                 type="text" required autoFocus
                 value={name} onChange={e => setName(e.target.value)}
-                placeholder="Your full name"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+                placeholder="Dr. Jane Smith"
+                className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Email</label>
               <input
                 type="email" required
                 value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+                className="input-field"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Password</label>
               <input
                 type="password" required
                 value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Min. 8 characters"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-gray-600"
+                className="input-field"
               />
             </div>
             <button
               type="submit" disabled={loading}
-              className="w-full bg-gray-900 text-white rounded py-2 text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              className="btn-primary w-full py-2.5"
             >
-              {loading ? 'Creating account...' : 'Sign Up'}
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
-            <p className="text-center text-xs text-gray-400">
+            <p className="text-center text-sm text-[var(--text-tertiary)]">
               Have an account?{' '}
-              <button type="button" onClick={() => setTab('login')} className="text-gray-700 underline">
-                Login
+              <button type="button" onClick={() => setTab('login')} className="text-[var(--accent-teal)] hover:underline">
+                Sign in
               </button>
             </p>
           </form>
@@ -171,7 +165,7 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-lg leading-none"
+          className="absolute top-4 right-4 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-2xl leading-none transition-colors"
           aria-label="Close"
         >
           ×

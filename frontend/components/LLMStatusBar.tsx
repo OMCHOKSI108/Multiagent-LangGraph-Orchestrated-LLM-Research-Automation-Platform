@@ -20,27 +20,23 @@ interface LLMProvider {
 }
 
 interface LLMStatus {
-  mode?: string;             // OFFLINE | ONLINE | HYBRID
+  mode?: string;
   provider?: LLMProvider;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
   error?: string;
 }
 
 interface UsageStats {
   total_tokens?: number;
   total_cost?: number;
-  agents?: Record<string, any>;
+  agents?: Record<string, unknown>;
   error?: string;
 }
 
 interface LLMStatusBarProps {
-  /** JWT token for authenticated API calls */
   authToken?: string;
-  /** Compact mode (single line, no label) */
   compact?: boolean;
-  /** List of real-time reasoning thoughts */
   thoughts?: BrainThought[];
-  /** Custom class */
   className?: string;
 }
 
@@ -91,11 +87,10 @@ export default function LLMStatusBar({
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 30_000); // refresh every 30s
+    const id = setInterval(load, 30_000);
     return () => clearInterval(id);
   }, [authToken]);
 
-  // Click outside listener
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -113,9 +108,9 @@ export default function LLMStatusBar({
       <div className={`flex items-center gap-1.5 ${className}`}>
         <span
           className="w-2 h-2 rounded-full animate-pulse"
-          style={{ backgroundColor: '#374151' }}
+          style={{ backgroundColor: 'var(--text-tertiary)' }}
         />
-        <span className="text-[11px]" style={{ color: '#4B5563' }}>Checking LLM…</span>
+        <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Checking LLM…</span>
       </div>
     );
   }
@@ -126,9 +121,8 @@ export default function LLMStatusBar({
   const isOffline = mode === 'OFFLINE';
   const isReasoning = thoughts.length > 0;
 
-  const dotColor = isOnline ? '#22c55e' : isOffline ? '#ef4444' : '#6B7280';
-  const modeColor = isOnline ? '#86efac' : isOffline ? '#fca5a5' : '#9CA3AF';
-  const modeLabel = isOnline ? 'ONLINE' : isOffline ? 'OFFLINE' : mode;
+  const dotColor = isReasoning ? 'var(--accent-violet)' : isOnline ? 'var(--accent-emerald)' : isOffline ? 'var(--accent-rose)' : 'var(--text-tertiary)';
+  const modeColor = isReasoning ? 'var(--accent-violet)' : isOnline ? 'var(--accent-emerald)' : isOffline ? 'var(--accent-rose)' : 'var(--text-muted)';
 
   const providerName = provider?.provider_name || (isOffline ? 'Ollama' : '—');
   const modelName = provider?.model_name || '';
@@ -140,10 +134,10 @@ export default function LLMStatusBar({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border transition-all duration-300 hover:bg-white/5 active:scale-95 ${className}`}
+        className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border transition-all duration-300 hover:bg-[var(--bg-surface-hover)] active:scale-95 ${className}`}
         style={{
-          backgroundColor: showDropdown ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
-          borderColor: showDropdown ? 'rgba(0,245,212,0.3)' : 'rgba(255,255,255,0.08)',
+          backgroundColor: showDropdown ? 'var(--bg-surface)' : 'var(--bg-elevated)',
+          borderColor: showDropdown ? 'var(--accent-teal)' : 'var(--border-default)',
         }}
       >
         {/* Status dot */}
@@ -152,37 +146,37 @@ export default function LLMStatusBar({
             {(isOnline || isReasoning) && (
               <span
                 className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                style={{ backgroundColor: isReasoning ? '#8B5CF6' : dotColor }}
+                style={{ backgroundColor: dotColor }}
               />
             )}
             <span
-              className="relative inline-flex rounded-full h-2 w-2 shadow-[0_0_8px_rgba(34,197,94,0.3)]"
-              style={{ backgroundColor: isReasoning ? '#8B5CF6' : dotColor }}
+              className="relative inline-flex rounded-full h-2 w-2"
+              style={{ backgroundColor: dotColor }}
             />
           </span>
           {!compact && (
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider" style={{ color: isReasoning ? '#A78BFA' : modeColor }}>
-              {isReasoning ? 'REASONING' : modeLabel}
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider" style={{ color: modeColor }}>
+              {isReasoning ? 'REASONING' : mode}
             </span>
           )}
         </div>
 
         {/* Divider */}
-        <span style={{ color: '#374151' }}>|</span>
+        <span style={{ color: 'var(--border-default)' }}>|</span>
 
         {/* Provider + Model */}
-        <span className="text-[11px] flex items-center gap-1.5" style={{ color: '#9CA3AF' }}>
+        <span className="text-[11px] flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
           {providerName}
           {!compact && modelName && (
-            <span style={{ color: '#6B7280' }}> · {modelName.split('/').pop()}</span>
+            <span style={{ color: 'var(--text-tertiary)' }}> · {modelName.split('/').pop()}</span>
           )}
         </span>
 
         {/* Token usage */}
         {tokens != null && tokens > 0 && (
           <>
-            <span style={{ color: '#374151' }} className="hidden sm:inline">|</span>
-            <span className="text-[11px] hidden sm:flex items-center gap-1" style={{ color: '#8B5CF6' }}>
+            <span style={{ color: 'var(--border-default)' }} className="hidden sm:inline">|</span>
+            <span className="text-[11px] hidden sm:flex items-center gap-1" style={{ color: 'var(--accent-violet)' }}>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
@@ -193,7 +187,7 @@ export default function LLMStatusBar({
 
         <svg 
           className={`w-3 h-3 transition-transform duration-300 ml-1 ${showDropdown ? 'rotate-180' : ''}`}
-          style={{ color: '#4B5563' }}
+          style={{ color: 'var(--text-tertiary)' }}
           fill="none" viewBox="0 0 24 24" stroke="currentColor"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -203,17 +197,17 @@ export default function LLMStatusBar({
       {/* Dropdown Popover */}
       {showDropdown && (
         <div 
-          className="absolute right-0 top-full mt-2 w-72 rounded-xl border z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300"
+          className="absolute right-0 top-full mt-2 w-72 rounded-xl border z-50 overflow-hidden animate-fade-in"
           style={{ 
-            backgroundColor: '#111827', 
-            borderColor: 'rgba(255,255,255,0.08)',
-            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5), 0 0 20px rgba(139,92,246,0.1)'
+            backgroundColor: 'var(--bg-elevated)', 
+            borderColor: 'var(--border-default)',
+            boxShadow: 'var(--shadow-card-hover)'
           }}
         >
           {/* Header */}
-          <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#9CA3AF]">System Intelligence</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Active</span>
+          <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-default)', backgroundColor: 'var(--bg-surface)' }}>
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>System Intelligence</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-blue) 10%, transparent)', color: 'var(--accent-blue)' }}>Active</span>
           </div>
 
           <div className="p-3 space-y-3">
@@ -221,27 +215,27 @@ export default function LLMStatusBar({
             {isReasoning ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] animate-pulse" />
-                  <span className="text-[11px] font-medium text-[#D1D5DB]">Current Reasoning</span>
+                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent-violet)' }} />
+                  <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>Current Reasoning</span>
                 </div>
                 <div className="space-y-2">
                   {latestThoughts.map((t, i) => (
                     <div 
                       key={t.id} 
-                      className="p-2 rounded-lg bg-white/[0.03] border border-white/5 space-y-1"
-                      style={{ opacity: 1 - (i * 0.25) }}
+                      className="p-2 rounded-lg space-y-1"
+                      style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-default)', borderWidth: 1 }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-[#A78BFA]">{t.step}</span>
-                        <span className="text-[8px] text-[#4B5563]">{new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'var(--accent-violet)' }}>{t.step}</span>
+                        <span className="text-[8px]" style={{ color: 'var(--text-tertiary)' }}>{new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                       </div>
-                      <p className="text-[10px] text-[#9CA3AF] line-clamp-2 leading-relaxed">
+                      <p className="text-[10px] line-clamp-2 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                         {t.content}
                       </p>
                     </div>
                   ))}
                   {thoughts.length > 3 && (
-                    <button className="w-full py-1.5 text-[9px] text-[#4B5563] hover:text-[#8B5CF6] transition-colors">
+                    <button className="w-full py-1.5 text-[9px] transition-colors" style={{ color: 'var(--text-tertiary)' }}>
                       View all {thoughts.length} steps in Brain tab →
                     </button>
                   )}
@@ -249,21 +243,21 @@ export default function LLMStatusBar({
               </div>
             ) : (
               <div className="py-4 text-center">
-                <p className="text-[11px] text-[#6B7280]">No active reasoning session</p>
+                <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>No active reasoning session</p>
               </div>
             )}
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-              <div className="p-2 rounded-lg bg-white/[0.02]">
-                <p className="text-[9px] text-[#4B5563] uppercase font-bold tracking-wider mb-1">Status</p>
-                <p className="text-[11px] font-medium text-green-400 flex items-center gap-1">
-                  {modeLabel}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t" style={{ borderColor: 'var(--border-default)' }}>
+              <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-surface)' }}>
+                <p className="text-[9px] uppercase font-bold tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Status</p>
+                <p className="text-[11px] font-medium" style={{ color: modeColor }}>
+                  {mode}
                 </p>
               </div>
-              <div className="p-2 rounded-lg bg-white/[0.02]">
-                <p className="text-[9px] text-[#4B5563] uppercase font-bold tracking-wider mb-1">Consumption</p>
-                <p className="text-[11px] font-medium text-[#8B5CF6] flex items-center gap-1">
+              <div className="p-2 rounded-lg" style={{ backgroundColor: 'var(--bg-surface)' }}>
+                <p className="text-[9px] uppercase font-bold tracking-wider mb-1" style={{ color: 'var(--text-tertiary)' }}>Consumption</p>
+                <p className="text-[11px] font-medium" style={{ color: 'var(--accent-violet)' }}>
                   {fmt(tokens)} tokens
                 </p>
               </div>

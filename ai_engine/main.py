@@ -163,7 +163,7 @@ async def preload_huggingface_models_on_startup():
 # Default to a conservative set of origins; can be overridden via ALLOWED_ORIGINS.
 _allowed_origins = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000,https://multiagent-lang-graph-orchestrated.vercel.app",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5001,http://127.0.0.1:5001,http://localhost:5000,http://127.0.0.1:5000,https://multiagent-lang-graph-orchestrated.vercel.app",
 )
 app.add_middleware(
     CORSMiddleware,

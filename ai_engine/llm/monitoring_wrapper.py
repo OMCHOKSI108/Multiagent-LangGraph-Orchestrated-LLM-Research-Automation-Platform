@@ -26,7 +26,6 @@ logger = logging.getLogger("ai_engine.llm.monitoring")
 
 # Global monitoring configuration
 MONITORING_ENABLED = True
-MONITORING_BACKEND_URL = "http://localhost:5000"  # Backend monitoring endpoint
 REQUEST_TIMEOUT = 5.0  # Timeout for monitoring HTTP calls
 
 
@@ -35,7 +34,11 @@ class MonitoringConfig:
 
     def __init__(self):
         self.enabled = True
-        self.backend_url = "http://localhost:5000"
+        # Backend API base URL (should include `/api`), e.g.:
+        # - Docker compose (from host): http://localhost:5001/api
+        # - Docker compose (service-to-service): http://backend:5000/api
+        # - Standalone backend: http://localhost:5000/api
+        self.backend_url = "http://localhost:5001/api"
         self.timeout = 5.0
         self.max_retries = 3
         self.retry_delay = 1.0
@@ -46,7 +49,10 @@ class MonitoringConfig:
         import os
         config = cls()
         config.enabled = os.getenv("LLM_MONITORING_ENABLED", "true").lower() in ("true", "1", "yes", "on")
-        config.backend_url = os.getenv("MONITORING_BACKEND_URL", "http://localhost:5000")
+        config.backend_url = os.getenv(
+            "MONITORING_BACKEND_URL",
+            os.getenv("BACKEND_URL", "http://localhost:5001/api"),
+        )
         config.timeout = float(os.getenv("MONITORING_TIMEOUT", "5.0"))
         config.max_retries = int(os.getenv("MONITORING_MAX_RETRIES", "3"))
         config.retry_delay = float(os.getenv("MONITORING_RETRY_DELAY", "1.0"))
@@ -100,8 +106,15 @@ class LLMMonitoringWrapper(LLMProvider):
             try:
                 import requests
                 import json
+                import os
 
-                url = f"{self.config.backend_url}/admin/metrics/llm/{metric_type}"
+                backend = str(self.config.backend_url or "").rstrip("/")
+                url = f"{backend}/admin/metrics/llm/{metric_type}"
+
+                headers = {"Content-Type": "application/json"}
+                internal_key = os.getenv("AI_ENGINE_SECRET", "")
+                if internal_key:
+                    headers["X-API-Key"] = internal_key
                 payload = {
                     "provider": self.wrapped_provider.provider_name,
                     "model": self.wrapped_provider.model_name,
@@ -113,14 +126,18 @@ class LLMMonitoringWrapper(LLMProvider):
                     url,
                     json=payload,
                     timeout=self.config.timeout,
-                    headers={"Content-Type": "application/json"}
+                    headers=headers,
                 )
 
                 if response.status_code not in (200, 201):
-                    logger.warning(f"[LLM Monitoring] Failed to send metric: HTTP {response.status_code}")
+                    # Keep this quiet unless explicitly debugging; monitoring should never
+                    # be a source of noisy logs.
+                    logger.debug(
+                        f"[LLM Monitoring] Metric post failed: HTTP {response.status_code}"
+                    )
 
             except Exception as e:
-                logger.warning(f"[LLM Monitoring] Failed to send metric to backend: {e}")
+                logger.debug(f"[LLM Monitoring] Failed to send metric to backend: {e}")
 
         # Send in background thread to avoid blocking
         import threading

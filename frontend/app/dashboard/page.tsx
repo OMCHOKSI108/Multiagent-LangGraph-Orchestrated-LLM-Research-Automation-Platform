@@ -14,15 +14,15 @@ function WorkspaceCard({ ws, onClick }: { ws: Workspace; onClick: () => void }) 
   return (
     <div
       onClick={onClick}
-      className="border border-gray-300 px-4 py-3 mb-2 cursor-pointer hover:bg-gray-50 transition-colors"
+      className="card cursor-pointer hover:border-[var(--border-active)] p-4 transition-all duration-200 group"
     >
       <div className="flex items-start justify-between">
-        <h3 className="font-semibold text-base mb-0.5">{ws.name}</h3>
-        <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">
+        <h3 className="font-semibold text-base mb-0.5 group-hover:text-[var(--accent-teal)] transition-colors">{ws.name}</h3>
+        <span className="text-xs text-[var(--text-tertiary)] ml-2 whitespace-nowrap">
           {ws.session_count} session{ws.session_count !== 1 ? 's' : ''}
         </span>
       </div>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-[var(--text-muted)]">
         {ws.description || 'No description'} &middot; {last}
       </p>
     </div>
@@ -100,9 +100,9 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 mb-1">Workspace hub</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1">Workspace hub</p>
           <h2 className="text-2xl font-semibold mb-1">My research workspaces</h2>
-          <p className="text-xs text-slate-400 max-w-xl">
+          <p className="text-xs text-[var(--text-muted)] max-w-xl">
             Each workspace is a long‑lived container for one project: questions, runs, reports, chat, and exports live
             together.
           </p>
@@ -189,10 +189,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick links */}
-      <div className="flex flex-wrap gap-4 text-xs text-slate-400">
-        <Link href="/agents" className="hover:text-emerald-300 transition-colors">Agent directory</Link>
-        <Link href="/memories" className="hover:text-emerald-300 transition-colors">Global memories</Link>
-        <Link href="/profile" className="hover:text-emerald-300 transition-colors">Profile &amp; API key</Link>
+      <div className="flex flex-wrap gap-4 text-xs text-[var(--text-tertiary)]">
+        <Link href="/agents" className="hover:text-[var(--accent-teal)] transition-colors">Agent directory</Link>
+        <Link href="/memories" className="hover:text-[var(--accent-teal)] transition-colors">Global memories</Link>
+        <Link href="/profile" className="hover:text-[var(--accent-teal)] transition-colors">Profile &amp; API key</Link>
       </div>
     </div>
   );

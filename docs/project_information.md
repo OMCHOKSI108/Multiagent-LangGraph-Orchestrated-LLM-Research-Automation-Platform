@@ -476,7 +476,7 @@ NODE_ENV=development
 #### Frontend (.env)
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5001
 ```
 
 ---
@@ -862,7 +862,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+        - NEXT_PUBLIC_API_URL=http://localhost:5001
 
   worker:
     build: ./backend
@@ -958,3 +958,763 @@ cd frontend && npm run lint
 5. **SSE Polling**: 2-second interval balances latency and load
 6. **Database Connection Pooling**: PostgreSQL pool management
 7. **Worker Locking**: Prevents duplicate job processing
+
+---
+
+## Docker Deployment
+
+This project is **fully containerized using Docker** with `docker-compose` for orchestration. All services run in isolated containers with persistent volumes for data storage.
+
+### Docker Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         docker-compose.yml                                    │
+│                    (6 Services + 2 Networks)                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                       │
+│  │  postgres   │  │    redis     │  │  ai_engine   │                       │
+│  │  :5432      │  │   :6379      │  │   :8000      │                       │
+│  │             │  │              │  │              │                       │
+│  │ PostgreSQL  │  │    Redis     │  │   FastAPI    │                       │
+│  │   16-alpine │  │  7-alpine    │  │  LangGraph   │                       │
+│  └──────────────┘  └──────────────┘  └──────────────┘                       │
+│          │                │                  │                             │
+│          └────────────────┼──────────────────┘                             │
+│                           │                                                │
+│                           ▼                                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                       │
+│  │   backend    │  │    worker    │  │   frontend   │                       │
+│  │   :5001      │  │   (no port)  │  │   :3000      │                       │
+│  │              │  │              │  │              │                       │
+│  │  Express.js  │  │  Background  │  │  Next.js     │                       │
+│  │   + Worker   │  │    Queue     │  │   React      │                       │
+│  └──────────────┘  └──────────────┘  └──────────────┘                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Services Overview
+
+| Service | Image | Port | Purpose | Dependencies |
+|---------|-------|------|---------|--------------|
+| **postgres** | `postgres:16-alpine` | 5432 | Primary database | None |
+| **redis** | `redis:7-alpine` | 6379 | Cache & session store | None |
+| **ai_engine** | Custom Python build | 8000 | LangGraph pipeline & agents | redis |
+| **backend** | Custom Node.js build | 5001 | Express API server | postgres, redis, ai_engine |
+| **worker** | Custom Node.js build | - | Background job processor | postgres, redis, ai_engine |
+| **frontend** | Custom Next.js build | 3000 | React UI | backend |
+
+### Docker Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `postgres_data` | PostgreSQL database files |
+| `redis_data` | Redis persistence |
+| `ai_output` | AI engine output files |
+| `ai_logs` | AI engine log files |
+| `ai_cache` | HuggingFace model cache |
+| `research_images` | Shared research images |
+
+### Quick Start Guide
+
+#### Prerequisites
+
+- **Docker** (v20.10+) and **Docker Compose** (v2.0+)
+- **API Keys** for LLM providers (Groq, OpenRouter, Gemini, or HuggingFace)
+
+#### Step 1: Create Environment File
+
+Create a `.env` file in the project root:
+
+```bash
+# .env
+
+# ===================
+# DATABASE
+# ===================
+DB_NAME=research_platform
+DB_USER=research
+DB_PASSWORD=research_password
+DB_PORT=5432
+
+# ===================
+# LLM CONFIGURATION
+# ===================
+# Choose one mode: ONLINE, OFFLINE, HYBRID, or HUGGINGFACE
+LLM_STATUS=ONLINE
+
+# ===================
+# API KEYS (for ONLINE/HYBRID mode)
+# ===================
+# Groq API Keys (recommended for speed)
+GROQ_API_KEY=gsk_your_groq_key_here
+# GROQ_API_1=gsk_key1
+# GROQ_API_2=gsk_key2
+# GROQ_API_3=gsk_key3
+
+# OpenRouter API Keys
+OPENROUTER_API_KEY=sk_or_your_openrouter_key_here
+# OPENROUTER_API_1=sk_key1
+# OPENROUTER_API_2=sk_key2
+# OPENROUTER_API_3=sk_key3
+
+# Gemini API Keys
+GEMINI_API_KEY=your_gemini_key_here
+# GEMINI_API_1=key1
+# GEMINI_API_2=key2
+# GEMINI_API_3=key3
+
+# HuggingFace Token (for HF mode)
+HF_TOKEN=hf_your_token_here
+
+# ===================
+# LOCAL MODELS (for OFFLINE mode)
+# ===================
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+MODEL_LOCAL_REASONING=mistral:7b-instruct
+MODEL_LOCAL_WRITING=gemma2:2b
+MODEL_LOCAL_CODING=qwen2.5-coder:latest
+
+# ===================
+# SECURITY
+# ===================
+JWT_SECRET=your_very_secure_jwt_secret_min_32_chars
+SESSION_SECRET=your_session_secret_here
+AI_ENGINE_SECRET=your_internal_api_secret
+
+# ===================
+# URLS & PORTS
+# ===================
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
+
+# ===================
+# PERFORMANCE
+# ===================
+AI_REQUEST_TIMEOUT_MS=1800000
+QUEUE_CONCURRENCY=4
+```
+
+#### Step 2: Build and Start
+
+```bash
+# Build all Docker images
+docker-compose build
+
+# Start all services in detached mode
+docker-compose up -d
+
+# View startup logs
+docker-compose logs -f
+
+# Check service status
+docker-compose ps
+```
+
+#### Step 3: Access Services
+
+| Service | URL |
+|---------|-----|
+| **Frontend** | http://localhost:3000 |
+| **Backend API** | http://localhost:5001 |
+| **AI Engine** | http://localhost:8000 |
+| **Swagger Docs** | http://localhost:8000/docs |
+| **Health Check** | http://localhost:5001/api/health |
+
+---
+
+### LLM Mode Configuration
+
+The system supports four LLM modes configured via `LLM_STATUS` environment variable:
+
+#### Mode 1: Online (Recommended for Production)
+
+Uses cloud LLM providers with automatic fallback:
+
+```bash
+LLM_STATUS=ONLINE
+
+# API Keys required (at least one)
+GROQ_API_KEY=your_key
+OPENROUTER_API_KEY=your_key
+GEMINI_API_KEY=your_key
+```
+
+**Model Selection:**
+- Reasoning: `openrouter/anthropic/claude-3.5-sonnet`
+- Writing: `openrouter/openai/gpt-4o-mini`
+- Coding: `openrouter/deepseek/deepseek-coder`
+
+#### Mode 2: Offline (Local Ollama)
+
+Runs completely offline using local models:
+
+```bash
+LLM_STATUS=OFFLINE
+
+# Ollama must be running on host machine
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+
+# Local models
+MODEL_LOCAL_REASONING=mistral:7b-instruct
+MODEL_LOCAL_WRITING=gemma2:2b
+MODEL_LOCAL_CODING=qwen2.5-coder:latest
+```
+
+**Setup Ollama on host:**
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull models
+ollama pull mistral:7b-instruct
+ollama pull gemma2:2b
+ollama pull qwen2.5-coder:latest
+
+# Start Ollama server
+ollama serve
+```
+
+#### Mode 3: HuggingFace (Local Inference)
+
+Uses HuggingFace models with quantization:
+
+```bash
+LLM_STATUS=HUGGINGFACE
+
+# HuggingFace token for gated models
+HF_TOKEN=hf_your_token_here
+
+# GPU recommended for performance
+HUGGINGFACE_DEVICE=cuda
+HUGGINGFACE_QUANTIZATION=true
+HUGGINGFACE_PRELOAD_ON_STARTUP=true
+```
+
+#### Mode 4: Hybrid (Cloud with Fallback)
+
+Uses cloud providers with automatic fallback to offline:
+
+```bash
+LLM_STATUS=HYBRID
+
+# Cloud API Keys
+GROQ_API_KEY=your_key
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+```
+
+---
+
+### Docker Files Reference
+
+#### AI Engine Dockerfile (`ai_engine/Dockerfile`)
+
+```dockerfile
+FROM python:3.11-slim
+
+# Install system dependencies for ML libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libmagic-dev poppler-utils tesseract-ocr \
+    libgl1 libglib2.0-0 git
+
+# Install PyTorch with CUDA support
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose port and start server
+ENV PORT=8000
+EXPOSE $PORT
+CMD ["uvicorn", "ai_engine.main:app", "--host", "0.0.0.0", "--port", "$PORT"]
+```
+
+#### Backend API Dockerfile (`backend/Dockerfile.api`)
+
+```dockerfile
+FROM node:20-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ chromium latexmk texlive-latex-base \
+    texlive-latex-recommended texlive-fonts-recommended
+
+# Install Node dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source and start
+COPY . .
+CMD ["node", "scripts/init-all.js && node server.js"]
+```
+
+#### Backend Worker Dockerfile (`backend/Dockerfile.worker`)
+
+```dockerfile
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+CMD ["node", "worker.js"]
+```
+
+#### Frontend Dockerfile (`frontend/Dockerfile`)
+
+```dockerfile
+FROM node:20-slim
+
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+
+COPY package*.json ./
+RUN npm ci --include=dev
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "run", "start", "--", "-H", "0.0.0.0"]
+```
+
+---
+
+### Useful Docker Commands
+
+#### Service Management
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Start specific service with dependencies
+docker-compose up -d backend
+
+# Restart a service
+docker-compose restart worker
+
+# Stop all services (keep volumes)
+docker-compose down
+
+# Stop and remove volumes (clean slate)
+docker-compose down -v
+
+# Rebuild after code changes
+docker-compose up -d --build
+
+# Force rebuild without cache
+docker-compose build --no-cache
+```
+
+#### Logs & Monitoring
+
+```bash
+# View all logs
+docker-compose logs -f
+
+# View logs for specific service
+docker-compose logs -f ai_engine
+docker-compose logs -f backend
+docker-compose logs -f worker
+docker-compose logs -f frontend
+
+# View last 100 lines
+docker-compose logs --tail 100 postgres
+
+# Follow worker logs only
+docker-compose logs -f worker
+```
+
+#### Container Access
+
+```bash
+# Shell into container
+docker-compose exec backend sh
+docker-compose exec ai_engine bash
+docker-compose exec postgres psql -U research -d research_platform
+
+# Python REPL in AI engine
+docker-compose exec ai_engine python -c "import ai_engine.config as c; print(c.LLM_STATUS)"
+
+# Node REPL in backend
+docker-compose exec backend node -e "console.log(process.env.LLM_STATUS)"
+```
+
+#### Database Operations
+
+```bash
+# Connect to PostgreSQL
+docker-compose exec postgres psql -U research -d research_platform
+
+# Run migrations
+docker-compose exec backend node scripts/init-all.js
+
+# Check database size
+docker-compose exec postgres psql -U research -d research_platform -c "SELECT pg_size_pretty(pg_database_size('research_platform'));"
+```
+
+#### Health Checks
+
+```bash
+# Check all service health
+docker-compose ps
+
+# Test AI engine health
+curl http://localhost:8000/health
+
+# Test backend health
+curl http://localhost:5001/api/health
+
+# Test frontend
+curl http://localhost:3000
+```
+
+---
+
+### Troubleshooting
+
+#### Port Already in Use
+
+```bash
+# Check what's using the port
+lsof -i :3000
+lsof -i :5001
+lsof -i :8000
+
+# Or use netstat
+netstat -tulpn | grep LISTEN
+
+# Change ports in docker-compose.yml if needed
+```
+
+#### Database Connection Issues
+
+```bash
+# Check postgres is healthy
+docker-compose ps postgres
+
+# View postgres logs
+docker-compose logs postgres
+
+# Wait longer for postgres to initialize
+docker-compose up -d postgres
+sleep 10
+
+# Run migrations manually
+docker-compose exec backend node scripts/init-all.js
+```
+
+#### AI Engine Not Starting
+
+```bash
+# Check AI engine logs for errors
+docker-compose logs ai_engine
+
+# Verify environment variables
+docker-compose exec ai_engine env | grep -E "LLM_|API_"
+
+# Test API key validity
+docker-compose exec ai_engine python -c "from ai_engine import config; print(config.validate_env())"
+
+# Check GPU availability (if using CUDA)
+docker-compose exec ai_engine nvidia-smi
+```
+
+#### Worker Not Processing Jobs
+
+```bash
+# Check worker logs
+docker-compose logs worker
+
+# Verify AI engine is reachable from worker
+docker-compose exec worker curl -s http://ai_engine:8000/health
+
+# Check database queue
+docker-compose exec postgres psql -U research -d research_platform -c "SELECT * FROM research_sessions WHERE status = 'queued';"
+
+# Reset stuck jobs
+docker-compose exec postgres psql -U research -d research_platform -c "UPDATE research_sessions SET status = 'queued' WHERE status = 'processing';"
+```
+
+#### Out of Memory Issues
+
+```bash
+# Check memory usage
+docker stats
+
+# Limit memory in docker-compose.yml
+services:
+  ai_engine:
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+# Increase swap
+docker system df
+```
+
+#### GPU Not Available in Container
+
+```bash
+# Install NVIDIA Container Toolkit
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+
+# Verify NVIDIA runtime
+docker run --rm --gpus all nvidia/cuda:11.8-base-ubuntu22.04 nvidia-smi
+
+# Update docker-compose.yml to use nvidia runtime
+services:
+  ai_engine:
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+```
+
+---
+
+### Development Mode
+
+For active development with hot reload:
+
+#### Option 1: Hybrid Mode
+
+Keep database and redis in Docker, run services locally:
+
+```bash
+# Start only infrastructure
+docker-compose up -d postgres redis
+
+# Update .env for local services
+# Change AI_ENGINE_URL=http://localhost:8000
+# Change DB_HOST=localhost
+
+# Run services locally
+cd ai_engine && uvicorn main:app --reload
+cd backend && npm run dev
+cd frontend && npm run dev
+```
+
+#### Option 2: Selective Docker
+
+Run only the services you're not developing:
+
+```bash
+# Only start AI engine in Docker
+docker-compose up -d ai_engine postgres redis
+
+# Run backend and frontend locally
+```
+
+#### Volume Mounting for Hot Reload
+
+Enable live code reloading by mounting source directories:
+
+```yaml
+# In docker-compose.yml, ensure volumes are set
+services:
+  ai_engine:
+    volumes:
+      - ./ai_engine:/app/ai_engine  # Already configured
+  backend:
+    volumes:
+      - ./backend:/app               # Already configured
+```
+
+---
+
+### Production Deployment
+
+#### Prerequisites
+
+- Domain name with SSL certificates
+- Reverse proxy (Nginx, Traefik) for HTTPS
+- External PostgreSQL for production
+- Redis cluster or managed Redis (Redis Cloud)
+
+#### Production Checklist
+
+```bash
+# .env.production
+NODE_ENV=production
+
+# Use strong, randomly generated secrets
+JWT_SECRET=$(openssl rand -base64 64)
+SESSION_SECRET=$(openssl rand -base64 64)
+AI_ENGINE_SECRET=$(openssl rand -base64 32)
+
+# Production database (external)
+DATABASE_URL=postgresql://user:pass@prod-db:5432/research_platform
+
+# Redis (external or cluster)
+REDIS_URL=redis://prod-redis:6379/0
+
+# Restrict CORS to your domain
+CORS_ORIGIN=https://your-domain.com
+
+# Enable GPU for AI engine
+RUNTIME=nvidia
+```
+
+#### Docker Stack with Nginx
+
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    # ... same as before
+    expose:
+      - "3000"
+
+  backend:
+    # ... same as before
+    expose:
+      - "5000"
+
+  # ... other services
+```
+
+#### Nginx Configuration
+
+```nginx
+# nginx.conf
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream frontend {
+        server frontend:3000;
+    }
+    
+    upstream backend {
+        server backend:5000;
+    }
+    
+    upstream ai_engine {
+        server ai_engine:8000;
+    }
+    
+    server {
+        listen 80;
+        server_name your-domain.com;
+        return 301 https://$server_name$request_uri;
+    }
+    
+    server {
+        listen 443 ssl http2;
+        server_name your-domain.com;
+        
+        ssl_certificate /etc/nginx/ssl/fullchain.pem;
+        ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+        
+        # Frontend
+        location / {
+            proxy_pass http://frontend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+        
+        # Backend API
+        location /api {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+        
+        # AI Engine
+        location /ai {
+            proxy_pass http://ai_engine;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+        }
+    }
+}
+```
+
+---
+
+### Scaling
+
+#### Horizontal Scaling of Workers
+
+```bash
+# Scale workers
+docker-compose up -d --scale worker=3
+
+# With specific configuration
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale worker=5
+```
+
+#### Load Balancing
+
+For production, consider:
+- **Backend**: Multiple replicas behind load balancer
+- **AI Engine**: Multiple replicas (stateless)
+- **PostgreSQL**: Read replicas for queries
+- **Redis**: Sentinel or Cluster mode
+
+---
+
+### Backup & Recovery
+
+#### Database Backup
+
+```bash
+# Create backup
+docker-compose exec postgres pg_dump -U research research_platform > backup_$(date +%Y%m%d).sql
+
+# Restore from backup
+docker-compose exec -T postgres psql -U research research_platform < backup_20240101.sql
+```
+
+#### Volume Backup
+
+```bash
+# Backup all volumes
+docker run --rm -v project_sgp_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_data.tar.gz -C /data .
+
+# Restore volume
+docker run --rm -v project_sgp_postgres_data:/data -v $(pwd):/backup alpine tar xzf /backup/postgres_data.tar.gz -C /data
+```
+
+---
+
+### Security Best Practices
+
+1. **Never commit secrets**: Use `.env` files excluded from git
+2. **Use secrets management**: Docker Swarm secrets or external vault
+3. **Regular updates**: Keep base images updated
+4. **Network isolation**: Use internal network for services
+5. **Resource limits**: Set memory and CPU limits
+6. **Health checks**: All services have health checks configured
+7. **TLS/SSL**: Use HTTPS in production
+8. **Rate limiting**: Configure on API endpoints
+

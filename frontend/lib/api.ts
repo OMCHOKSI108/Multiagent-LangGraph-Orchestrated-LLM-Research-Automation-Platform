@@ -215,7 +215,45 @@ export interface ResearchSection {
 
 export const research = {
   status: (id: number) => req<ResearchSession>('GET', `/research/status/${id}`),
+  
+  search: (query: string, providers?: string[], max_results?: number) =>
+    req<SearchResults>('POST', '/research/search', { query, providers, max_results }),
+  
+  getSuggestions: (id: number) =>
+    req<{ topic_locked: boolean; selected_topic?: string; topic_suggestions: TopicSuggestion[] }>(
+      'GET', `/research/${id}/suggestions`
+    ),
+  
+  lockTopic: (id: number, topic: string) =>
+    req<{ success: boolean; topic: string }>('POST', `/research/${id}/topic`, { topic }),
+  
+  rename: (id: number, title: string) =>
+    req<{ success: boolean; research: Partial<ResearchSession> }>('PATCH', `/research/${id}/rename`, { title }),
+  
+  delete: (id: number) =>
+    req<{ success: boolean; message: string }>('DELETE', `/research/${id}`),
+  
+  share: (id: number) =>
+    req<{ shareToken: string; shareUrl: string; message: string }>('POST', `/research/${id}/share`),
 };
+
+export interface SearchResults {
+  query: string;
+  results: SearchResult[];
+  total_results: number;
+  providers_used: string[];
+  errors: { provider: string; error: string }[];
+}
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  description: string;
+  source: string;
+  favicon?: string;
+  thumbnail?: string;
+  published?: string;
+}
 
 // ─── Events ──────────────────────────────────────────────────────────────────
 
@@ -328,6 +366,22 @@ export const exportApi = {
     if (!res.ok) throw new Error('PDF export failed');
     return res.blob();
   },
+  downloadZip: async (id: number) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/export/${id}/zip`, {
+      headers: { 'x-auth-token': token },
+    });
+    if (!res.ok) throw new Error('ZIP export failed');
+    return res.blob();
+  },
+  downloadPlots: async (id: number) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/export/${id}/plots`, {
+      headers: { 'x-auth-token': token },
+    });
+    if (!res.ok) throw new Error('Plots export failed');
+    return res.blob();
+  },
   compileToPdf: async (researchId: number, content: string) => {
     const token = getToken();
     const res = await fetch(`${API_BASE}/export/compile`, {
@@ -361,9 +415,13 @@ export const memories = {
   create: (title: string, content: string, tags?: string[]) =>
     req<Memory>('POST', '/memories', {
       content,
-      metadata: { title, tags }
+      title,
+      tags: tags || [],
+      source: 'user',
     }),
   delete: (id: number) => req<{ success: boolean; id: number }>('DELETE', `/memories/${id}`),
+  search: (query: string) =>
+    req<{ memories: Memory[] }>('POST', '/memories/search', { query }),
 };
 
 // ─── Agents ──────────────────────────────────────────────────────────────────

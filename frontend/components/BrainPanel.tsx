@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -13,19 +13,19 @@ export interface BrainThought {
 
 interface BrainPanelProps {
   thoughts: BrainThought[];
-  isActive: boolean;   // true while research is running
+  isActive: boolean;
 }
 
 // ─── Step Config ─────────────────────────────────────────────────────────────
 
-const STEP_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  analyzing:     { label: 'Analyzing',     color: '#60A5FA', bg: 'rgba(96,165,250,0.08)',   border: 'rgba(96,165,250,0.2)' },
-  hypothesizing: { label: 'Hypothesizing', color: '#FBBF24', bg: 'rgba(251,191,36,0.08)',   border: 'rgba(251,191,36,0.2)' },
-  planning:      { label: 'Planning',      color: '#34D399', bg: 'rgba(52,211,153,0.08)',   border: 'rgba(52,211,153,0.2)' },
-  images:        { label: 'Image Strategy', color: '#A78BFA', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.2)' },
-  structure:     { label: 'Structuring',   color: '#F472B6', bg: 'rgba(244,114,182,0.08)', border: 'rgba(244,114,182,0.2)' },
-  reflecting:    { label: 'Reflecting',    color: '#00F5D4', bg: 'rgba(0,245,212,0.08)',    border: 'rgba(0,245,212,0.2)' },
-  default:       { label: 'Thinking',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)',   border: 'rgba(139,92,246,0.2)' },
+const STEP_CONFIG: Record<string, { label: string; colorVar: string; bgVar: string; borderVar: string }> = {
+  analyzing:     { label: 'Analyzing',      colorVar: '--status-info',     bgVar: '--glow-blue',       borderVar: '--accent-blue' },
+  hypothesizing: { label: 'Hypothesizing',  colorVar: '--status-warning',  bgVar: '--glow-amber',      borderVar: '--accent-amber' },
+  planning:      { label: 'Planning',         colorVar: '--accent-emerald',  bgVar: '--glow-emerald',    borderVar: '--accent-emerald' },
+  images:        { label: 'Image Strategy',  colorVar: '--accent-violet',   bgVar: '--glow-violet',     borderVar: '--accent-violet' },
+  structure:     { label: 'Structuring',     colorVar: '--accent-rose',    bgVar: '--glow-violet',     borderVar: '--accent-rose' },
+  reflecting:    { label: 'Reflecting',     colorVar: '--accent-teal',    bgVar: '--glow-teal',        borderVar: '--accent-teal' },
+  default:       { label: 'Thinking',        colorVar: '--accent-violet',   bgVar: '--glow-violet',     borderVar: '--accent-violet' },
 };
 
 function getStepConfig(step: string) {
@@ -50,7 +50,7 @@ function ThinkingDots() {
           key={i}
           className="w-1 h-1 rounded-full animate-bounce"
           style={{
-            backgroundColor: '#8B5CF6',
+            backgroundColor: 'var(--accent-violet)',
             animationDelay: `${i * 150}ms`,
             animationDuration: '900ms',
           }}
@@ -63,17 +63,17 @@ function ThinkingDots() {
 // ─── Single thought card ──────────────────────────────────────────────────────
 
 function ThoughtCard({ thought, index }: { thought: BrainThought; index: number }) {
-  const [expanded, setExpanded] = useState(index < 3); // first 3 auto-open
+  const [expanded, setExpanded] = useState(index < 3);
   const cfg = getStepConfig(thought.step);
   const preview = thought.content.slice(0, 120);
   const hasMore = thought.content.length > 120;
 
   return (
     <div
-      className="rounded-xl border mb-2 overflow-hidden transition-all duration-300 hover:scale-[1.005]"
+      className="rounded-xl border mb-2 overflow-hidden transition-all duration-300 hover:scale-[1.005] hover:border-[var(--accent-teal)]/30"
       style={{
-        backgroundColor: cfg.bg,
-        borderColor: cfg.border,
+        backgroundColor: `color-mix(in srgb, var(${cfg.bgVar}) 10%, transparent)`,
+        borderColor: `color-mix(in srgb, var(${cfg.borderVar}) 20%, transparent)`,
         animationDelay: `${index * 40}ms`,
       }}
     >
@@ -83,26 +83,29 @@ function ThoughtCard({ thought, index }: { thought: BrainThought; index: number 
         className="w-full flex items-center justify-between p-3 text-left"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="flex-shrink-0" style={{ color: cfg.color }}><BrainIcon className="w-4 h-4" /></span>
+          <span className="flex-shrink-0" style={{ color: `var(${cfg.colorVar})` }}><BrainIcon className="w-4 h-4" /></span>
           <span
             className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: cfg.border, color: cfg.color }}
+            style={{ 
+              backgroundColor: `color-mix(in srgb, var(${cfg.borderVar}) 20%, transparent)`,
+              color: `var(${cfg.colorVar})`
+            }}
           >
             {cfg.label}
           </span>
           {!expanded && (
-            <span className="text-[11px] truncate" style={{ color: '#6B7280' }}>
+            <span className="text-[11px] truncate text-[var(--text-tertiary)]">
               {preview}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-          <span className="text-[10px]" style={{ color: '#4B5563' }}>
+          <span className="text-[10px] text-[var(--text-tertiary)]">
             {new Date(thought.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
           <svg
-            className="w-3.5 h-3.5 transition-transform duration-200"
-            style={{ color: '#6B7280', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            className="w-3.5 h-3.5 transition-transform duration-200 text-[var(--text-tertiary)]"
+            style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
             fill="none" viewBox="0 0 24 24" stroke="currentColor"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -113,8 +116,8 @@ function ThoughtCard({ thought, index }: { thought: BrainThought; index: number 
       {/* Expanded content */}
       {expanded && (
         <div
-          className="px-4 pb-3 text-xs leading-relaxed whitespace-pre-wrap"
-          style={{ color: '#D1D5DB', borderTop: `1px solid ${cfg.border}` }}
+          className="px-4 pb-3 text-xs leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)]"
+          style={{ borderTop: `1px solid color-mix(in srgb, var(${cfg.borderVar}) 20%, transparent)` }}
         >
           <div className="pt-2">{thought.content}</div>
         </div>
@@ -131,28 +134,28 @@ function EmptyBrain({ isActive }: { isActive: boolean }) {
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
         style={{
-          background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)',
-          border: '1px solid rgba(139,92,246,0.2)',
+          background: `radial-gradient(circle, color-mix(in srgb, var(--accent-violet) 15%, transparent) 0%, transparent 70%)`,
+          border: `1px solid color-mix(in srgb, var(--accent-violet) 20%, transparent)`,
         }}
       >
-        <span style={{ color: '#8B5CF6' }}><BrainIcon className="w-7 h-7" /></span>
+        <span style={{ color: 'var(--accent-violet)' }}><BrainIcon className="w-7 h-7" /></span>
       </div>
       {isActive ? (
         <>
-          <p className="text-sm font-medium" style={{ color: '#D1D5DB' }}>
+          <p className="text-sm font-medium text-[var(--text-secondary)]">
             Brain warming up…
           </p>
-          <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
+          <p className="text-xs mt-1 text-[var(--text-tertiary)]">
             Thoughts will appear here as the AI reasons through your research.
           </p>
           <ThinkingDots />
         </>
       ) : (
         <>
-          <p className="text-sm font-medium" style={{ color: '#9CA3AF' }}>
+          <p className="text-sm font-medium text-[var(--text-muted)]">
             No brain activity yet
           </p>
-          <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
+          <p className="text-xs mt-1 text-[var(--text-tertiary)]">
             Start a research session to watch the AI think in real time.
           </p>
         </>
@@ -161,7 +164,7 @@ function EmptyBrain({ isActive }: { isActive: boolean }) {
   );
 }
 
-// ─── Main BrainPanel ──────────────────────────────────────────────────────────
+// ─── Main BrainPanel ─────────────────────────────────────────────────────────
 
 export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
   const [filterStep, setFilterStep] = useState<string>('all');
@@ -174,17 +177,17 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0"
-        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+        style={{ borderColor: 'var(--border-default)' }}
       >
         <div className="flex items-center gap-2">
-          <span style={{ color: '#8B5CF6' }}><BrainIcon className="w-4 h-4" /></span>
-          <span className="text-sm font-semibold" style={{ color: '#F9FAFB' }}>
+          <span style={{ color: 'var(--accent-violet)' }}><BrainIcon className="w-4 h-4" /></span>
+          <span className="text-sm font-semibold text-[var(--text-primary)]">
             AI Reasoning
           </span>
           {thoughts.length > 0 && (
             <span
               className="text-[10px] px-2 py-0.5 rounded-full font-mono"
-              style={{ backgroundColor: 'rgba(139,92,246,0.15)', color: '#8B5CF6' }}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--accent-violet) 15%, transparent)', color: 'var(--accent-violet)' }}
             >
               {thoughts.length} thoughts
             </span>
@@ -199,9 +202,9 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
               onClick={() => setFilterStep('all')}
               className="text-[10px] px-2 py-1 rounded-lg transition-colors"
               style={{
-                backgroundColor: filterStep === 'all' ? 'rgba(139,92,246,0.2)' : 'transparent',
-                color: filterStep === 'all' ? '#8B5CF6' : '#6B7280',
-                border: filterStep === 'all' ? '1px solid rgba(139,92,246,0.3)' : '1px solid transparent',
+                backgroundColor: filterStep === 'all' ? 'color-mix(in srgb, var(--accent-violet) 20%, transparent)' : 'transparent',
+                color: filterStep === 'all' ? 'var(--accent-violet)' : 'var(--text-tertiary)',
+                border: filterStep === 'all' ? '1px solid color-mix(in srgb, var(--accent-violet) 30%, transparent)' : '1px solid transparent',
               }}
             >
               All
@@ -214,9 +217,9 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
                   onClick={() => setFilterStep(step)}
                   className="text-[10px] px-2 py-1 rounded-lg transition-colors"
                   style={{
-                    backgroundColor: filterStep === step ? cfg.bg : 'transparent',
-                    color: filterStep === step ? cfg.color : '#6B7280',
-                    border: filterStep === step ? `1px solid ${cfg.border}` : '1px solid transparent',
+                    backgroundColor: filterStep === step ? `color-mix(in srgb, var(${cfg.bgVar}) 20%, transparent)` : 'transparent',
+                    color: filterStep === step ? `var(${cfg.colorVar})` : 'var(--text-tertiary)',
+                    border: filterStep === step ? `1px solid color-mix(in srgb, var(${cfg.borderVar}) 30%, transparent)` : '1px solid transparent',
                   }}
                 >
                   {cfg.label}
@@ -240,12 +243,12 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
               <div
                 className="flex items-center gap-2 p-3 rounded-xl border mt-2"
                 style={{
-                  backgroundColor: 'rgba(139,92,246,0.05)',
-                  borderColor: 'rgba(139,92,246,0.15)',
+                  backgroundColor: 'color-mix(in srgb, var(--accent-violet) 5%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--accent-violet) 15%, transparent)',
                 }}
               >
-                <span style={{ color: '#8B5CF6' }}><BrainIcon className="w-4 h-4" /></span>
-                <span className="text-xs" style={{ color: '#8B5CF6' }}>
+                <span style={{ color: 'var(--accent-violet)' }}><BrainIcon className="w-4 h-4" /></span>
+                <span className="text-xs text-[var(--accent-violet)]">
                   Thinking…
                 </span>
                 <ThinkingDots />
@@ -259,9 +262,9 @@ export default function BrainPanel({ thoughts, isActive }: BrainPanelProps) {
       {!isActive && thoughts.length > 0 && (
         <div
           className="flex-shrink-0 px-4 py-2 border-t text-center"
-          style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+          style={{ borderColor: 'var(--border-default)' }}
         >
-          <span className="text-[11px]" style={{ color: '#4B5563' }}>
+          <span className="text-[11px] text-[var(--text-tertiary)]">
             Reasoning complete · {thoughts.length} thought{thoughts.length !== 1 ? 's' : ''} logged
           </span>
         </div>

@@ -13,7 +13,10 @@ import logging
 import requests
 from typing import Any, Dict
 
-from langchain_ollama import ChatOllama
+try:
+    from langchain_ollama import ChatOllama  # type: ignore
+except Exception:  # pragma: no cover
+    ChatOllama = None  # type: ignore
 
 from .base import LLMProvider
 
@@ -53,6 +56,11 @@ class OllamaProvider(LLMProvider):
         Returns a cached ChatOllama instance.
         If the requested model isn't available, falls back to the default model.
         """
+        if ChatOllama is None:
+            raise ImportError(
+                "Missing optional dependency 'langchain-ollama'. "
+                "Install it to use LLM_STATUS=OFFLINE (Ollama) mode."
+            )
         if self._llm is None:
             # Check if the specific model is available
             actual_model = self._resolve_model()

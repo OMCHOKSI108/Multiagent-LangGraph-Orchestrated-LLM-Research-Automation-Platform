@@ -269,6 +269,7 @@ class LLMProvider(ABC):
             import time
             import requests
             import json
+            import os
 
             end_time = time.time()
             response_time = end_time - getattr(self, '_call_start_time', end_time)
@@ -277,7 +278,9 @@ class LLMProvider(ABC):
             tokens_input, tokens_output = self._extract_token_usage(result)
 
             # Send to monitoring backend
-            monitoring_url = "http://localhost:5000/admin/metrics/llm/request"
+            backend = os.getenv("MONITORING_BACKEND_URL") or os.getenv("BACKEND_URL") or "http://localhost:5001/api"
+            backend = str(backend).rstrip("/")
+            monitoring_url = f"{backend}/admin/metrics/llm/request"
             payload = {
                 "provider": self.provider_name,
                 "model": self.model_name,
@@ -292,7 +295,16 @@ class LLMProvider(ABC):
             # Non-blocking HTTP call
             def send_metric():
                 try:
-                    requests.post(monitoring_url, json=payload, timeout=2.0)
+                    headers = {}
+                    internal_key = os.getenv("AI_ENGINE_SECRET", "")
+                    if internal_key:
+                        headers["X-API-Key"] = internal_key
+                    requests.post(
+                        monitoring_url,
+                        json=payload,
+                        timeout=2.0,
+                        headers=headers or None,
+                    )
                 except:
                     pass  # Silently fail if monitoring backend is unavailable
 
@@ -310,12 +322,15 @@ class LLMProvider(ABC):
             import time
             import requests
             import json
+            import os
 
             end_time = time.time()
             response_time = end_time - getattr(self, '_call_start_time', end_time)
 
             # Send to monitoring backend
-            monitoring_url = "http://localhost:5000/admin/metrics/llm/request"
+            backend = os.getenv("MONITORING_BACKEND_URL") or os.getenv("BACKEND_URL") or "http://localhost:5001/api"
+            backend = str(backend).rstrip("/")
+            monitoring_url = f"{backend}/admin/metrics/llm/request"
             payload = {
                 "provider": self.provider_name,
                 "model": self.model_name,
@@ -330,7 +345,16 @@ class LLMProvider(ABC):
             # Non-blocking HTTP call
             def send_metric():
                 try:
-                    requests.post(monitoring_url, json=payload, timeout=2.0)
+                    headers = {}
+                    internal_key = os.getenv("AI_ENGINE_SECRET", "")
+                    if internal_key:
+                        headers["X-API-Key"] = internal_key
+                    requests.post(
+                        monitoring_url,
+                        json=payload,
+                        timeout=2.0,
+                        headers=headers or None,
+                    )
                 except:
                     pass  # Silently fail if monitoring backend is unavailable
 

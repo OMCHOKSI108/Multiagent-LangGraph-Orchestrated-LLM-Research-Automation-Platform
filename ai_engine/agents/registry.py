@@ -36,10 +36,13 @@ class _LazyAgent(BaseAgent):
 
         # Provide the attributes tests and call sites expect without forcing
         # resolution (and thus avoiding side effects at import time).
-        self.name = cls_name
-        self.system_prompt = ""
-        self.model_name = kwargs.get("model_name")
-        self.llm = None
+        # IMPORTANT: set these via object.__setattr__ so they do not end up in
+        # _overrides, otherwise they would overwrite the real agent instance
+        # attributes (including the constructed LLM wrapper) when resolved.
+        object.__setattr__(self, "name", cls_name)
+        object.__setattr__(self, "system_prompt", "")
+        object.__setattr__(self, "model_name", kwargs.get("model_name"))
+        object.__setattr__(self, "llm", None)
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name.startswith("_"):

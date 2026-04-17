@@ -351,10 +351,10 @@ function ChatBubble({ msg }: { msg: Msg }) {
       <div
         className={`relative inline-block max-w-[85%] text-left px-4 py-3 text-sm leading-relaxed
           ${isUser
-            ? 'bg-gradient-to-r from-[#00F5D4]/20 to-[#3B82F6]/10 border border-[#00F5D4]/30 text-[#F9FAFB]'
+            ? 'bg-gradient-to-r from-[var(--accent-teal)]/20 to-[var(--accent-blue)]/10 border border-[var(--accent-teal)]/30 text-[var(--text-primary)]'
             : msg.role === 'system'
-              ? 'bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 text-[#9CA3AF]'
-              : 'bg-[#111827]/80 border border-[rgba(255,255,255,0.1)] text-[#9CA3AF]'}`}
+              ? 'bg-[var(--accent-violet)]/10 border border-[var(--accent-violet)]/30 text-[var(--text-muted)]'
+              : 'bg-[var(--bg-surface)]/80 border border-[var(--border-default)] text-[var(--text-muted)]'}`}
         style={{ borderRadius: '16px' }}
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose-chat">{msg.text}</ReactMarkdown>
@@ -362,8 +362,7 @@ function ChatBubble({ msg }: { msg: Msg }) {
         {!isUser && msg.role !== 'system' && (
           <button
             onClick={handleCopy}
-            className="absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-white/5"
-            style={{ color: copied ? '#00F5D4' : '#6B7280' }}
+            className={`absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg ${copied ? 'text-[var(--accent-teal)]' : 'text-[var(--text-tertiary)] hover:bg-[var(--btn-ghost-bg)]'}`}
             title="Copy response"
           >
             {copied ? (
@@ -378,7 +377,7 @@ function ChatBubble({ msg }: { msg: Msg }) {
           </button>
         )}
       </div>
-      <div className="text-[11px] mt-1" style={{ color: '#6B7280' }}>
+      <div className="text-[11px] mt-1 text-[var(--text-tertiary)]">
         {isUser ? 'You' : msg.role === 'system' ? 'System' : 'AI'} ·{' '}
         {new Date(msg.ts).toLocaleTimeString()}
       </div>
@@ -394,55 +393,42 @@ function FeedItem({ ev, index }: { ev: ResearchEvent; index: number }) {
   const detailsPreview = ev.details ? flattenObjectPreview(ev.details) : '';
 
   const statusConfig = {
-    error: { icon: 'error', color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)' },
-    warning: { icon: 'info', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
-    source: { icon: 'source', color: '#00F5D4', bg: 'rgba(0,245,212,0.1)', border: 'rgba(0,245,212,0.2)' },
-    agent: { icon: 'agent', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)' },
-    info: { icon: 'info', color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)', border: 'rgba(139,92,246,0.2)' },
+    error: { icon: 'error', colorClass: 'text-[var(--status-error)]', bgClass: 'bg-[var(--status-error)]/10', borderClass: 'border-[var(--status-error)]/20' },
+    warning: { icon: 'info', colorClass: 'text-[var(--status-warning)]', bgClass: 'bg-[var(--status-warning)]/10', borderClass: 'border-[var(--status-warning)]/20' },
+    source: { icon: 'source', colorClass: 'text-[var(--accent-teal)]', bgClass: 'bg-[var(--accent-teal)]/10', borderClass: 'border-[var(--accent-teal)]/20' },
+    agent: { icon: 'agent', colorClass: 'text-[var(--accent-blue)]', bgClass: 'bg-[var(--accent-blue)]/10', borderClass: 'border-[var(--accent-blue)]/20' },
+    info: { icon: 'info', colorClass: 'text-[var(--accent-violet)]', bgClass: 'bg-[var(--accent-violet)]/10', borderClass: 'border-[var(--accent-violet)]/20' },
   };
 
   const config = statusConfig[sev as keyof typeof statusConfig] || statusConfig.info;
 
   return (
     <div
-      className="p-3 mb-2 rounded-xl border transition-all duration-300 hover:scale-[1.01]"
-      style={{
-        backgroundColor: config.bg,
-        borderColor: config.border,
-        animationDelay: `${index * 50}ms`
-      }}
+      className={`p-3 mb-2 rounded-xl border transition-all duration-300 hover:scale-[1.01] ${config.bgClass} ${config.borderClass}`}
+      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex items-start gap-3">
-        <div
-          className="p-1.5 rounded-lg"
-          style={{ backgroundColor: config.border }}
-        >
-          <span style={{ color: config.color }}>
+        <div className={`p-1.5 rounded-lg ${config.borderClass}`}>
+          <span className={config.colorClass}>
             {sev === 'error' ? <Icons.error /> : sev === 'warning' ? <Icons.info /> : isSource ? <Icons.source /> : <Icons.agent />}
           </span>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {ev.stage && (
-              <span
-                className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider"
-                style={{ backgroundColor: 'rgba(0,245,212,0.1)', color: '#00F5D4' }}
-              >
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wider bg-[var(--accent-teal)]/10 text-[var(--accent-teal)]">
                 {ev.stage}
               </span>
             )}
-            <span className="text-xs font-medium" style={{ color: config.color }}>
+            <span className={`text-xs font-medium ${config.colorClass}`}>
               {ev.message || ev.category || 'Event'}
             </span>
           </div>
-          <div className="text-[11px]" style={{ color: '#6B7280' }}>
+          <div className="text-[11px] text-[var(--text-tertiary)]">
             {new Date(ev.created_at).toLocaleTimeString()}
           </div>
           {detailsPreview && (
-            <pre
-              className="mt-2 text-[10px] p-2 rounded-lg overflow-x-auto"
-              style={{ backgroundColor: 'rgba(0,0,0,0.3)', color: '#9CA3AF' }}
-            >
+            <pre className="mt-2 text-[10px] p-2 rounded-lg overflow-x-auto bg-black/30 text-[var(--text-muted)]">
               {detailsPreview}
             </pre>
           )}
@@ -468,38 +454,38 @@ function RawDataGrid({
   if (!rows.length) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center">
-        <div className="w-16 h-16 rounded-full bg-[#111827] flex items-center justify-center mb-4 border border-[rgba(255,255,255,0.1)]">
-          <span style={{ color: '#6B7280' }}><Icons.data /></span>
+        <div className="w-16 h-16 rounded-full bg-[var(--bg-surface)] flex items-center justify-center mb-4 border border-[var(--border-default)]">
+          <span className="text-[var(--text-tertiary)]"><Icons.data /></span>
         </div>
-        <p className="text-sm" style={{ color: '#6B7280' }}>No raw data available yet.</p>
-        <p className="text-xs mt-1" style={{ color: '#4B5563' }}>Live events and source rows will appear here while research runs.</p>
+        <p className="text-sm text-[var(--text-tertiary)]">No raw data available yet.</p>
+        <p className="text-xs mt-1 text-[var(--text-tertiary)] opacity-70">Live events and source rows will appear here while research runs.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-white/10 overflow-hidden bg-black/30">
-      <div className="px-3 py-2 border-b border-white/10 text-[11px] text-[#9CA3AF] flex items-center justify-between">
+    <div className="rounded-xl border border-[var(--border-default)] overflow-hidden bg-black/30">
+      <div className="px-3 py-2 border-b border-[var(--border-default)] text-[11px] text-[var(--text-muted)] flex items-center justify-between">
         <span>{structuredRows.length > 0 ? 'Structured RAW output' : 'Live RAW stream'}</span>
         <span>{rows.length} rows</span>
       </div>
       <div className="max-h-[65vh] overflow-auto">
         <table className="w-full text-left text-[11px]">
-          <thead className="sticky top-0 bg-[#111827] border-b border-white/10">
+          <thead className="sticky top-0 bg-[var(--bg-surface)] border-b border-[var(--border-default)]">
             <tr>
-              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Agent</th>
-              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Field</th>
-              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Type</th>
-              <th className="px-3 py-2 text-[#F9FAFB] font-semibold">Preview</th>
+              <th className="px-3 py-2 text-[var(--text-primary)] font-semibold">Agent</th>
+              <th className="px-3 py-2 text-[var(--text-primary)] font-semibold">Field</th>
+              <th className="px-3 py-2 text-[var(--text-primary)] font-semibold">Type</th>
+              <th className="px-3 py-2 text-[var(--text-primary)] font-semibold">Preview</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, idx) => (
-              <tr key={`${row.agent}-${row.field}-${idx}`} className="border-b border-white/5 hover:bg-white/[0.03]">
-                <td className="px-3 py-2 align-top text-[#00F5D4] font-medium whitespace-nowrap">{row.agent}</td>
-                <td className="px-3 py-2 align-top text-[#9CA3AF] whitespace-nowrap">{row.field}</td>
-                <td className="px-3 py-2 align-top text-[#3B82F6] whitespace-nowrap">{row.type}</td>
-                <td className="px-3 py-2 align-top text-[#D1D5DB] break-words">{row.preview || '-'}</td>
+              <tr key={`${row.agent}-${row.field}-${idx}`} className="border-b border-[var(--border-default)]/50 hover:bg-white/[0.03]">
+                <td className="px-3 py-2 align-top text-[var(--accent-teal)] font-medium whitespace-nowrap">{row.agent}</td>
+                <td className="px-3 py-2 align-top text-[var(--text-muted)] whitespace-nowrap">{row.field}</td>
+                <td className="px-3 py-2 align-top text-[var(--accent-blue)] whitespace-nowrap">{row.type}</td>
+                <td className="px-3 py-2 align-top text-[var(--text-secondary)] break-words">{row.preview || '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -556,11 +542,11 @@ function SourcesPanel({
   if (!resultJson && (!feedEvents || feedEvents.length === 0) && (!liveSources || liveSources.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center">
-        <div className="w-16 h-16 rounded-full bg-[#111827] flex items-center justify-center mb-4 border border-[rgba(255,255,255,0.1)]">
-          <span style={{ color: '#6B7280' }}><Icons.source /></span>
+        <div className="w-16 h-16 rounded-full bg-[var(--bg-surface)] flex items-center justify-center mb-4 border border-[var(--border-default)]">
+          <span className="text-[var(--text-tertiary)]"><Icons.source /></span>
         </div>
-        <p className="text-sm" style={{ color: '#6B7280' }}>No sources discovered yet.</p>
-        <p className="text-xs mt-1" style={{ color: '#4B5563' }}>Sources will appear as agents discover them.</p>
+        <p className="text-sm text-[var(--text-tertiary)]">No sources discovered yet.</p>
+        <p className="text-xs mt-1 text-[var(--text-tertiary)] opacity-70">Sources will appear as agents discover them.</p>
       </div>
     );
   }
@@ -590,29 +576,28 @@ function SourcesPanel({
         <div key="realtime_sources" className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00F5D4] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00F5D4]"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent-teal)] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--accent-teal)]"></span>
             </span>
-            <h4 className="text-sm font-semibold" style={{ color: '#F9FAFB' }}>
+            <h4 className="text-sm font-semibold text-[var(--text-primary)]">
               Live Discovered Sources ({uniqueSources.length})
             </h4>
           </div>
           {uniqueSources.slice(0, 50).map((item, i) => (
             <div
               key={`rt-${i}`}
-              className="p-4 mb-3 rounded-xl border transition-all duration-300 hover:border-[#00F5D4]/30"
-              style={{ backgroundColor: 'rgba(0,245,212,0.03)', borderColor: 'rgba(0,245,212,0.15)' }}
+              className="p-4 mb-3 rounded-xl border transition-all duration-300 hover:border-[var(--accent-teal)]/30 bg-[var(--accent-teal)]/3 border-[var(--accent-teal)]/15"
             >
-              <p className="font-semibold mb-1 text-sm" style={{ color: '#F9FAFB' }}>
+              <p className="font-semibold mb-1 text-sm text-[var(--text-primary)]">
                 [{i + 1}] {item.title || item.url || 'Live Source'}
               </p>
               {item.domain && (
-                <p className="text-xs font-medium mb-2" style={{ color: '#00F5D4' }}>
+                <p className="text-xs font-medium mb-2 text-[var(--accent-teal)]">
                   Source: {item.domain}
                 </p>
               )}
               {item.abstract && (
-                <p className="text-xs mb-2 leading-relaxed" style={{ color: '#9CA3AF' }}>
+                <p className="text-xs mb-2 leading-relaxed text-[var(--text-muted)]">
                   {item.abstract.slice(0, 250)}...
                 </p>
               )}
@@ -621,8 +606,7 @@ function SourcesPanel({
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium hover:underline"
-                  style={{ color: '#00F5D4' }}
+                  className="text-xs font-medium hover:underline text-[var(--accent-teal)]"
                 >
                   Open →
                 </a>
@@ -647,12 +631,12 @@ function SourcesPanel({
       if (key === 'visualization') {
         sections.push(
           <div key={key} className="mb-8">
-            <h4 className="text-sm font-semibold mb-4 pb-2 border-b border-white/5" style={{ color: '#F9FAFB' }}>
+            <h4 className="text-sm font-semibold mb-4 pb-2 border-b border-[var(--border-default)]/50 text-[var(--text-primary)]">
               {label} ({items.length})
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {items.map((img: any, i: number) => (
-                <div key={i} className="rounded-xl overflow-hidden bg-black/40 border border-white/5 group">
+                <div key={i} className="rounded-xl overflow-hidden bg-black/40 border border-[var(--border-default)]/50 group">
                   <div className="aspect-video relative overflow-hidden">
                     <img
                       src={normalizeImageUrl(img.local || img.url || img.original)}
@@ -662,7 +646,7 @@ function SourcesPanel({
                     />
                   </div>
                   <div className="p-3">
-                    <p className="text-[10px] text-[#9CA3AF] line-clamp-2 italic">
+                    <p className="text-[10px] text-[var(--text-muted)] line-clamp-2 italic">
                       {img.caption || 'Research visualization component'}
                     </p>
                   </div>
@@ -676,39 +660,35 @@ function SourcesPanel({
 
       sections.push(
         <div key={key} className="mb-4">
-          <h4 className="text-sm font-semibold mb-3 pb-2 border-b border-white/5" style={{ color: '#F9FAFB' }}>
+          <h4 className="text-sm font-semibold mb-3 pb-2 border-b border-[var(--border-default)]/50 text-[var(--text-primary)]">
             {label} ({items.length})
           </h4>
           {items.slice(0, 15).map((item, i) => (
             <div
               key={i}
-              className="p-3 mb-2 rounded-xl border transition-all duration-300 hover:border-[#3B82F6]/30"
-              style={{ backgroundColor: '#111827', borderColor: 'rgba(255,255,255,0.08)' }}
+              className="p-3 mb-2 rounded-xl border transition-all duration-300 hover:border-[var(--accent-blue)]/30 bg-[var(--bg-surface)] border-[var(--border-default)]"
             >
-              <p className="font-semibold mb-1 text-sm" style={{ color: '#F9FAFB' }}>
+              <p className="font-semibold mb-1 text-sm text-[var(--text-primary)]">
                 [{i + 1}] {item.title || item.url || 'Item'}
               </p>
               {item.domain && (
-                <p className="text-xs font-medium mb-1" style={{ color: '#3B82F6' }}>
+                <p className="text-xs font-medium mb-1 text-[var(--accent-blue)]">
                   Domain: {item.domain}
                 </p>
               )}
-              {item.authors && <p className="text-xs mb-1" style={{ color: '#6B7280' }}>{String(item.authors).slice(0, 120)}</p>}
+              {item.authors && <p className="text-xs mb-1 text-[var(--text-tertiary)]">{String(item.authors).slice(0, 120)}</p>}
               {item.novelty_angle && (
-                <p className="text-xs mb-1 leading-relaxed" style={{ color: '#8B5CF6' }}>
+                <p className="text-xs mb-1 leading-relaxed text-[var(--accent-violet)]">
                   Angle: {item.novelty_angle}
                 </p>
               )}
               {(item.abstract || item.summary || item.content || item.snippet) && (
-                <p className="text-xs mb-1 leading-relaxed" style={{ color: '#9CA3AF' }}>
+                <p className="text-xs mb-1 leading-relaxed text-[var(--text-muted)]">
                   {(item.abstract || item.summary || item.content || item.snippet || '').slice(0, 250)}...
                 </p>
               )}
               {item.estimated_complexity && (
-                <span
-                  className="inline-block px-2 py-0.5 rounded text-[10px] mt-1"
-                  style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#8B5CF6' }}
-                >
+                <span className="inline-block px-2 py-0.5 rounded text-[10px] mt-1 bg-[var(--accent-violet)]/10 text-[var(--accent-violet)]">
                   Complexity: {item.estimated_complexity}
                 </span>
               )}
@@ -717,8 +697,7 @@ function SourcesPanel({
                   href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs block mt-2 hover:underline"
-                  style={{ color: '#00F5D4' }}
+                  className="text-xs block mt-2 hover:underline text-[var(--accent-teal)]"
                 >
                   Open →
                 </a>
@@ -732,13 +711,10 @@ function SourcesPanel({
       if (txt.length < 10) continue;
       sections.push(
         <div key={key} className="mb-4">
-          <h4 className="text-sm font-semibold mb-2 pb-2" style={{ color: '#F9FAFB', borderColor: 'rgba(255,255,255,0.08)' }}>
+          <h4 className="text-sm font-semibold mb-2 pb-2 text-[var(--text-primary)] border-b border-[var(--border-default)]">
             {label}
           </h4>
-          <div
-            className="p-3 text-xs leading-relaxed rounded-xl"
-            style={{ backgroundColor: '#111827', borderColor: 'rgba(255,255,255,0.08)', color: '#9CA3AF' }}
-          >
+          <div className="p-3 text-xs leading-relaxed rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-muted)]">
             {txt.slice(0, 800)}{txt.length > 800 ? '...' : ''}
           </div>
         </div>
@@ -748,7 +724,7 @@ function SourcesPanel({
 
   return sections.length > 0
     ? <>{sections}</>
-    : <p className="text-sm" style={{ color: '#6B7280' }}>No structured sources. See Report tab.</p>;
+    : <p className="text-sm text-[var(--text-tertiary)]">No structured sources. See Report tab.</p>;
 }
 
 function SectionEditor({
@@ -780,7 +756,7 @@ function SectionEditor({
   }
 
   return (
-    <div className="group relative pb-8 mb-8 last:border-0 last:mb-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+    <div className="group relative pb-8 mb-8 last:border-0 last:mb-0 border-b border-[var(--border-default)]/50">
       <div className="prose-research mb-4">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{section.content}</ReactMarkdown>
       </div>
@@ -789,36 +765,26 @@ function SectionEditor({
         {!editing ? (
           <button
             onClick={() => setEditing(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-105"
-            style={{ backgroundColor: 'rgba(0,245,212,0.1)', color: '#00F5D4', border: '1px solid rgba(0,245,212,0.2)' }}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 hover:scale-105 bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] border border-[var(--accent-teal)]/20"
           >
             Edit with AI
           </button>
         ) : (
-          <div
-            className="w-full p-4 rounded-xl mt-2"
-            style={{ backgroundColor: 'rgba(0,245,212,0.05)', border: '1px solid rgba(0,245,212,0.2)' }}
-          >
-            <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: '#00F5D4' }}>
+          <div className="w-full p-4 rounded-xl mt-2 bg-[var(--accent-teal)]/5 border border-[var(--accent-teal)]/20">
+            <p className="text-[10px] font-mono uppercase tracking-wider mb-2 text-[var(--accent-teal)]">
               AI Edit Instruction
             </p>
             <textarea
               value={instruction}
               onChange={e => setInstruction(e.target.value)}
               placeholder="e.g., 'Make this section more technical' or 'Add a table about...'"
-              className="w-full p-3 rounded-lg text-sm mb-2 outline-none transition-all duration-300"
-              style={{
-                backgroundColor: '#111827',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#F9FAFB',
-              }}
+              className="w-full p-3 rounded-lg text-sm mb-2 outline-none transition-all duration-300 bg-[var(--bg-surface)] border border-[var(--border-default)] text-[var(--text-primary)]"
               rows={2}
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setEditing(false)}
-                className="px-3 py-1.5 text-xs rounded-lg transition-colors"
-                style={{ color: '#6B7280' }}
+                className="px-3 py-1.5 text-xs rounded-lg transition-colors text-[var(--text-tertiary)]"
               >
                 Cancel
               </button>
@@ -1325,27 +1291,27 @@ export default function WorkspacePage() {
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden workspace-root">
       <div className="bg-ambient" />
-      <header className="h-14 px-4 flex items-center justify-between border-b border-white/5 bg-[rgba(11,15,26,0.9)] backdrop-blur-md z-20">
+      <header className="h-14 px-4 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-surface)]/90 backdrop-blur-md z-20">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowDrawer(!showDrawer)}
             aria-label="Toggle history drawer"
-            className="p-2 rounded-lg hover:bg-white/5 text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/50"
+            className="p-2 rounded-lg hover:bg-[var(--btn-ghost-bg)] text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/50"
           >
             <MenuIcon />
           </button>
           <button
             onClick={() => router.push('/dashboard')}
-            className="text-sm text-[#9CA3AF] flex items-center gap-2 hover:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/50 rounded-lg px-2 py-1"
+            className="text-sm text-[var(--text-muted)] flex items-center gap-2 hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/50 rounded-lg px-2 py-1"
           >
             <Icons.back />
             <span>Back</span>
           </button>
-          <div className="h-4 w-px bg-white/10" />
-          <h1 className="text-sm font-semibold text-white truncate max-w-[280px] gradient-text-teal">{wsName}</h1>
+          <div className="h-4 w-px bg-[var(--border-default)]" />
+          <h1 className="text-sm font-semibold text-[var(--text-primary)] truncate max-w-[280px] gradient-text-teal">{wsName}</h1>
           <button
             onClick={handleDeleteWorkspace}
-            className="p-2 rounded-lg hover:bg-red-500/20 text-[#9CA3AF] hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/40"
+            className="p-2 rounded-lg hover:bg-red-500/20 text-[var(--text-muted)] hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/40"
             title="Delete workspace"
             aria-label="Delete workspace"
           >
@@ -1354,18 +1320,13 @@ export default function WorkspacePage() {
         </div>
         <div className="flex items-center gap-4">
           <LLMStatusBar compact authToken={token || undefined} thoughts={brainThoughts} />
-          <div className="text-[11px] font-medium px-2 py-1 rounded-md border"
-            style={{
-              color: sseConnected ? '#00F5D4' : '#9CA3AF',
-              borderColor: sseConnected ? 'rgba(0,245,212,0.3)' : 'rgba(255,255,255,0.1)',
-              backgroundColor: sseConnected ? 'rgba(0,245,212,0.08)' : 'rgba(255,255,255,0.03)',
-            }}
+          <div className={`text-[11px] font-medium px-2 py-1 rounded-md border ${sseConnected ? 'text-[var(--accent-teal)] border-[var(--accent-teal)]/30 bg-[var(--accent-teal)]/8' : 'text-[var(--text-muted)] border-[var(--border-default)] bg-[var(--bg-surface)]/50'}`}
             title={sseConnected ? 'Live event stream connected' : 'Live stream disconnected'}
           >
             {sseConnected ? 'LIVE SSE' : 'SSE OFFLINE'}
           </div>
-          {running && <div className="text-[#00F5D4] text-xs font-mono flex items-center gap-2"><Icons.running /> <span>{formatDuration(elapsedSec)}</span></div>}
-          {curSession && !running && <button onClick={() => handleExport('markdown')} className="px-3 py-1 rounded-lg text-xs bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20">Download</button>}
+          {running && <div className="text-[var(--accent-teal)] text-xs font-mono flex items-center gap-2"><Icons.running /> <span>{formatDuration(elapsedSec)}</span></div>}
+          {curSession && !running && <button onClick={() => handleExport('markdown')} className="px-3 py-1 rounded-lg text-xs bg-[var(--accent-blue)]/10 text-[var(--accent-blue)] border border-[var(--accent-blue)]/20">Download</button>}
         </div>
       </header>
 
@@ -1376,16 +1337,16 @@ export default function WorkspacePage() {
               className="fixed inset-0 bg-black/40 z-30 lg:hidden"
               onClick={() => setShowDrawer(false)}
             />
-            <aside className="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[rgba(17,24,39,0.82)] border-r border-white/10 backdrop-blur-xl transition-transform duration-300 translate-x-0">
-          <div className="p-4 text-[10px] font-bold text-[#00F5D4] uppercase border-b border-white/5 tracking-[0.16em]">History</div>
+            <aside className="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-[var(--bg-surface)]/80 border-r border-[var(--border-default)] backdrop-blur-xl transition-transform duration-300 translate-x-0">
+          <div className="p-4 text-[10px] font-bold text-[var(--accent-teal)] uppercase border-b border-[var(--border-default)] tracking-[0.16em]">History</div>
           <div className="flex-1 overflow-y-auto">
             {sessions.map(s => (
               <button
                 key={s.id}
                 onClick={() => loadSession(s)}
-                className={`w-full text-left px-3 py-2.5 border-b border-white/5 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/40 ${curSession?.id === s.id ? 'bg-[#00F5D4]/7 border-l-2 border-[#00F5D4]' : ''}`}
+                className={`w-full text-left px-3 py-2.5 border-b border-[var(--border-default)]/50 hover:bg-[var(--btn-ghost-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/40 ${curSession?.id === s.id ? 'bg-[var(--accent-teal)]/7 border-l-2 border-[var(--accent-teal)]' : ''}`}
               >
-                <p className="text-[11px] text-[#9CA3AF] truncate">{s.topic || s.title}</p>
+                <p className="text-[11px] text-[var(--text-muted)] truncate">{s.topic || s.title}</p>
               </button>
             ))}
           </div>
@@ -1393,14 +1354,14 @@ export default function WorkspacePage() {
           </>
         )}
 
-        <main className="flex-1 flex flex-col min-w-0 bg-[linear-gradient(180deg,rgba(11,15,26,0.7),rgba(11,15,26,0.95))]">
+        <main className="flex-1 flex flex-col min-w-0 bg-[var(--bg-primary)]">
           <div ref={chatLogRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {msgs.map(m => <ChatBubble key={m.id} msg={m} />)}
           </div>
-          <div className="p-4 border-t border-white/5">
+          <div className="p-4 border-t border-[var(--border-default)]">
             {msgs.length === 0 && (
-              <div className="mb-3 rounded-xl border border-[rgba(0,245,212,0.14)] bg-[rgba(0,245,212,0.04)] p-3">
-                <p className="text-[11px] text-[#9CA3AF] mb-2">
+              <div className="mb-3 rounded-xl border border-[var(--accent-teal)]/14 bg-[var(--accent-teal)]/4 p-3">
+                <p className="text-[11px] text-[var(--text-muted)] mb-2">
                   Shortcuts: Use commands to run faster research workflows.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -1408,7 +1369,7 @@ export default function WorkspacePage() {
                     <button
                       key={cmd}
                       onClick={() => setChatInput(cmd)}
-                      className="px-2.5 py-1 rounded-md text-[11px] border border-[rgba(0,245,212,0.2)] text-[#00F5D4] bg-[rgba(11,15,26,0.5)] hover:bg-[rgba(0,245,212,0.08)]"
+                      className="px-2.5 py-1 rounded-md text-[11px] border border-[var(--accent-teal)]/20 text-[var(--accent-teal)] bg-[var(--bg-surface)]/50 hover:bg-[var(--accent-teal)]/8"
                     >
                       {cmd}
                     </button>
@@ -1426,7 +1387,7 @@ export default function WorkspacePage() {
                 }}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
                 placeholder="Message MARP..."
-                className="flex-1 bg-[#111827] border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-[#00F5D4]/60 focus:ring-2 focus:ring-[#00F5D4]/20 transition-all resize-none"
+                className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-teal)]/60 focus:ring-2 focus:ring-[var(--accent-teal)]/20 transition-all resize-none"
                 rows={1}
               />
               {running ? (
@@ -1441,7 +1402,7 @@ export default function WorkspacePage() {
                 <button
                   onClick={handleSend}
                   disabled={!chatInput.trim() || running}
-                  className="bg-[#00F5D4] text-[#0B0F1A] p-3 rounded-xl disabled:opacity-30 transition-all focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/50"
+                  className="btn-primary p-3"
                 aria-label="Send message"
               >
                 <Icons.send />
@@ -1454,7 +1415,7 @@ export default function WorkspacePage() {
                   <button
                     key={cmd}
                     onClick={() => setChatInput(`${cmd} `)}
-                    className="text-[11px] px-2 py-1 rounded-md border border-[rgba(255,255,255,0.12)] text-[#9CA3AF] hover:text-[#F9FAFB] hover:border-[rgba(0,245,212,0.28)]"
+                    className="text-[11px] px-2 py-1 rounded-md border border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--accent-teal)]/28"
                   >
                     {cmd}
                   </button>
@@ -1465,22 +1426,22 @@ export default function WorkspacePage() {
         </main>
 
         {showRightPanel && (
-          <aside style={{ width: `${rightPanelWidth}%` }} className="border-l border-white/5 bg-[rgba(17,24,39,0.78)] backdrop-blur-xl flex flex-col relative transition-all duration-300">
+          <aside style={{ width: `${rightPanelWidth}%` }} className="border-l border-[var(--border-default)] bg-[var(--bg-surface)]/80 backdrop-blur-xl flex flex-col relative transition-all duration-300">
             <div
-              className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[#00F5D4]/50 z-10"
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--accent-teal)]/50 z-10"
               onMouseDown={() => { isResizingRef.current = true; }}
             />
-            <div className="p-2 border-b border-white/5 flex flex-wrap gap-2">
+            <div className="p-2 border-b border-[var(--border-default)] flex flex-wrap gap-2">
               {TABS.map(t => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`px-3 py-1.5 rounded-md text-[10px] uppercase font-bold inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#00F5D4]/30 ${tab === t.id ? 'text-[#00F5D4] bg-[#00F5D4]/8 border border-[#00F5D4]/30' : 'text-[#6B7280] border border-transparent hover:border-white/10'}`}
+                  className={`px-3 py-1.5 rounded-md text-[10px] uppercase font-bold inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/30 ${tab === t.id ? 'text-[var(--accent-teal)] bg-[var(--accent-teal)]/8 border border-[var(--accent-teal)]/30' : 'text-[var(--text-tertiary)] border border-transparent hover:border-[var(--border-default)]'}`}
                 >
                   {t.icon} <span>{t.label}</span>
                 </button>
               ))}
-              <div className="ml-auto text-[10px] text-[#6B7280] px-2 py-1">
+              <div className="ml-auto text-[10px] text-[var(--text-tertiary)] px-2 py-1">
                 {feedEvents.length} events · {liveSources.length} sources
               </div>
             </div>
@@ -1500,21 +1461,21 @@ export default function WorkspacePage() {
                     <button
                       onClick={handleDownloadPdf}
                       disabled={!curSession}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-[#00F5D4]/10 text-[#00F5D4] border border-[#00F5D4]/20 disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] border border-[var(--accent-teal)]/20 disabled:opacity-50"
                     >
                       Download Report PDF
                     </button>
                     <button
                       onClick={() => handleExport('markdown')}
                       disabled={!curSession}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/20 disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-blue)]/10 text-[var(--accent-blue)] border border-[var(--accent-blue)]/20 disabled:opacity-50"
                     >
                       Download Markdown
                     </button>
                     <button
                       onClick={handleDownloadLatex}
                       disabled={!curSession}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-[#8B5CF6]/10 text-[#8B5CF6] border border-[#8B5CF6]/20 disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-violet)]/10 text-[var(--accent-violet)] border border-[var(--accent-violet)]/20 disabled:opacity-50"
                     >
                       Download LaTeX
                     </button>
