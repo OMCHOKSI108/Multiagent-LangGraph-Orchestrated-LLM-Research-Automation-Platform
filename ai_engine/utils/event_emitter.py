@@ -33,7 +33,15 @@ _LAST_STAGE_BY_JOB: Dict[int, str] = {}
 _STAGE_LOCK = threading.Lock()
 
 ALLOWED_SEVERITIES = {"info", "warn", "error", "success"}
-ALLOWED_CATEGORIES = {"stage", "source", "agent", "error", "user_action_required", "brain_thought", "brain_report_chunk"}
+ALLOWED_CATEGORIES = {
+    "stage",
+    "source",
+    "agent",
+    "error",
+    "user_action_required",
+    "brain_thought",
+    "brain_report_chunk",
+}
 
 
 def _sanitize_text(value: Any, max_len: int = 500) -> str:
@@ -51,7 +59,9 @@ def _ensure_worker() -> None:
             return
 
         _CLIENT = httpx.Client(timeout=_EVENT_TIMEOUT)
-        _WORKER_THREAD = threading.Thread(target=_worker_loop, name="event-emitter", daemon=True)
+        _WORKER_THREAD = threading.Thread(
+            target=_worker_loop, name="event-emitter", daemon=True
+        )
         _WORKER_THREAD.start()
         _WORKER_STARTED = True
         atexit.register(_shutdown_worker)
@@ -203,7 +213,12 @@ def emit_agent_start(agent_name: str, research_id: Optional[int] = None):
     )
 
 
-def emit_agent_complete(agent_name: str, duration_ms: int, success: bool = True, research_id: Optional[int] = None):
+def emit_agent_complete(
+    agent_name: str,
+    duration_ms: int,
+    success: bool = True,
+    research_id: Optional[int] = None,
+):
     emit_event(
         stage="analyzing",
         message=f"Agent {agent_name} {'completed' if success else 'failed'} ({duration_ms}ms)",
@@ -214,7 +229,9 @@ def emit_agent_complete(agent_name: str, duration_ms: int, success: bool = True,
     )
 
 
-def emit_search(query: str, source: str, results_count: int = 0, research_id: Optional[int] = None):
+def emit_search(
+    query: str, source: str, results_count: int = 0, research_id: Optional[int] = None
+):
     emit_event(
         stage="searching",
         message=f"Searching {source}: {query[:50]}...",
@@ -239,7 +256,12 @@ def emit_scrape(url: str, success: bool = True, research_id: Optional[int] = Non
     )
 
 
-def emit_error(message: str, error_code: Optional[str] = None, recoverable: bool = True, research_id: Optional[int] = None):
+def emit_error(
+    message: str,
+    error_code: Optional[str] = None,
+    recoverable: bool = True,
+    research_id: Optional[int] = None,
+):
     emit_event(
         stage="error",
         message=message,
@@ -250,7 +272,9 @@ def emit_error(message: str, error_code: Optional[str] = None, recoverable: bool
     )
 
 
-def emit_stage_change(stage: str, next_stage: Optional[str] = None, research_id: Optional[int] = None):
+def emit_stage_change(
+    stage: str, next_stage: Optional[str] = None, research_id: Optional[int] = None
+):
     job_id = research_id or _current_job_id
     if not job_id:
         return
@@ -266,14 +290,19 @@ def emit_stage_change(stage: str, next_stage: Optional[str] = None, research_id:
     if next_stage:
         msg += f" -> Next: {next_stage}"
 
+    details = {}
+    if next_stage:
+        details["next_stage"] = next_stage
+
     emit_event(
         stage=stage,
         message=msg,
         severity="info",
         category="stage",
-        details={"next_stage": next_stage},
+        details=details,
         research_id=job_id,
     )
+
 
 def emit_report_chunk(chunk: str, research_id: Optional[int] = None):
     """

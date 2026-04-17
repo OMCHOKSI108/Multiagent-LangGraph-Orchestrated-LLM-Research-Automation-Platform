@@ -156,9 +156,12 @@ export default function MemoriesPage() {
                 <h3 className="text-sm font-semibold">{m.title}</h3>
                 <button
                   onClick={() => handleDelete(m.id)}
-                  className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent-rose)] ml-2 border-none bg-transparent cursor-pointer transition-colors"
+                  className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent-rose)] ml-2 border-none bg-transparent cursor-pointer transition-colors p-1 rounded hover:bg-[var(--accent-rose)]/10"
+                  aria-label="Delete memory"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
               <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3 whitespace-pre-wrap">{m.content}</p>

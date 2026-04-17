@@ -16,7 +16,6 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import PremiumCharts from '@/components/PremiumCharts';
-import BrainPanel from '@/components/BrainPanel';
 import LLMStatusBar from '@/components/LLMStatusBar';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -60,7 +59,12 @@ function flattenObjectPreview(value: unknown): string {
   if (typeof value === 'string') return value;
   if (typeof value !== 'object') return String(value);
 
-  const entries = Object.entries(value as Record<string, unknown>).slice(0, 10);
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v != null && (typeof v !== 'string' || v.trim().length > 0))
+    .slice(0, 10);
+
+  if (entries.length === 0) return '';
+
   const lines = entries.map(([k, v]) => {
     if (Array.isArray(v)) return `• ${k}: ${v.length} items`;
     if (v && typeof v === 'object') return `• ${k}: ${Object.keys(v as Record<string, unknown>).length} fields`;
@@ -201,7 +205,7 @@ function buildLiveRawRows(feedEvents: ResearchEvent[], liveSources: any[]): RawR
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type TabId = 'brain' | 'feed' | 'sources' | 'report' | 'raw';
+type TabId = 'feed' | 'sources' | 'report' | 'raw';
 type MsgRole = 'user' | 'bot' | 'system';
 
 interface Msg {
@@ -209,6 +213,8 @@ interface Msg {
   role: MsgRole;
   text: string;
   ts: number;
+  kind?: 'chat' | 'thinking';
+  thoughtStep?: string;
   sources?: any[];
   search_mode?: string;
 }
@@ -295,7 +301,6 @@ const Icons = {
 };
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'brain', label: 'AI Brain', icon: <Icons.brain /> },
   { id: 'feed', label: 'Live Feed', icon: <Icons.feed /> },
   { id: 'sources', label: 'Sources', icon: <Icons.source /> },
   { id: 'raw', label: 'Raw Data', icon: <Icons.data /> },
@@ -339,6 +344,24 @@ const RightPanelIcon = () => (
 function ChatBubble({ msg }: { msg: Msg }) {
   const isUser = msg.role === 'user';
   const [copied, setCopied] = useState(false);
+
+  if (msg.kind === 'thinking') {
+    return (
+      <div className="mb-4 animate-fadeIn">
+        <details className="rounded-xl border border-[var(--accent-violet)]/25 bg-[var(--accent-violet)]/6 overflow-hidden">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm text-[var(--accent-violet)] font-medium">
+            Deep Thinking {msg.thoughtStep ? `- ${msg.thoughtStep}` : ''}
+          </summary>
+          <div className="px-4 pb-3 pt-1 text-sm leading-relaxed whitespace-pre-wrap text-[var(--text-secondary)] border-t border-[var(--accent-violet)]/20">
+            {msg.text}
+          </div>
+        </details>
+        <div className="text-[11px] mt-1 text-[var(--text-tertiary)]">
+          AI Brain - {new Date(msg.ts).toLocaleTimeString()}
+        </div>
+      </div>
+    );
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.text);
@@ -899,6 +922,24 @@ export default function WorkspacePage() {
     setMsgs(prev => [...prev, { id: id || crypto.randomUUID(), role, text, ts: Date.now() }]);
   }
 
+  function addThinkingMsg(thought: { id: string; step: string; content: string; timestamp: number }) {
+    const msgId = `thinking_${thought.id}`;
+    setMsgs(prev => {
+      if (prev.some(m => String(m.id) === msgId)) return prev;
+      return [
+        ...prev,
+        {
+          id: msgId,
+          role: 'system',
+          text: thought.content,
+          ts: thought.timestamp,
+          kind: 'thinking',
+          thoughtStep: thought.step,
+        },
+      ];
+    });
+  }
+
   function clearPanels() {
     setFeedEvents([]);
     setLiveSources([]);
@@ -953,6 +994,7 @@ export default function WorkspacePage() {
                 if (prev.some(t => t.id === thought.id)) return prev;
                 return [...prev, thought];
               });
+              addThinkingMsg(thought);
             }
             else if (type === 'report' || category === 'report_chunk') {
               const chunk = details?.chunk || message || '';
@@ -1092,6 +1134,20 @@ export default function WorkspacePage() {
 
       setFeedEvents(normalizedEvents.filter((ev: any) => ev.category !== 'brain_thought'));
       setBrainThoughts(historicalThoughts);
+      setMsgs(prev => {
+        const existing = new Set(prev.map(m => String(m.id)));
+        const thinkingMsgs = historicalThoughts
+          .map((t: any) => ({
+            id: `thinking_${t.id}`,
+            role: 'system' as const,
+            text: t.content,
+            ts: t.timestamp,
+            kind: 'thinking' as const,
+            thoughtStep: t.step,
+          }))
+          .filter((m: any) => !existing.has(String(m.id)));
+        return [...prev, ...thinkingMsgs];
+      });
       setLiveSources(Array.isArray(sourcesHistory) ? sourcesHistory : []);
     } catch {
       // Historical hydration is best-effort and should not block session load.
@@ -1446,7 +1502,6 @@ export default function WorkspacePage() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {tab === 'brain' && <BrainPanel thoughts={brainThoughts} isActive={running} />}
               {tab === 'feed' && feedEvents.map((e, i) => <FeedItem key={i} ev={e} index={i} />)}
               {tab === 'report' && (
                 <div>

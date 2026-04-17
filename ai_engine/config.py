@@ -96,21 +96,42 @@ SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 # Local Ollama endpoint used for OFFLINE mode and HuggingFace fallback.
 # In Docker this should point to host.docker.internal or an ollama service,
 # not localhost inside the ai_engine container.
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip() or "http://localhost:11434"
+OLLAMA_BASE_URL = (
+    os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip()
+    or "http://localhost:11434"
+)
 
 # ============================
 # HuggingFace Model Settings (Local Inference)
 # ============================
 HUGGINGFACE_DEVICE = os.getenv("HUGGINGFACE_DEVICE", "auto")  # auto, cuda, cpu
-HUGGINGFACE_QUANTIZATION = os.getenv("HUGGINGFACE_QUANTIZATION", "true").lower() in ("true", "1", "yes", "on")
-HUGGINGFACE_PRELOAD_ON_STARTUP = os.getenv("HUGGINGFACE_PRELOAD_ON_STARTUP", "true").lower() in ("true", "1", "yes", "on")
-HUGGINGFACE_PRELOAD_STRATEGY = (os.getenv("HUGGINGFACE_PRELOAD_STRATEGY", "download_only").strip().lower() or "download_only")
+HUGGINGFACE_QUANTIZATION = os.getenv("HUGGINGFACE_QUANTIZATION", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+    "on",
+)
+HUGGINGFACE_PRELOAD_ON_STARTUP = os.getenv(
+    "HUGGINGFACE_PRELOAD_ON_STARTUP", "true"
+).lower() in ("true", "1", "yes", "on")
+HUGGINGFACE_PRELOAD_STRATEGY = (
+    os.getenv("HUGGINGFACE_PRELOAD_STRATEGY", "download_only").strip().lower()
+    or "download_only"
+)
 
 # Specialized Models (optimized for different tasks)
-MODEL_HF_REASONING = os.getenv("MODEL_HF_REASONING", "microsoft/phi-3-medium-4k-instruct")  # Logic, reasoning
-MODEL_HF_WRITING = os.getenv("MODEL_HF_WRITING", "microsoft/phi-3-medium-4k-instruct")  # Prose
-MODEL_HF_CODING = os.getenv("MODEL_HF_CODING", "Qwen/Qwen2.5-Coder-7B-Instruct")  # Code/JSON
-MODEL_HF_CRITICAL = os.getenv("MODEL_HF_CRITICAL", "microsoft/phi-3-medium-4k-instruct")  # Critique
+MODEL_HF_REASONING = os.getenv(
+    "MODEL_HF_REASONING", "microsoft/phi-3-medium-4k-instruct"
+)  # Logic, reasoning
+MODEL_HF_WRITING = os.getenv(
+    "MODEL_HF_WRITING", "microsoft/phi-3-medium-4k-instruct"
+)  # Prose
+MODEL_HF_CODING = os.getenv(
+    "MODEL_HF_CODING", "Qwen/Qwen2.5-Coder-7B-Instruct"
+)  # Code/JSON
+MODEL_HF_CRITICAL = os.getenv(
+    "MODEL_HF_CRITICAL", "microsoft/phi-3-medium-4k-instruct"
+)  # Critique
 
 # Local/Ollama models
 MODEL_LOCAL_REASONING = os.getenv("MODEL_LOCAL_REASONING", "mistral:7b-instruct")
@@ -119,10 +140,27 @@ MODEL_LOCAL_CODING = os.getenv("MODEL_LOCAL_CODING", "qwen2.5-coder:latest")
 MODEL_LOCAL_CRITICAL = os.getenv("MODEL_LOCAL_CRITICAL", MODEL_LOCAL_REASONING)
 
 # Online/provider-routed models
-MODEL_ONLINE_REASONING = os.getenv("MODEL_ONLINE_REASONING", "openrouter/anthropic/claude-3.5-sonnet")
-MODEL_ONLINE_WRITING = os.getenv("MODEL_ONLINE_WRITING", "openrouter/openai/gpt-4o-mini")
-MODEL_ONLINE_CODING = os.getenv("MODEL_ONLINE_CODING", "openrouter/deepseek/deepseek-coder")
+MODEL_ONLINE_REASONING = os.getenv(
+    "MODEL_ONLINE_REASONING", "openrouter/anthropic/claude-3.5-sonnet"
+)
+MODEL_ONLINE_WRITING = os.getenv(
+    "MODEL_ONLINE_WRITING", "openrouter/openai/gpt-4o-mini"
+)
+MODEL_ONLINE_CODING = os.getenv(
+    "MODEL_ONLINE_CODING", "openrouter/openai/gpt-4o-mini"
+)
 MODEL_ONLINE_CRITICAL = os.getenv("MODEL_ONLINE_CRITICAL", "gemini/gemini-2.0-flash")
+
+# Normalize known invalid/deprecated aliases commonly left in old env files.
+_ONLINE_MODEL_ALIASES = {
+    "openrouter/deepseek/deepseek-coder-v2": "openrouter/openai/gpt-4o-mini",
+    "deepseek/deepseek-coder-v2": "openrouter/openai/gpt-4o-mini",
+    "openrouter/deepseek/deepseek-coder": "openrouter/openai/gpt-4o-mini",
+    "deepseek/deepseek-coder": "openrouter/openai/gpt-4o-mini",
+}
+MODEL_ONLINE_CODING = _ONLINE_MODEL_ALIASES.get(
+    MODEL_ONLINE_CODING, MODEL_ONLINE_CODING
+)
 
 # Select the active model profile based on the configured mode.
 if LLM_STATUS == "HUGGINGFACE":

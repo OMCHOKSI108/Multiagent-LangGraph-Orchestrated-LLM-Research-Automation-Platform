@@ -93,7 +93,7 @@ export const user = {
     return result.user;
   },
   changePassword: (currentPassword: string, newPassword: string) =>
-    req<{ message: string }>('POST', '/auth/password', { currentPassword, newPassword }),
+    req<{ message: string }>('PATCH', '/auth/password', { currentPassword, newPassword }),
 };
 
 // ─── Workspaces ───────────────────────────────────────────────────────────────
@@ -415,9 +415,11 @@ export const memories = {
   create: (title: string, content: string, tags?: string[]) =>
     req<Memory>('POST', '/memories', {
       content,
-      title,
-      tags: tags || [],
       source: 'user',
+      metadata: {
+        title,
+        tags: tags || [],
+      },
     }),
   delete: (id: number) => req<{ success: boolean; id: number }>('DELETE', `/memories/${id}`),
   search: (query: string) =>

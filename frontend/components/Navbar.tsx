@@ -15,7 +15,6 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Hide navbar inside workspace (workspace UI has its own header)
   if (pathname.startsWith('/workspace/')) return null;
 
   function handleLogout() {
@@ -29,8 +28,8 @@ export default function Navbar() {
       href={href}
       className={`text-sm ml-4 transition-colors ${
         pathname === href
-          ? 'text-emerald-400'
-          : 'text-slate-200/80 hover:text-white'
+          ? 'text-[var(--accent-teal)]'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
       }`}
     >
       {label}
@@ -41,7 +40,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-40 border-b backdrop-blur-xl h-14 marp-nav">
       <div className="section-shell h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 no-underline">
-          <span className="relative h-8 w-8 overflow-hidden rounded-xl bg-slate-900/60 ring-1 ring-slate-700/70 shadow-md">
+          <span className="relative h-8 w-8 overflow-hidden rounded-xl bg-[var(--bg-surface)] ring-1 ring-[var(--border-default)] shadow-md">
             <Image
               src={Logo}
               alt="MARP logo"
@@ -52,10 +51,10 @@ export default function Navbar() {
             />
           </span>
           <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold tracking-tight text-slate-50">
+            <span className="text-sm font-semibold tracking-tight text-[var(--text-primary)]">
               MARP
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+            <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
               Research Studio
             </span>
           </div>
@@ -74,13 +73,21 @@ export default function Navbar() {
                 type="button"
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className="ml-4 theme-toggle inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/60 text-[11px] text-slate-200 hover:border-emerald-400 hover:text-emerald-300 cursor-pointer"
+                className="ml-4 theme-toggle inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)] text-[11px] text-[var(--text-muted)] hover:border-[var(--accent-teal)] hover:text-[var(--accent-teal)] cursor-pointer"
               >
-                {theme === 'dark' ? '☀︎' : '☾'}
+                {theme === 'dark' ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
               </button>
               <button
                 onClick={handleLogout}
-                className="ml-6 text-xs font-medium uppercase tracking-[0.16em] text-slate-400 hover:text-rose-300 cursor-pointer border-none bg-transparent"
+                className="ml-6 text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)] hover:text-[var(--accent-rose)] cursor-pointer border-none bg-transparent"
               >
                 Logout
               </button>
@@ -95,35 +102,45 @@ export default function Navbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="sm:hidden text-xl leading-none text-slate-200"
+          className="sm:hidden text-xl leading-none text-[var(--text-muted)]"
           onClick={() => setMenuOpen(v => !v)}
           aria-label="Open menu"
         >
-          ☰
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
 
         {menuOpen && (
-          <div className="sm:hidden absolute inset-x-0 top-14 bg-slate-950/95 border-b border-slate-800 shadow-xl z-50 flex flex-col px-5 pb-5 pt-3 gap-3 text-sm">
+          <div className="sm:hidden absolute inset-x-0 top-14 bg-[var(--bg-surface)]/95 border-b border-[var(--border-default)] shadow-xl z-50 flex flex-col px-5 pb-5 pt-3 gap-3 text-sm">
             {user ? (
               <>
                 <button
                   type="button"
                   onClick={() => { toggleTheme(); setMenuOpen(false); }}
-                  className="mb-1 text-xs text-slate-300 flex items-center gap-2"
+                  className="mb-1 text-xs text-[var(--text-secondary)] flex items-center gap-2"
                 >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/60 text-[11px]">
-                    {theme === 'dark' ? '☀︎' : '☾'}
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)] text-[11px]">
+                    {theme === 'dark' ? (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                      </svg>
+                    )}
                   </span>
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 </button>
-                <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="text-slate-100">Workspaces</Link>
-                <Link href="/agents" onClick={() => setMenuOpen(false)} className="text-slate-100">Agents</Link>
-                <Link href="/memories" onClick={() => setMenuOpen(false)} className="text-slate-100">Memories</Link>
-                <Link href="/profile" onClick={() => setMenuOpen(false)} className="text-slate-100">Profile</Link>
-                {user.role === 'admin' && <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-slate-100">Admin</Link>}
+                <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Workspaces</Link>
+                <Link href="/agents" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Agents</Link>
+                <Link href="/memories" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Memories</Link>
+                <Link href="/profile" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Profile</Link>
+                {user.role === 'admin' && <Link href="/admin" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Admin</Link>}
                 <button
                   onClick={() => { setMenuOpen(false); handleLogout(); }}
-                  className="mt-1 text-rose-300 text-left"
+                  className="mt-1 text-[var(--accent-rose)] text-left"
                 >
                   Logout
                 </button>
@@ -133,15 +150,23 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => { toggleTheme(); setMenuOpen(false); }}
-                  className="mb-1 text-xs text-slate-300 flex items-center gap-2"
+                  className="mb-1 text-xs text-[var(--text-secondary)] flex items-center gap-2"
                 >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-700/70 bg-slate-900/60 text-[11px]">
-                    {theme === 'dark' ? '☀︎' : '☾'}
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)] text-[11px]">
+                    {theme === 'dark' ? (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                      </svg>
+                    )}
                   </span>
                   {theme === 'dark' ? 'Light mode' : 'Dark mode'}
                 </button>
-                <Link href="/login" onClick={() => setMenuOpen(false)} className="text-slate-100">Login</Link>
-                <Link href="/signup" onClick={() => setMenuOpen(false)} className="text-slate-100">Sign Up</Link>
+                <Link href="/login" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Login</Link>
+                <Link href="/signup" onClick={() => setMenuOpen(false)} className="text-[var(--text-primary)]">Sign Up</Link>
               </>
             )}
           </div>

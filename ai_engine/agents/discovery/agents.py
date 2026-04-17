@@ -1,6 +1,12 @@
 from ..base import BaseAgent
-from ai_engine.utils.providers import WebSearchProvider, GoogleSearchProvider, WikipediaProvider, ArxivProvider
+from ai_engine.utils.providers import (
+    WebSearchProvider,
+    GoogleSearchProvider,
+    WikipediaProvider,
+    ArxivProvider,
+)
 from langchain_core.messages import SystemMessage, HumanMessage
+
 
 class DomainIntelligenceAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -10,7 +16,7 @@ class DomainIntelligenceAgent(BaseAgent):
             Identify key themes, taxonomies, and ontological structures within the requested research topic.
             Output JSON with keys: 'domains', 'key_concepts', 'seminal_works_query'.
             """,
-            **kwargs
+            **kwargs,
         )
         self.ddg_provider = WebSearchProvider()
         self.google_provider = GoogleSearchProvider()
@@ -19,49 +25,65 @@ class DomainIntelligenceAgent(BaseAgent):
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Running with Multi-Engine Web Search...")
         task = state.get("selected_topic") or state.get("task", "")
-        
+
         # 1. Perform searches
-        ddg_results = self.ddg_provider.search(f"research domain taxonomy {task}", max_results=5)
-        google_results = self.google_provider.search(f"research domain taxonomy {task}", max_results=5)
+        ddg_results = self.ddg_provider.search(
+            f"research domain taxonomy {task}", max_results=5
+        )
+        google_results = self.google_provider.search(
+            f"research domain taxonomy {task}", max_results=5
+        )
         wiki_results = self.wiki_provider.search(task, max_results=4)
-        
+
         all_results = ddg_results + google_results + wiki_results
-        
-        context_str = "\n".join([f"- [{r.get('source', 'web')}] {r['title']}: {r.get('body', '')}" for r in all_results])
-        
+
+        # Some providers return partial records; be defensive to avoid hard failures.
+        context_lines = []
+        for r in all_results:
+            if not isinstance(r, dict):
+                continue
+            source = r.get("source", "web")
+            title = (
+                r.get("title") or r.get("name") or r.get("url") or "Untitled result"
+            ).strip()
+            body = (r.get("body") or r.get("snippet") or r.get("summary") or "").strip()
+            context_lines.append(f"- [{source}] {title}: {body}")
+        context_str = "\n".join(context_lines)
+
         # 2. Add Brain Guidance
         brain_guidance = self._get_brain_guidance(state)
-        
+
         # 3. Update system prompt with real context and brain directives
-        enhanced_prompt = f"{self.system_prompt}\n\n[CONTEXT FROM WEB SEARCH]\n{context_str}"
+        enhanced_prompt = (
+            f"{self.system_prompt}\n\n[CONTEXT FROM WEB SEARCH]\n{context_str}"
+        )
         if brain_guidance:
             enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
-        
+
         # 4. Use intelligent context truncation for the human message
         context = self._truncate_context(state, self.max_context_tokens)
 
         messages = [
-            SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=context)
+            SystemMessage(
+                content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."
+            ),
+            HumanMessage(content=context),
         ]
-        
+
         try:
             response = self.llm.invoke(messages)
             raw_content = response.content
             parsed_json = self._extract_json(raw_content)
-            
+
             # Add search results to the output for transparency
             if isinstance(parsed_json, dict):
                 parsed_json["domain_search_results"] = all_results
-                
-            return {
-                "response": parsed_json,
-                "raw": raw_content,
-                "agent": self.name
-            }
+
+            return {"response": parsed_json, "raw": raw_content, "agent": self.name}
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
             return {"error": str(e), "raw": "Error during execution"}
+
 
 class HistoricalReviewAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -72,50 +94,55 @@ class HistoricalReviewAgent(BaseAgent):
             Identify 3 major epochs/phases of development.
             Output JSON with keys: 'timeline', 'major_shifts', 'legacy_methods'.
             """,
-            **kwargs
+            **kwargs,
         )
         self.arxiv_provider = ArxivProvider()
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Tracing History with Arxiv...")
         task = state.get("selected_topic") or state.get("task", "")
-        
+
         # 1. Search Arxiv for "history of <task>" or "survey <task>"
         papers = self.arxiv_provider.search_papers(f"history of {task}", max_results=6)
         if not papers:
             papers = self.arxiv_provider.search_papers(f"survey {task}", max_results=6)
-            
-        context_str = "\n".join([f"- {p['published']} | {p['title']}: {p['summary'][:300]}..." for p in papers])
-        
+
+        context_str = "\n".join(
+            [
+                f"- {p['published']} | {p['title']}: {p['summary'][:300]}..."
+                for p in papers
+            ]
+        )
+
         # 2. Add Brain Guidance
         brain_guidance = self._get_brain_guidance(state)
 
         # 3. Update system prompt with context and brain directives
-        enhanced_prompt = f"{self.system_prompt}\n\n[HISTORICAL CONTEXT FROM ARXIV]\n{context_str}"
+        enhanced_prompt = (
+            f"{self.system_prompt}\n\n[HISTORICAL CONTEXT FROM ARXIV]\n{context_str}"
+        )
         if brain_guidance:
             enhanced_prompt += f"\n\n[DIRECTIVES FROM CENTRAL BRAIN]{brain_guidance}\n"
-        
+
         # 4. Use intelligent context truncation
         context = self._truncate_context(state, self.max_context_tokens)
 
         messages = [
-            SystemMessage(content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."),
-            HumanMessage(content=context)
+            SystemMessage(
+                content=enhanced_prompt + "\n\nIMPORTANT: Output ONLY valid JSON."
+            ),
+            HumanMessage(content=context),
         ]
-        
+
         try:
             response = self.llm.invoke(messages)
             raw_content = response.content
             parsed_json = self._extract_json(raw_content)
-            
+
             if isinstance(parsed_json, dict):
                 parsed_json["literature_review_sources"] = papers
-                
-            return {
-                "response": parsed_json,
-                "raw": raw_content,
-                "agent": self.name
-            }
+
+            return {"response": parsed_json, "raw": raw_content, "agent": self.name}
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
             return {"error": str(e), "raw": "Error during execution"}
