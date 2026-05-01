@@ -42,7 +42,7 @@ function BrainIcon({ className = 'w-4 h-4' }: { className?: string }) {
 
 // ─── Animated dots (thinking indicator) ──────────────────────────────────────
 
-function ThinkingDots() {
+function ThinkingDots({ colorVar }: { colorVar: string }) {
   return (
     <span className="inline-flex gap-0.5 items-center ml-2">
       {[0, 1, 2].map(i => (
@@ -50,7 +50,7 @@ function ThinkingDots() {
           key={i}
           className="w-1 h-1 rounded-full animate-bounce"
           style={{
-            backgroundColor: 'var(--accent-violet)',
+            backgroundColor: `var(${colorVar})`,
             animationDelay: `${i * 150}ms`,
             animationDuration: '900ms',
           }}
@@ -98,6 +98,7 @@ function ThoughtCard({ thought, index }: { thought: BrainThought; index: number 
               {preview}
             </span>
           )}
+          {expanded && <ThinkingDots colorVar={cfg.colorVar} />}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           <span className="text-[10px] text-[var(--text-tertiary)]">
