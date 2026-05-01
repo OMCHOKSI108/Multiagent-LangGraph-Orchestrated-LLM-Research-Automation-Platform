@@ -10,7 +10,7 @@ const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 export const metadata: Metadata = {
   title: 'MARP – Multi‑Agentic Research Platform',
   description:
-    'A multi‑agent AI research environment for serious academics: topic discovery, literature review, verification, and report generation.',
+    'An open-source platform for automated research: topic discovery, literature review, verification, and report generation.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
