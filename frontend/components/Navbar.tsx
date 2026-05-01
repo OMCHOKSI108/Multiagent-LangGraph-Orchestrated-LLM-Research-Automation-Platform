@@ -26,7 +26,7 @@ export default function Navbar() {
     <Link
       key={href}
       href={href}
-      className={`text-sm ml-4 transition-colors px-2 py-1 rounded-md ${
+      className={`text-sm ml-2 transition-colors px-2 py-1 rounded-md ${
         pathname === href
           ? 'text-[var(--accent-teal)] bg-[var(--accent-teal-muted)]'
           : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
@@ -73,7 +73,7 @@ export default function Navbar() {
                 type="button"
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className="ml-4 theme-toggle inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)] text-[11px] text-[var(--text-muted)] hover:border-[var(--accent-teal)] hover:text-[var(--accent-teal)] cursor-pointer"
+                className="ml-2 theme-toggle inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)] text-[11px] text-[var(--text-muted)] hover:border-[var(--accent-teal)] hover:text-[var(--accent-teal)] cursor-pointer"
               >
                 {theme === 'dark' ? (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
