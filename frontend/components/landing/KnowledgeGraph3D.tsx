@@ -21,6 +21,11 @@ export default function KnowledgeGraph3D() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Get theme colors from CSS variables
+    const style = getComputedStyle(document.documentElement);
+    const accentColor = new Color(style.getPropertyValue('--accent-teal').trim());
+    const mutedColor = new Color(style.getPropertyValue('--border-default').trim());
+
     const scene    = new Scene();
     const camera   = new PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
     camera.position.z = 5;
@@ -57,7 +62,7 @@ export default function KnowledgeGraph3D() {
 
       // soft glow shell for "light wave" effect
       const glowMat = new MeshBasicMaterial({
-        color: new Color(0x22c55e),
+        color: accentColor,
         transparent: true,
         opacity: 0,
         depthWrite: false,
@@ -82,7 +87,7 @@ export default function KnowledgeGraph3D() {
           const positions = new Float32Array(6);
           geo.setAttribute('position', new BufferAttribute(positions, 3));
           const lineMat = new LineBasicMaterial({
-            color: 0x22c55e,
+            color: mutedColor,
             opacity: 0.2,
             transparent: true,
             blending: AdditiveBlending,
