@@ -24,8 +24,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <main className="flex-1 relative z-10">{children}</main>
             </div>
             <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-              <div className="absolute -top-40 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-3xl" />
-              <div className="absolute bottom-[-160px] right-[-80px] h-72 w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
+              <div className="absolute -top-40 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-2xl" />
+              <div className="absolute bottom-[-160px] right-[-80px] h-72 w-[420px] rounded-full bg-indigo-500/20 blur-2xl" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#0f172a_0,_transparent_55%),radial-gradient(circle_at_bottom,_#020617_0,_transparent_55%)] opacity-70" />
             </div>
           </ThemeProvider>
