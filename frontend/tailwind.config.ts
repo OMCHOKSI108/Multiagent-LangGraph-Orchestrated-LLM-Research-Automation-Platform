@@ -92,3 +92,5 @@ const config: Config = {
 };
 
 export default config;
+
+// This is a configuration file for Tailwind CSS.
