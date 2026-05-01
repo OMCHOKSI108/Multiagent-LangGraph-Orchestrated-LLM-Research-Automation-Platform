@@ -43,7 +43,7 @@ const FEATURES = [
     icon: '',
   },
   {
-    label: 'IEEE Paper Export',
+    label: 'Real-time Collaboration',
     desc: 'After research completes, generate a full IEEE-formatted academic paper with citations and methodology.',
     icon: '',
   },
