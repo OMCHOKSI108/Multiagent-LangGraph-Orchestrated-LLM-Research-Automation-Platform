@@ -111,22 +111,6 @@ export default function LLMStatusBar({
       </div>
     );
   }
-      document.addEventListener('mousedown', handleClick);
-    }
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showDropdown]);
-
-  if (loading) {
-    return (
-      <div className={`flex items-center gap-1.5 ${className}`}>
-        <span
-          className="w-2 h-2 rounded-full animate-pulse"
-          style={{ backgroundColor: 'var(--text-tertiary)' }}
-        />
-        <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Checking LLM…</span>
-      </div>
-    );
-  }
 
   const mode = status?.mode || 'UNKNOWN';
   const provider = status?.provider;

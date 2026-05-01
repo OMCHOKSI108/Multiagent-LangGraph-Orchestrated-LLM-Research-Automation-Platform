@@ -75,7 +75,7 @@ def _compact_query_seed(query: str) -> str:
     for marker in markers:
         idx = q_lower.find(marker)
         if idx > 0:
-            q = q[:idx].strip(" :;,.\"")
+            q = q[:idx].strip(' :;,."')
             break
 
     if "." in q:
@@ -101,10 +101,22 @@ def _build_query_variants(query: str) -> List[str]:
         variants.append(simplified)
 
     ql = simplified.lower()
-    has_ai = any(k in ql for k in [" ai ", "ai ", " ai", "artificial intelligence", "machine learning"]) or ql.startswith("ai")
+    has_ai = any(
+        k in ql
+        for k in [" ai ", "ai ", " ai", "artificial intelligence", "machine learning"]
+    ) or ql.startswith("ai")
     has_war_domain = any(
         k in ql
-        for k in ["war", "wars", "warfare", "military", "defense", "combat", "battle", "armed conflict"]
+        for k in [
+            "war",
+            "wars",
+            "warfare",
+            "military",
+            "defense",
+            "combat",
+            "battle",
+            "armed conflict",
+        ]
     )
 
     if has_ai and has_war_domain:
@@ -200,16 +212,36 @@ def _is_domain_relevant(query: str, title: str, description: str) -> bool:
     if wants_ai:
         # If query has AI plus extra domain terms, avoid broad "any AI" matches.
         stop = {
-            "the", "a", "an", "in", "on", "for", "of", "to", "and", "or",
-            "is", "are", "used", "use", "with", "by", "from", "at",
+            "the",
+            "a",
+            "an",
+            "in",
+            "on",
+            "for",
+            "of",
+            "to",
+            "and",
+            "or",
+            "is",
+            "are",
+            "used",
+            "use",
+            "with",
+            "by",
+            "from",
+            "at",
         }
         ai_term_tokens = {
-            "ai", "artificial", "intelligence", "machine", "learning",
-            "deep", "autonomous",
+            "ai",
+            "artificial",
+            "intelligence",
+            "machine",
+            "learning",
+            "deep",
+            "autonomous",
         }
         query_tokens = [
-            t for t in re.findall(r"[a-z0-9]+", ql)
-            if t not in stop and len(t) > 2
+            t for t in re.findall(r"[a-z0-9]+", ql) if t not in stop and len(t) > 2
         ]
         non_ai_tokens = [t for t in query_tokens if t not in ai_term_tokens]
         if non_ai_tokens:
@@ -222,8 +254,20 @@ def _is_domain_relevant(query: str, title: str, description: str) -> bool:
 
     # Generic fallback: at least one meaningful token overlap.
     stop = {
-        "the", "a", "an", "in", "on", "for", "of", "to", "and", "or",
-        "is", "are", "used", "use",
+        "the",
+        "a",
+        "an",
+        "in",
+        "on",
+        "for",
+        "of",
+        "to",
+        "and",
+        "or",
+        "is",
+        "are",
+        "used",
+        "use",
     }
     terms = [t for t in re.findall(r"[a-z0-9]+", ql) if t not in stop and len(t) > 2]
     return any(_contains(t, text) for t in terms)
@@ -639,7 +683,9 @@ class PubMedProvider(SearchProvider):
 
 
 class PDFReaderProvider:
-    def read_pdf(self, url: str) -> str:
+    MAX_PAGES = 50  # Hard safety cap to prevent memory exhaustion
+
+    def read_pdf(self, url: str, max_pages: int = 20) -> str:
         if not PdfReader:
             return "pypdf not installed"
 
@@ -648,8 +694,17 @@ class PDFReaderProvider:
             r.raise_for_status()
             reader = PdfReader(io.BytesIO(r.content))
 
+            total_pages = len(reader.pages)
+            pages_to_read = min(max_pages, self.MAX_PAGES, total_pages)
+
+            if total_pages > max_pages:
+                print(
+                    f"[PDFReader] PDF has {total_pages} pages, reading first {pages_to_read} "
+                    f"(limit: {max_pages}, safety cap: {self.MAX_PAGES})"
+                )
+
             text = ""
-            for page in reader.pages[:20]:
+            for page in reader.pages[:pages_to_read]:
                 text += (page.extract_text() or "") + "\n"
 
             metrics_inc("pdf_read_success")

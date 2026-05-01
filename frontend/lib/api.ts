@@ -22,6 +22,30 @@ export function setToken(token: string) {
 
 export function clearToken() {
   localStorage.removeItem('dr_token');
+  // Notify other tabs via BroadcastChannel
+  try {
+    const channel = new BroadcastChannel('marp_auth');
+    channel.postMessage({ type: 'logout' });
+    channel.close();
+  } catch {
+    // BroadcastChannel not supported
+  }
+}
+
+const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT = 30000; // 30 seconds
+
+async function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -29,22 +53,62 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   const token = getToken();
   if (token) headers['x-auth-token'] = token;
 
-  const res = await fetch(API_BASE + path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let lastError: Error & { status?: number } | null = null;
 
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = (data as { error?: string; message?: string }).error
-      || (data as { error?: string; message?: string }).message
-      || `HTTP ${res.status}`;
-    const err = new Error(msg) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1) + Math.random() * 500, 8000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      const res = await fetchWithTimeout(API_BASE + path, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = (data as { error?: string; message?: string }).error
+          || (data as { error?: string; message?: string }).message
+          || `HTTP ${res.status}`;
+        const err = new Error(msg) as Error & { status?: number };
+        err.status = res.status;
+
+        if (attempt < MAX_RETRIES && err.status && RETRYABLE_STATUSES.includes(err.status)) {
+          lastError = err;
+          continue;
+        }
+
+        throw err;
+      }
+      return data as T;
+    } catch (err) {
+      const error = err as Error & { status?: number };
+      lastError = error;
+
+      const isNetworkError = error.name === 'AbortError'
+        || error.message?.includes('Failed to fetch')
+        || error.message?.includes('NetworkError');
+
+      if (attempt < MAX_RETRIES && (isNetworkError || (error.status && RETRYABLE_STATUSES.includes(error.status)))) {
+        continue;
+      }
+
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your connection and try again.');
+      }
+
+      if (isNetworkError) {
+        throw new Error('Network connection lost. Please check your connection and try again.');
+      }
+
+      throw error;
+    }
   }
-  return data as T;
+
+  throw lastError || new Error('Request failed after retries');
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────

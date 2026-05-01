@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import LoadingScreen from '@/components/LoadingScreen';
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
@@ -12,6 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
     if (!loading && user) {
@@ -23,6 +29,13 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setEmailError('');
+
+    if (!isValidEmail(email.trim())) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await login(email.trim(), password);
@@ -32,6 +45,8 @@ export default function LoginPage() {
       setSubmitting(false);
     }
   }
+
+  if (loading) return <LoadingScreen message="Checking authentication..." />;
 
   return (
     <div className="section-shell flex items-center justify-center py-14">
@@ -71,33 +86,51 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Email</label>
+              <label htmlFor="login-email" className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Email</label>
               <input
+                id="login-email"
                 type="email"
                 required
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setEmailError(''); }}
+                onBlur={() => { if (email && !isValidEmail(email.trim())) setEmailError('Please enter a valid email address'); }}
                 placeholder="you@example.com"
-                className="input-field"
+                className={`input-field ${emailError ? 'border-[var(--accent-rose)]' : ''}`}
+                aria-label="Email address"
+                aria-describedby={emailError ? 'login-email-error' : undefined}
+                aria-invalid={!!emailError}
+                autoComplete="email"
               />
+              {emailError && (
+                <p id="login-email-error" className="mt-1 text-xs text-[var(--accent-rose)]" role="alert">{emailError}</p>
+              )}
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Password</label>
+              <label htmlFor="login-password" className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Password</label>
               <input
+                id="login-password"
                 type="password"
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Your password"
                 className="input-field"
+                aria-label="Password"
+                autoComplete="current-password"
               />
             </div>
             <button
               type="submit"
               disabled={submitting}
               className="btn-primary mt-2"
+              aria-label={submitting ? 'Signing in' : 'Sign in'}
             >
-              {submitting ? 'Signing in...' : 'Sign in'}
+              {submitting ? (
+                <span className="flex items-center gap-2 justify-center">
+                  <span className="spinner" />
+                  Signing in...
+                </span>
+              ) : 'Sign in'}
             </button>
           </form>
 

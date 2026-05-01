@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { memories as memoriesApi, type Memory } from '@/lib/api';
+import ConfirmModal from '@/components/ConfirmModal';
+import LoadingScreen from '@/components/LoadingScreen';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 export default function MemoriesPage() {
   const { user, loading } = useAuth();
@@ -22,6 +25,7 @@ export default function MemoriesPage() {
 
   // Search
   const [query, setQuery] = useState('');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
@@ -62,7 +66,6 @@ export default function MemoriesPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('Delete this memory?')) return;
     try {
       await memoriesApi.delete(id);
       setMems(prev => prev.filter(m => m.id !== id));
@@ -77,6 +80,17 @@ export default function MemoriesPage() {
 
   return (
     <div className="section-shell pb-20">
+      <ConfirmModal
+        isOpen={deleteId !== null}
+        title="Delete Memory"
+        description="Are you sure you want to delete this memory? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => { if (deleteId !== null) handleDelete(deleteId); setDeleteId(null); }}
+        onCancel={() => setDeleteId(null)}
+      />
+
       <div className="max-w-[720px] w-full mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -97,23 +111,28 @@ export default function MemoriesPage() {
       {showCreate && (
         <div className="surface-card mb-4 p-5">
           <div className="mb-3">
-            <label className="block text-[11px] text-[var(--text-tertiary)] mb-1 uppercase tracking-[0.16em] font-medium">Title *</label>
-            <input value={title} onChange={e => setTitle(e.target.value)}
+            <label htmlFor="memory-title" className="block text-[11px] text-[var(--text-tertiary)] mb-1 uppercase tracking-[0.16em] font-medium">Title *</label>
+            <input id="memory-title" value={title} onChange={e => setTitle(e.target.value)}
               placeholder="Memory title"
-              className="w-full input-field" />
+              className="w-full input-field"
+              aria-label="Memory title"
+              aria-required="true" />
           </div>
           <div className="mb-3">
-            <label className="block text-[11px] text-[var(--text-tertiary)] mb-1 uppercase tracking-[0.16em] font-medium">Content *</label>
-            <textarea value={content} onChange={e => setContent(e.target.value)}
+            <label htmlFor="memory-content" className="block text-[11px] text-[var(--text-tertiary)] mb-1 uppercase tracking-[0.16em] font-medium">Content *</label>
+            <textarea id="memory-content" value={content} onChange={e => setContent(e.target.value)}
               placeholder="What do you want to remember?"
               rows={4}
-              className="w-full input-field resize-none" />
+              className="w-full input-field resize-none"
+              aria-label="Memory content"
+              aria-required="true" />
           </div>
           <div className="mb-3">
-            <label className="block text-[11px] text-[var(--text-tertiary)] mb-1 uppercase tracking-[0.16em] font-medium">Tags (comma-separated)</label>
-            <input value={tags} onChange={e => setTags(e.target.value)}
+            <label htmlFor="memory-tags" className="block text-[11px] text-[var(--text-tertiary)] mb-1 uppercase tracking-[0.16em] font-medium">Tags (comma-separated)</label>
+            <input id="memory-tags" value={tags} onChange={e => setTags(e.target.value)}
               placeholder="e.g. AI, research, quantum"
-              className="w-full input-field" />
+              className="w-full input-field"
+              aria-label="Memory tags" />
           </div>
           {createErr && <p className="text-[var(--accent-rose)] text-xs mb-3">{createErr}</p>}
           <div className="flex gap-2">
@@ -141,7 +160,9 @@ export default function MemoriesPage() {
 
       {/* List */}
       {fetching ? (
-        <p className="text-sm text-[var(--text-muted)]">Loading...</p>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+        </div>
       ) : fetchErr ? (
         <p className="text-sm text-[var(--accent-rose)]">{fetchErr}</p>
       ) : filtered.length === 0 ? (
@@ -155,9 +176,10 @@ export default function MemoriesPage() {
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-sm font-semibold">{m.title}</h3>
                 <button
-                  onClick={() => handleDelete(m.id)}
+                  onClick={() => setDeleteId(m.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDeleteId(m.id); } }}
                   className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent-rose)] ml-2 border-none bg-transparent cursor-pointer transition-colors p-1 rounded hover:bg-[var(--accent-rose)]/10"
-                  aria-label="Delete memory"
+                  aria-label={`Delete memory: ${m.title}`}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

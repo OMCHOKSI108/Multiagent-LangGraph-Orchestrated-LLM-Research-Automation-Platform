@@ -18,12 +18,46 @@ def _is_noise_query(q: str) -> bool:
         "sources",
         '"event"',
         '"description"',
+        "generate",
+        "output",
+        "format",
+        "structured",
     ]
     if any(tok in s for tok in noise_tokens):
         return True
     if s.count(":") >= 2:
         return True
+    # Require at least 3 words with 2+ content words (not just stop words)
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "of",
+        "in",
+        "to",
+        "for",
+        "on",
+        "with",
+        "and",
+        "or",
+        "but",
+        "not",
+        "it",
+        "this",
+        "that",
+    }
+    words = s.split()
+    if len(words) < 3:
+        return True
+    content_words = [w for w in words if w not in stop_words and len(w) > 2]
+    if len(content_words) < 2:
+        return True
     return False
+
 
 class NewsAgent(BaseAgent):
     def __init__(self, **kwargs):
@@ -48,23 +82,25 @@ class NewsAgent(BaseAgent):
                 "sources": [{"title": "...", "url": "..."}]
             }
             """,
-            **kwargs
+            **kwargs,
         )
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Searching for latest news...")
-        
+
         task = state.get("selected_topic") or state.get("task", "")
-        
+
         # 1. Generate Queries
         messages = [
             SystemMessage(content=self.system_prompt),
-            HumanMessage(content=f"Generate 3 news search queries for: {task}. Return only the queries separated by newline.")
+            HumanMessage(
+                content=f"Generate 3 news search queries for: {task}. Return only the queries separated by newline."
+            ),
         ]
-        
+
         try:
             response = self.llm.invoke(messages)
-            raw_lines = [q.strip() for q in response.content.split('\n') if q.strip()]
+            raw_lines = [q.strip() for q in response.content.split("\n") if q.strip()]
             queries = []
             for q in raw_lines:
                 cleaned = q.strip().strip("-*").strip().strip('"').strip(",")
@@ -78,7 +114,9 @@ class NewsAgent(BaseAgent):
                     continue
                 if cleaned in {"{", "}"}:
                     continue
-                if ":" in cleaned and cleaned.lower().startswith(("news_summary", "key_events", "market_trends", "sources")):
+                if ":" in cleaned and cleaned.lower().startswith(
+                    ("news_summary", "key_events", "market_trends", "sources")
+                ):
                     continue
                 cleaned = " ".join(cleaned.split())
                 if _is_noise_query(cleaned):
@@ -89,21 +127,30 @@ class NewsAgent(BaseAgent):
             queries = queries[:3]  # Limit to 3 queries
         except Exception as e:
             print(f"[{self.name}] Query generation failed: {e}")
-            queries = [f"{task} news", f"{task} latest developments", f"{task} recent research"]
+            queries = [
+                f"{task} news",
+                f"{task} latest developments",
+                f"{task} recent research",
+            ]
 
         if not queries:
-            queries = [f"{task} news", f"{task} latest developments", f"{task} recent research"]
+            queries = [
+                f"{task} news",
+                f"{task} latest developments",
+                f"{task} recent research",
+            ]
 
         # 2. Search News
         from ai_engine.utils.providers import NewsSearchProvider
+
         news_provider = NewsSearchProvider()
-        
+
         all_results = []
         for query in queries:
             print(f"[{self.name}] Query: {query}")
             results = news_provider.search(query, max_results=5)
             all_results.extend(results)
-            
+
         # Deduplicate
         seen_urls = set()
         unique_results = []
@@ -116,24 +163,26 @@ class NewsAgent(BaseAgent):
             if url not in seen_urls:
                 unique_results.append(r)
                 seen_urls.add(url)
-        
+
         # 3. Synthesize
         if not unique_results:
             return {"news_summary": "No recent news found.", "sources": []}
-            
-        context = json.dumps(unique_results[:5], indent=2) # Top 5
-        
+
+        context = json.dumps(unique_results[:5], indent=2)  # Top 5
+
         synthesis_messages = [
             SystemMessage(content=self.system_prompt),
-            HumanMessage(content=f"Synthesize these news results for topic '{task}':\n{context}")
+            HumanMessage(
+                content=f"Synthesize these news results for topic '{task}':\n{context}"
+            ),
         ]
-        
+
         try:
             response = self.llm.invoke(synthesis_messages)
             result = self._extract_json(response.content)
             result["sources"] = unique_results[:5]
             return {"response": result, "agent": self.name}
-            
+
         except Exception as e:
             print(f"[{self.name}] Synthesis failed: {e}")
             return {"error": str(e)}

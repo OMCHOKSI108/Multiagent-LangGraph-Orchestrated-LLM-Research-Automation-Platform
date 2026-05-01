@@ -17,6 +17,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import PremiumCharts from '@/components/PremiumCharts';
 import LLMStatusBar from '@/components/LLMStatusBar';
+import LoadingScreen from '@/components/LoadingScreen';
+import ConfirmModal from '@/components/ConfirmModal';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -663,9 +665,9 @@ function SourcesPanel({
                   <div className="aspect-video relative overflow-hidden">
                     <img
                       src={normalizeImageUrl(img.local || img.url || img.original)}
-                      alt="Research Visual"
+                      alt={img.description || img.title || `Research visualization: ${img.source_url || 'data chart'}`}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      onError={(e) => { (e.target as any).src = 'https://via.placeholder.com/300x200?text=Image+Load+Error'; }}
+                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x200?text=Image+Load+Error'; }}
                     />
                   </div>
                   <div className="p-3">
@@ -753,11 +755,13 @@ function SourcesPanel({
 function SectionEditor({
   section,
   wsId,
-  onUpdate
+  onUpdate,
+  onError
 }: {
   section: any;
   wsId: string;
-  onUpdate: () => void
+  onUpdate: () => void;
+  onError: (msg: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [instruction, setInstruction] = useState('');
@@ -771,8 +775,9 @@ function SectionEditor({
       setEditing(false);
       setInstruction('');
       onUpdate();
-    } catch (e: any) {
-      alert("Edit failed: " + e.message);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      onError('Edit failed: ' + message);
     } finally {
       setBusy(false);
     }
@@ -855,6 +860,10 @@ export default function WorkspacePage() {
   const [sseConnected, setSseConnected] = useState(false);
   const [resultJson, setResultJson] = useState<ResearchResult | null>(null);
   const [reportMd, setReportMd] = useState('');
+  const reportBufferRef = useRef('');
+  const reportThrottleRef = useRef<NodeJS.Timeout | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [latexSource, setLatexSource] = useState('');
   const [compileBusy, setCompileBusy] = useState(false);
   const [sections_data, setSectionsData] = useState<any[]>([]);
@@ -945,6 +954,11 @@ export default function WorkspacePage() {
     setLiveSources([]);
     setResultJson(null);
     setReportMd('');
+    reportBufferRef.current = '';
+    if (reportThrottleRef.current) {
+      clearTimeout(reportThrottleRef.current);
+      reportThrottleRef.current = null;
+    }
     setLatexSource('');
     setSectionsData([]);
     setBrainThoughts([]);
@@ -955,15 +969,20 @@ export default function WorkspacePage() {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    if (sseReconnectTimerRef.current) {
+      clearTimeout(sseReconnectTimerRef.current);
+      sseReconnectTimerRef.current = null;
+    }
     setSseConnected(false);
   }, []);
 
   const eventSourceRef = useRef<EventSource | null>(null);
+  const sseReconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const startEventPolling = useCallback((sid: number) => {
     stopEventPolling();
 
-    (async () => {
+    const connectWithFreshToken = async () => {
       try {
         const tok = await eventsApi.getSSEToken(sid);
         if (!tok?.token || abortRef.current) {
@@ -999,7 +1018,14 @@ export default function WorkspacePage() {
             else if (type === 'report' || category === 'report_chunk') {
               const chunk = details?.chunk || message || '';
               if (chunk) {
-                setReportMd(prev => prev + chunk);
+                reportBufferRef.current += chunk;
+                // Throttle React state updates to every 500ms to prevent UI jank
+                if (!reportThrottleRef.current) {
+                  reportThrottleRef.current = setTimeout(() => {
+                    setReportMd(reportBufferRef.current);
+                    reportThrottleRef.current = null;
+                  }, 500);
+                }
                 setTab('report');
               }
             }
@@ -1043,9 +1069,19 @@ export default function WorkspacePage() {
           setSseConnected(false);
           es.close();
           eventSourceRef.current = null;
+          // Don't auto-reconnect here — the polling loop will get a fresh token
         };
+
+        // Auto-reconnect with fresh token every 50 seconds (before 60s expiry)
+        if (sseReconnectTimerRef.current) clearTimeout(sseReconnectTimerRef.current);
+        sseReconnectTimerRef.current = setTimeout(() => {
+          es.close();
+          connectWithFreshToken();
+        }, 50_000);
       } catch { }
-    })();
+    };
+
+    connectWithFreshToken();
   }, [stopEventPolling]);
 
   async function pollResearch(sid: number) {
@@ -1055,13 +1091,18 @@ export default function WorkspacePage() {
     setAbort(false);
     startEventPolling(sid);
 
-    while (!abortRef.current) {
-      if (abortRef.current) break;
+    const MAX_POLLS = 600; // 30 min at 3s intervals
+    let pollCount = 0;
+    let consecutiveErrors = 0;
+
+    while (!abortRef.current && pollCount < MAX_POLLS) {
       await sleep(3000);
       if (abortRef.current) break;
 
       try {
         const s = await wsApi.getResearchStatus(wsId, sid);
+        consecutiveErrors = 0; // Reset on success
+
         if (s.status === 'completed') {
           addMsg(summarizeResearch(s.report_markdown, s.topic || s.title), 'bot');
           if (s.result_json) setResultJson(s.result_json);
@@ -1098,8 +1139,21 @@ export default function WorkspacePage() {
           break;
         }
         if (s.current_stage) setStatusText(s.current_stage);
-      } catch { }
+        pollCount++;
+      } catch {
+        consecutiveErrors++;
+        pollCount++;
+        if (consecutiveErrors >= 5) {
+          console.error('[Workspace] Stopping polling after 5 consecutive errors');
+          break;
+        }
+      }
     }
+
+    if (pollCount >= MAX_POLLS) {
+      console.warn('[Workspace] Polling reached maximum iterations (30 min). Stopping.');
+    }
+
     setRunning(false);
     setRunStartedAt(null);
     stopEventPolling();
@@ -1216,15 +1270,17 @@ export default function WorkspacePage() {
       setMsgs(p => p.map(m => m.id === msgId ? { ...m, text: `Job #${sid} created (${depth}). Working...` } : m));
       await loadWorkspace();
       await pollResearch(sid);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
       setMsgs(p => p.filter(m => m.id !== msgId));
-      addMsg('Error: ' + e.message, 'bot');
+      addMsg('Error: ' + message, 'bot');
       setRunning(false);
     }
   }
 
   async function handleExport(format: 'markdown' | 'json') {
     if (!curSession) return;
+    setExporting(format);
     try {
       const blob = await exportApi.download(curSession.id, format);
       const url = URL.createObjectURL(blob);
@@ -1235,13 +1291,17 @@ export default function WorkspacePage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      addMsg('Export failed: ' + e.message, 'bot');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      addMsg('Export failed: ' + message, 'bot');
+    } finally {
+      setExporting(null);
     }
   }
 
   async function handleDownloadPdf() {
     if (!curSession) return;
+    setExporting('pdf');
     try {
       const blob = await exportApi.downloadPdf(curSession.id);
       const url = URL.createObjectURL(blob);
@@ -1252,13 +1312,17 @@ export default function WorkspacePage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      addMsg('PDF download failed: ' + e.message, 'bot');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      addMsg('PDF download failed: ' + message, 'bot');
+    } finally {
+      setExporting(null);
     }
   }
 
   async function handleDownloadLatex() {
     if (!curSession) return;
+    setExporting('latex');
     try {
       const blob = await exportApi.downloadLatex(curSession.id);
       const url = URL.createObjectURL(blob);
@@ -1269,8 +1333,11 @@ export default function WorkspacePage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      addMsg('LaTeX download failed: ' + e.message, 'bot');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      addMsg('LaTeX download failed: ' + message, 'bot');
+    } finally {
+      setExporting(null);
     }
   }
 
@@ -1295,20 +1362,21 @@ export default function WorkspacePage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       addMsg('PDF compiled successfully.', 'system');
-    } catch (e: any) {
-      addMsg('PDF compile failed: ' + e.message, 'bot');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      addMsg('PDF compile failed: ' + message, 'bot');
     } finally {
       setCompileBusy(false);
     }
   }
 
   async function handleDeleteWorkspace() {
-    if (!confirm(`Delete workspace "${wsName}"? This cannot be undone.`)) return;
     try {
       await wsApi.delete(wsId);
       router.push('/dashboard');
-    } catch (e: any) {
-      addMsg('Delete failed: ' + e.message, 'bot');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      addMsg('Delete failed: ' + message, 'bot');
     }
   }
 
@@ -1337,16 +1405,28 @@ export default function WorkspacePage() {
       addMsg('Research stopped by user', 'bot');
       stopEventPolling();
       await loadWorkspace();
-    } catch (e: any) {
-      addMsg('Failed to stop: ' + e.message, 'bot');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      addMsg('Failed to stop: ' + message, 'bot');
     }
   }
 
-  if (authLoading) return null;
+  if (authLoading) return <LoadingScreen message="Loading workspace..." />;
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden workspace-root">
       <div className="bg-ambient" />
+
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete Workspace"
+        description={`Are you sure you want to delete "${wsName}"? This action cannot be undone and will remove all research sessions and data.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => { setShowDeleteModal(false); handleDeleteWorkspace(); }}
+        onCancel={() => setShowDeleteModal(false)}
+      />
       <header className="h-14 px-4 flex items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-surface)]/90 backdrop-blur-md z-20">
         <div className="flex items-center gap-3">
           <button
@@ -1358,7 +1438,9 @@ export default function WorkspacePage() {
           </button>
           <button
             onClick={() => router.push('/dashboard')}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push('/dashboard'); } }}
             className="text-sm text-[var(--text-muted)] flex items-center gap-2 hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/50 rounded-lg px-2 py-1"
+            aria-label="Back to dashboard"
           >
             <Icons.back />
             <span>Back</span>
@@ -1366,7 +1448,8 @@ export default function WorkspacePage() {
           <div className="h-4 w-px bg-[var(--border-default)]" />
           <h1 className="text-sm font-semibold text-[var(--text-primary)] truncate max-w-[280px] gradient-text-teal">{wsName}</h1>
           <button
-            onClick={handleDeleteWorkspace}
+            onClick={() => setShowDeleteModal(true)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowDeleteModal(true); } }}
             className="p-2 rounded-lg hover:bg-red-500/20 text-[var(--text-muted)] hover:text-red-400 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/40"
             title="Delete workspace"
             aria-label="Delete workspace"
@@ -1400,6 +1483,10 @@ export default function WorkspacePage() {
               <button
                 key={s.id}
                 onClick={() => loadSession(s)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadSession(s); } }}
+                role="option"
+                aria-selected={curSession?.id === s.id}
+                aria-label={`Research session: ${s.topic || s.title}`}
                 className={`w-full text-left px-3 py-2.5 border-b border-[var(--border-default)]/50 hover:bg-[var(--btn-ghost-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/40 ${curSession?.id === s.id ? 'bg-[var(--accent-teal)]/7 border-l-2 border-[var(--accent-teal)]' : ''}`}
               >
                 <p className="text-[11px] text-[var(--text-muted)] truncate">{s.topic || s.title}</p>
@@ -1421,11 +1508,13 @@ export default function WorkspacePage() {
                   Shortcuts: Use commands to run faster research workflows.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {['/research your topic', '/deepresearch your topic', '/gatherdata your topic'].map((cmd) => (
+                    {['/research your topic', '/deepresearch your topic', '/gatherdata your topic'].map((cmd) => (
                     <button
                       key={cmd}
                       onClick={() => setChatInput(cmd)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChatInput(cmd); } }}
                       className="px-2.5 py-1 rounded-md text-[11px] border border-[var(--accent-teal)]/20 text-[var(--accent-teal)] bg-[var(--bg-surface)]/50 hover:bg-[var(--accent-teal)]/8"
+                      aria-label={`Use command: ${cmd}`}
                     >
                       {cmd}
                     </button>
@@ -1443,6 +1532,8 @@ export default function WorkspacePage() {
                 }}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
                 placeholder="Message MARP..."
+                aria-label="Message input"
+                aria-describedby="chat-hint"
                 className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-teal)]/60 focus:ring-2 focus:ring-[var(--accent-teal)]/20 transition-all resize-none"
                 rows={1}
               />
@@ -1492,6 +1583,10 @@ export default function WorkspacePage() {
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTab(t.id); } }}
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  aria-controls={`${t.id}-panel`}
                   className={`px-3 py-1.5 rounded-md text-[10px] uppercase font-bold inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--accent-teal)]/30 ${tab === t.id ? 'text-[var(--accent-teal)] bg-[var(--accent-teal)]/8 border border-[var(--accent-teal)]/30' : 'text-[var(--text-tertiary)] border border-transparent hover:border-[var(--border-default)]'}`}
                 >
                   {t.icon} <span>{t.label}</span>
@@ -1502,37 +1597,57 @@ export default function WorkspacePage() {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {tab === 'feed' && feedEvents.map((e, i) => <FeedItem key={i} ev={e} index={i} />)}
+              {tab === 'feed' && (
+                feedEvents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <div className="w-16 h-16 rounded-full bg-[var(--bg-surface)] flex items-center justify-center mb-4 border border-[var(--border-default)]">
+                      <span className="text-[var(--text-tertiary)]"><Icons.feed /></span>
+                    </div>
+                    <p className="text-sm text-[var(--text-tertiary)]">No events yet.</p>
+                    <p className="text-xs mt-1 text-[var(--text-tertiary)] opacity-70">Start a research session to see live agent activity.</p>
+                  </div>
+                ) : (
+                  feedEvents.map((e, i) => <FeedItem key={i} ev={e} index={i} />)
+                )
+              )}
               {tab === 'report' && (
                 <div>
                   <div className="mb-4 flex flex-wrap gap-2">
                     <button
                       onClick={handleCompilePdf}
                       disabled={!curSession || compileBusy}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-amber-500/10 text-amber-300 border border-amber-400/20 disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg text-xs bg-amber-500/10 text-amber-300 border border-amber-400/20 disabled:opacity-50 flex items-center gap-1.5"
+                      aria-label={compileBusy ? 'Compiling PDF' : 'Compile to PDF'}
                     >
+                      {compileBusy && <span className="spinner" />}
                       {compileBusy ? 'Compiling PDF...' : 'Compile to PDF'}
                     </button>
                     <button
                       onClick={handleDownloadPdf}
-                      disabled={!curSession}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] border border-[var(--accent-teal)]/20 disabled:opacity-50"
+                      disabled={!curSession || exporting === 'pdf'}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] border border-[var(--accent-teal)]/20 disabled:opacity-50 flex items-center gap-1.5"
+                      aria-label={exporting === 'pdf' ? 'Downloading PDF' : 'Download Report PDF'}
                     >
-                      Download Report PDF
+                      {exporting === 'pdf' && <span className="spinner" />}
+                      {exporting === 'pdf' ? 'Downloading...' : 'Download Report PDF'}
                     </button>
                     <button
                       onClick={() => handleExport('markdown')}
-                      disabled={!curSession}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-blue)]/10 text-[var(--accent-blue)] border border-[var(--accent-blue)]/20 disabled:opacity-50"
+                      disabled={!curSession || exporting === 'markdown'}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-blue)]/10 text-[var(--accent-blue)] border border-[var(--accent-blue)]/20 disabled:opacity-50 flex items-center gap-1.5"
+                      aria-label={exporting === 'markdown' ? 'Downloading Markdown' : 'Download Markdown'}
                     >
-                      Download Markdown
+                      {exporting === 'markdown' && <span className="spinner" />}
+                      {exporting === 'markdown' ? 'Downloading...' : 'Download Markdown'}
                     </button>
                     <button
                       onClick={handleDownloadLatex}
-                      disabled={!curSession}
-                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-violet)]/10 text-[var(--accent-violet)] border border-[var(--accent-violet)]/20 disabled:opacity-50"
+                      disabled={!curSession || exporting === 'latex'}
+                      className="px-3 py-1.5 rounded-lg text-xs bg-[var(--accent-violet)]/10 text-[var(--accent-violet)] border border-[var(--accent-violet)]/20 disabled:opacity-50 flex items-center gap-1.5"
+                      aria-label={exporting === 'latex' ? 'Downloading LaTeX' : 'Download LaTeX'}
                     >
-                      Download LaTeX
+                      {exporting === 'latex' && <span className="spinner" />}
+                      {exporting === 'latex' ? 'Downloading...' : 'Download LaTeX'}
                     </button>
                   </div>
                   <div className="prose prose-invert prose-sm"><ReactMarkdown remarkPlugins={[remarkGfm]}>{reportMd || 'Researching...'}</ReactMarkdown></div>
@@ -1550,13 +1665,6 @@ export default function WorkspacePage() {
           </aside>
         )}
       </div>
-
-      <style jsx global>{`
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .prose pre { background: #0B0F1A !important; border: 1px solid rgba(255,255,255,0.1); }
-      `}</style>
     </div>
   );
 }

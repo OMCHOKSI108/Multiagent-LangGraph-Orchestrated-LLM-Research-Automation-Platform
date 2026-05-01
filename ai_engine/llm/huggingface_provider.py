@@ -20,7 +20,7 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     pipeline,
-    BitsAndBytesConfig
+    BitsAndBytesConfig,
 )
 from langchain_huggingface import HuggingFacePipeline
 from .base import LLMProvider
@@ -36,7 +36,9 @@ class HuggingFaceProvider(LLMProvider):
     Supports various model sizes and quantization for efficiency.
     """
 
-    def __init__(self, model_name: str, device: str = "auto", use_quantization: bool = True):
+    def __init__(
+        self, model_name: str, device: str = "auto", use_quantization: bool = True
+    ):
         self.model_name = model_name
         self.device = device
         self.use_quantization = use_quantization
@@ -49,23 +51,53 @@ class HuggingFaceProvider(LLMProvider):
         self.model_configs = {
             # Small models (fast, low memory)
             "microsoft/phi-2": {"max_length": 2048, "quantization": "4bit"},
-            "microsoft/phi-3-mini-4k-instruct": {"max_length": 4096, "quantization": "4bit"},
-            "microsoft/phi-3.5-mini-instruct": {"max_length": 4096, "quantization": "4bit"},
-
+            "microsoft/phi-3-mini-4k-instruct": {
+                "max_length": 4096,
+                "quantization": "4bit",
+            },
+            "microsoft/phi-3.5-mini-instruct": {
+                "max_length": 4096,
+                "quantization": "4bit",
+            },
             # Medium models (balanced performance)
-            "microsoft/phi-3-medium-4k-instruct": {"max_length": 4096, "quantization": "8bit"},
-            "meta-llama/Llama-2-7b-chat-hf": {"max_length": 4096, "quantization": "8bit"},
-            "meta-llama/Llama-3.2-3B-Instruct": {"max_length": 4096, "quantization": "4bit"},
-
+            "microsoft/phi-3-medium-4k-instruct": {
+                "max_length": 4096,
+                "quantization": "8bit",
+            },
+            "meta-llama/Llama-2-7b-chat-hf": {
+                "max_length": 4096,
+                "quantization": "8bit",
+            },
+            "meta-llama/Llama-3.2-3B-Instruct": {
+                "max_length": 4096,
+                "quantization": "4bit",
+            },
             # Large models (high quality, high memory)
-            "meta-llama/Llama-2-13b-chat-hf": {"max_length": 4096, "quantization": "8bit"},
-            "meta-llama/Llama-3.1-8B-Instruct": {"max_length": 8192, "quantization": "8bit"},
-            "microsoft/phi-3-large-128k-instruct": {"max_length": 128000, "quantization": "8bit"},
-
+            "meta-llama/Llama-2-13b-chat-hf": {
+                "max_length": 4096,
+                "quantization": "8bit",
+            },
+            "meta-llama/Llama-3.1-8B-Instruct": {
+                "max_length": 8192,
+                "quantization": "8bit",
+            },
+            "microsoft/phi-3-large-128k-instruct": {
+                "max_length": 128000,
+                "quantization": "8bit",
+            },
             # Code-specialized models
-            "microsoft/phi-3.5-MoE-instruct": {"max_length": 4096, "quantization": "8bit"},
-            "Qwen/Qwen2.5-Coder-7B-Instruct": {"max_length": 32768, "quantization": "4bit"},
-            "Qwen/Qwen2.5-Coder-14B-Instruct": {"max_length": 32768, "quantization": "8bit"},
+            "microsoft/phi-3.5-MoE-instruct": {
+                "max_length": 4096,
+                "quantization": "8bit",
+            },
+            "Qwen/Qwen2.5-Coder-7B-Instruct": {
+                "max_length": 32768,
+                "quantization": "4bit",
+            },
+            "Qwen/Qwen2.5-Coder-14B-Instruct": {
+                "max_length": 32768,
+                "quantization": "8bit",
+            },
         }
 
     @property
@@ -99,12 +131,11 @@ class HuggingFaceProvider(LLMProvider):
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=torch.float16,
                 bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4"
+                bnb_4bit_quant_type="nf4",
             )
         elif quant_type == "8bit":
             return BitsAndBytesConfig(
-                load_in_8bit=True,
-                bnb_8bit_compute_dtype=torch.float16
+                load_in_8bit=True, bnb_8bit_compute_dtype=torch.float16
             )
 
         return None
@@ -138,10 +169,39 @@ class HuggingFaceProvider(LLMProvider):
                 self.device = "cuda" if torch.cuda.is_available() else "cpu"
             logger.info(f"[HuggingFace] Using device: {self.device}")
 
+            # Check VRAM availability before loading on CUDA
+            if self.device == "cuda" and torch.cuda.is_available():
+                free_vram_gb = 0
+                try:
+                    free_bytes, _ = torch.cuda.mem_get_info()
+                    free_vram_gb = free_bytes / (1024**3)
+                except Exception:
+                    pass
+
+                config = self.model_configs.get(
+                    self.model_name, {"quantization": "4bit"}
+                )
+                quant_type = config.get("quantization", "4bit")
+
+                # Rough VRAM requirements (GB): 4bit ~ 1x params, 8bit ~ 1.5x params
+                params_billions = self._estimate_params_billions()
+                required_vram = (
+                    params_billions * (1.0 if quant_type == "4bit" else 1.5) + 2.0
+                )  # +2GB overhead
+
+                if free_vram_gb < required_vram:
+                    logger.warning(
+                        f"[HuggingFace] Insufficient VRAM for {self.model_name}: "
+                        f"need ~{required_vram:.1f}GB, have {free_vram_gb:.1f}GB. "
+                        f"Falling back to CPU."
+                    )
+                    self.device = "cpu"
+                    self.use_quantization = False
+
             # Load tokenizer
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
-                trust_remote_code=True
+                trust_remote_code=True,
             )
 
             # Add padding token if missing
@@ -158,14 +218,35 @@ class HuggingFaceProvider(LLMProvider):
                 device_map="auto" if self.device == "cuda" else None,
                 quantization_config=quantization_config,
                 trust_remote_code=True,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
             )
 
-            logger.info(f"[HuggingFace] Model loaded successfully")
+            logger.info(f"[HuggingFace] Model loaded successfully on {self.device}")
 
         except Exception as e:
             logger.error(f"[HuggingFace] Failed to load model {self.model_name}: {e}")
             raise
+
+    def _estimate_params_billions(self) -> float:
+        """Rough estimate of model parameters in billions based on model name."""
+        estimates = {
+            "phi-2": 2.7,
+            "phi-3-mini": 3.8,
+            "phi-3.5-mini": 3.8,
+            "phi-3-medium": 14,
+            "Llama-2-7b": 7,
+            "Llama-3.2-3B": 3,
+            "Llama-2-13b": 13,
+            "Llama-3.1-8B": 8,
+            "phi-3-large": 48,
+            "phi-3.5-MoE": 32,
+            "Qwen2.5-Coder-7B": 7,
+            "Qwen2.5-Coder-14B": 14,
+        }
+        for key, params in estimates.items():
+            if key in self.model_name:
+                return params
+        return 7  # Default assumption
 
     def _create_pipeline(self):
         """Create the transformers pipeline."""
@@ -188,7 +269,7 @@ class HuggingFaceProvider(LLMProvider):
             do_sample=True,
             top_p=0.9,
             repetition_penalty=1.1,
-            return_full_text=False
+            return_full_text=False,
         )
 
     def get_langchain_llm(self):
@@ -205,8 +286,8 @@ class HuggingFaceProvider(LLMProvider):
                 "temperature": 0.7,
                 "do_sample": True,
                 "top_p": 0.9,
-                "repetition_penalty": 1.1
-            }
+                "repetition_penalty": 1.1,
+            },
         )
 
         return self._langchain_llm
@@ -230,5 +311,7 @@ class HuggingFaceProvider(LLMProvider):
             "available": self._model is not None,
             "loaded": self._model is not None,
             "quantization": self.use_quantization,
-            "max_memory": torch.cuda.get_device_properties(0).total_memory if torch.cuda.is_available() else None
+            "max_memory": torch.cuda.get_device_properties(0).total_memory
+            if torch.cuda.is_available()
+            else None,
         }

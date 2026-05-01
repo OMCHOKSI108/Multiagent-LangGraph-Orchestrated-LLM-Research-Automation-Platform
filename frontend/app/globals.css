@@ -570,6 +570,11 @@ input, textarea, select {
   color: var(--text-primary);
 }
 
+.workspace-prose pre {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-default);
+}
+
 /* ============================================
    UTILITY CLASSES
    ============================================ */
@@ -598,13 +603,59 @@ input, textarea, select {
   box-shadow: var(--shadow-input-focus);
 }
 
+*:focus-visible {
+  outline: 2px solid var(--accent-teal);
+  outline-offset: 2px;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-select:focus-visible {
-  outline: none;
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-teal);
+  outline-offset: 2px;
   box-shadow: var(--shadow-input-focus);
+}
+
+/* Remove outline for mouse users while keeping for keyboard */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================
+   ERROR MESSAGE STYLES
+   ============================================ */
+.error-message {
+  @apply rounded-lg border px-4 py-3 text-sm;
+  border-color: var(--accent-rose)/30;
+  background-color: var(--accent-rose)/10;
+  color: var(--accent-rose);
+}
+
+.error-message-inline {
+  @apply text-xs mt-1;
+  color: var(--accent-rose);
+}
+
+.success-message {
+  @apply rounded-lg border px-4 py-3 text-sm;
+  border-color: var(--accent-emerald)/30;
+  background-color: var(--accent-emerald)/10;
+  color: var(--accent-emerald);
+}
+
+.success-message-inline {
+  @apply text-xs mt-1;
+  color: var(--accent-emerald);
+}
+
+.warning-message {
+  @apply rounded-lg border px-4 py-3 text-sm;
+  border-color: var(--accent-amber)/30;
+  background-color: var(--accent-amber)/10;
+  color: var(--accent-amber);
 }
 
 /* ============================================

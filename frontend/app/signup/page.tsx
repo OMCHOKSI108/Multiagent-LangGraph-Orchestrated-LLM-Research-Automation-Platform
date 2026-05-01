@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import LoadingScreen from '@/components/LoadingScreen';
+import PasswordStrength from '@/components/PasswordStrength';
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export default function SignupPage() {
   const { signup, user, loading } = useAuth();
@@ -14,6 +20,8 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     if (!loading && user) router.replace('/dashboard');
@@ -21,8 +29,12 @@ export default function SignupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(''); setSuccess('');
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+    setError(''); setSuccess(''); setEmailError(''); setPasswordError('');
+
+    if (!name.trim()) { setError('Name is required'); return; }
+    if (!isValidEmail(email.trim())) { setEmailError('Please enter a valid email address'); return; }
+    if (password.length < 6) { setPasswordError('Password must be at least 6 characters'); return; }
+
     setSubmitting(true);
     try {
       await signup(name.trim(), email.trim(), password);
@@ -34,6 +46,8 @@ export default function SignupPage() {
       setSubmitting(false);
     }
   }
+
+  if (loading) return <LoadingScreen message="Preparing signup form..." />;
 
   return (
     <div className="section-shell flex items-center justify-center py-14">
@@ -78,44 +92,71 @@ export default function SignupPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Full name</label>
+              <label htmlFor="signup-name" className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Full name</label>
               <input
+                id="signup-name"
                 required
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Dr. Jane Smith"
                 className="input-field"
+                aria-label="Full name"
+                autoComplete="name"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Email</label>
+              <label htmlFor="signup-email" className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Email</label>
               <input
+                id="signup-email"
                 type="email"
                 required
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => { setEmail(e.target.value); setEmailError(''); }}
+                onBlur={() => { if (email && !isValidEmail(email.trim())) setEmailError('Please enter a valid email address'); }}
                 placeholder="you@example.com"
-                className="input-field"
+                className={`input-field ${emailError ? 'border-[var(--accent-rose)]' : ''}`}
+                aria-label="Email address"
+                aria-describedby={emailError ? 'signup-email-error' : undefined}
+                aria-invalid={!!emailError}
+                autoComplete="email"
               />
+              {emailError && (
+                <p id="signup-email-error" className="mt-1 text-xs text-[var(--accent-rose)]" role="alert">{emailError}</p>
+              )}
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Password</label>
+              <label htmlFor="signup-password" className="mb-1.5 block text-xs font-medium uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Password</label>
               <input
+                id="signup-password"
                 type="password"
                 required
                 minLength={6}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
                 placeholder="Min 6 characters"
-                className="input-field"
+                className={`input-field ${passwordError ? 'border-[var(--accent-rose)]' : ''}`}
+                aria-label="Password"
+                aria-describedby={passwordError ? 'signup-password-error' : undefined}
+                aria-invalid={!!passwordError}
+                autoComplete="new-password"
               />
+              {passwordError && (
+                <p id="signup-password-error" className="mt-1 text-xs text-[var(--accent-rose)]" role="alert">{passwordError}</p>
+              )}
+              <PasswordStrength password={password} />
             </div>
             <button
               type="submit"
               disabled={submitting}
               className="btn-primary mt-2"
+              aria-label={submitting ? 'Creating account' : 'Create account'}
             >
-              {submitting ? 'Creating account...' : 'Create account'}
+              {submitting ? (
+                <span className="flex items-center gap-2 justify-center">
+                  <span className="spinner" />
+                  Creating account...
+                </span>
+              ) : 'Create account'}
             </button>
           </form>
 

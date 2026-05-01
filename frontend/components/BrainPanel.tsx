@@ -42,7 +42,7 @@ function BrainIcon({ className = 'w-4 h-4' }: { className?: string }) {
 
 // ─── Animated dots (thinking indicator) ──────────────────────────────────────
 
-function ThinkingDots({ colorVar }: { colorVar: string }) {
+function ThinkingDots({ colorVar = '--accent-violet' }: { colorVar?: string }) {
   return (
     <span className="inline-flex gap-0.5 items-center ml-2">
       {[0, 1, 2].map(i => (

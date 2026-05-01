@@ -67,9 +67,10 @@ async function recoverStaleJobs() {
     try {
         const table = getTable();
 
-        // Only recover user-triggered jobs that are genuinely stale
+        // Recover ALL stale jobs regardless of trigger source
+        // (workspace, user, retry, admin — all should be recovered)
         const triggerFilter = useNewTable
-            ? `AND trigger_source IN ('user', 'retry')`
+            ? `AND trigger_source IS NOT NULL`
             : '';
 
         const result = await db.query(
@@ -122,9 +123,9 @@ async function processQueue() {
 
         const table = getTable();
 
-        // CRITICAL: Only pick up user-triggered jobs
+        // Process all queued jobs regardless of trigger source
         const triggerFilter = useNewTable
-            ? `AND trigger_source IN ('user', 'retry')`
+            ? `AND trigger_source IS NOT NULL`
             : '';
 
         // Fetch columns based on table

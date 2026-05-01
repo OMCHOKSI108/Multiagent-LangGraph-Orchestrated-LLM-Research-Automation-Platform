@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import LoadingScreen from '@/components/LoadingScreen';
 import Logo from '../logo.webp';
 
 const KnowledgeGraph3D = dynamic(
@@ -67,7 +68,7 @@ export default function HomePage() {
     if (!loading && user) router.replace('/dashboard');
   }, [user, loading, router]);
 
-  if (loading) return null;
+  if (loading) return <LoadingScreen message="Preparing your workspace..." fullScreen />;
 
   return (
     <div className="relative isolate min-h-screen">

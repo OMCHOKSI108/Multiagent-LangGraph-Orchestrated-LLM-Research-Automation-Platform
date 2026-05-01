@@ -26,13 +26,15 @@ from .cleanup_agent import AcademicEditorAgent, StructureValidator
 try:
     from ai_engine.utils.event_emitter import emit_event
 except ImportError:
-    def emit_event(*args, **kwargs): pass
+
+    def emit_event(*args, **kwargs):
+        pass
 
 
 class ReportPipeline:
     """
     Orchestrates multi-stage report generation with domain-specific templates.
-    
+
     Instead of sending all findings to one LLM, this pipeline:
     1. Classifies the research domain
     2. Selects appropriate section structure
@@ -40,21 +42,30 @@ class ReportPipeline:
     4. Assembles into complete report
     5. Converts to LaTeX and compiles PDF
     """
-    
-    def __init__(self, output_dir: Optional[str] = None, model_name: Optional[str] = None):
+
+    def __init__(
+        self, output_dir: Optional[str] = None, model_name: Optional[str] = None
+    ):
         """
         Initialize the report pipeline.
-        
+
         Args:
-            output_dir: Directory to write output files
+            output_dir: Root directory to write output files (job subdirs created inside)
             model_name: Optional LLM model name to use for all section writers
         """
-        self.output_dir = output_dir or os.path.abspath(
+        self._base_output_dir = output_dir or os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "..", "..", "output")
         )
+        os.makedirs(self._base_output_dir, exist_ok=True)
         self.model_name = model_name  # Will use default if None
-        os.makedirs(self.output_dir, exist_ok=True)
-        
+
+    def _get_job_dir(self, job_id: str) -> str:
+        """Get an isolated subdirectory for a specific job."""
+        safe_id = str(job_id).replace("/", "_").replace("\\", "_")
+        job_dir = os.path.join(self._base_output_dir, f"job_{safe_id}")
+        os.makedirs(job_dir, exist_ok=True)
+        return job_dir
+
     def generate_report(
         self,
         findings: dict,
@@ -65,46 +76,65 @@ class ReportPipeline:
     ) -> dict:
         """
         Generate a complete research report from findings.
-        
+
         Args:
             findings: Research findings from pipeline
             task: Research task/topic
             job_id: Job identifier for file naming
-            
+
         Returns:
             dict with markdown, latex, paths, and metadata
         """
-        print(f"[ReportPipeline] Starting multi-stage report generation for job {job_id} (depth: {depth})")
-        
+        print(
+            f"[ReportPipeline] Starting multi-stage report generation for job {job_id} (depth: {depth})"
+        )
+
         # Branch for simple findings report (depth=gather)
         if depth == "gather":
-            emit_event("writing", "Generating data gathering report...", research_id=int(job_id) if str(job_id).isdigit() else None)
+            emit_event(
+                "writing",
+                "Generating data gathering report...",
+                research_id=int(job_id) if str(job_id).isdigit() else None,
+            )
             markdown_report = self._assemble_findings_report(findings, task)
-            md_path = os.path.join(self.output_dir, f"research_{job_id}.md")
+            md_path = os.path.join(self._get_job_dir(job_id), f"research_{job_id}.md")
             with open(md_path, "w", encoding="utf-8") as f:
                 f.write(markdown_report)
             return {
                 "markdown_report": markdown_report,
                 "md_path": md_path,
                 "domain": "Data Discovery",
-                "template": "Findings"
+                "template": "Findings",
             }
-        
+
         # Stage 1: Domain classification
-        emit_event("analyzing", "Classifying research domain...", research_id=int(job_id) if str(job_id).isdigit() else None)
+        emit_event(
+            "analyzing",
+            "Classifying research domain...",
+            research_id=int(job_id) if str(job_id).isdigit() else None,
+        )
         domain = detect_domain(task, findings)
         template = get_template(domain)
         print(f"[ReportPipeline] Detected domain: {domain} ({template['name']})")
-        emit_event("analyzing", f"Detected Domain: {domain}", details={"template": template['name']}, research_id=int(job_id) if str(job_id).isdigit() else None)
-        
+        emit_event(
+            "analyzing",
+            f"Detected Domain: {domain}",
+            details={"template": template["name"]},
+            research_id=int(job_id) if str(job_id).isdigit() else None,
+        )
+
         # Stage 2: Generate each section
         sections = {}
         section_order = template["sections"]
-        
+
         for section_name in section_order:
             print(f"[ReportPipeline] Generating section: {section_name}")
-            emit_event("writing", f"Drafting Section: {section_name.replace('_', ' ').title()}", research_id=int(job_id) if str(job_id).isdigit() else None)
-            
+            emit_event(
+                "writing",
+                f"Drafting Section: {section_name.replace('_', ' ').title()}",
+                research_id=int(job_id) if str(job_id).isdigit() else None,
+            )
+
             # Get focused context for this section
             writer_draft = ""
             sw = findings.get("scientific_writing", {})
@@ -112,9 +142,7 @@ class ReportPipeline:
                 sw_resp = sw.get("response", sw)
                 if isinstance(sw_resp, dict):
                     writer_draft = (
-                        sw_resp.get("markdown_report")
-                        or sw_resp.get("response")
-                        or ""
+                        sw_resp.get("markdown_report") or sw_resp.get("response") or ""
                     )
 
             context = get_section_context(
@@ -126,27 +154,35 @@ class ReportPipeline:
                 brain_context=brain_context or {},
                 writer_draft=writer_draft,
             )
-            
+
             # Get section-specific prompt
             section_prompt = template.get("section_prompts", {}).get(section_name, "")
-            
+
             # Get the writer and generate, passing model_name if configured
             writer_kwargs = {}
             if self.model_name:
-                writer_kwargs['model_name'] = self.model_name
+                writer_kwargs["model_name"] = self.model_name
             writer = get_section_writer(section_name, **writer_kwargs)
             result = writer.run(context, section_prompt)
-            
+
             if "error" in result:
-                print(f"[ReportPipeline] Warning: Error in {section_name}: {result['error']}")
-                sections[section_name] = f"[Section generation failed: {result['error']}]"
+                print(
+                    f"[ReportPipeline] Warning: Error in {section_name}: {result['error']}"
+                )
+                sections[section_name] = (
+                    f"[Section generation failed: {result['error']}]"
+                )
             else:
                 sections[section_name] = result.get("content", "")
-        
+
         # Stage 3: Assemble markdown report
-        emit_event("writing", "Assembling final report...", research_id=int(job_id) if str(job_id).isdigit() else None)
+        emit_event(
+            "writing",
+            "Assembling final report...",
+            research_id=int(job_id) if str(job_id).isdigit() else None,
+        )
         markdown_report = self._assemble_markdown(sections, task, template)
-        
+
         # Stage 3.5: Validate citations
         citation_issues = validate_citations(markdown_report)
         total_citation_issues = sum(len(v) for v in citation_issues.values())
@@ -155,42 +191,48 @@ class ReportPipeline:
             for issue_type, issues in citation_issues.items():
                 if issues:
                     print(f"[ReportPipeline]   {issue_type}: {len(issues)}")
-        
+
         # Stage 3.6: Academic cleanup pass
         cleanup_agent = AcademicEditorAgent()
-        cleanup_result = cleanup_agent.run({"content": markdown_report, "use_llm_refinement": False})
+        cleanup_result = cleanup_agent.run(
+            {"content": markdown_report, "use_llm_refinement": False}
+        )
         if cleanup_result.get("content"):
             markdown_report = cleanup_result["content"]
             print(f"[ReportPipeline] Cleanup pass completed")
-        
+
         # Stage 3.7: Validate structure (IMRAD compliance)
         structure_validation = StructureValidator.validate(markdown_report)
         if structure_validation.get("duplicates"):
-            print(f"[ReportPipeline] Duplicate sections: {structure_validation['duplicates']}")
+            print(
+                f"[ReportPipeline] Duplicate sections: {structure_validation['duplicates']}"
+            )
         if structure_validation.get("order_issues"):
-            print(f"[ReportPipeline] Order issues: {structure_validation['order_issues']}")
-        
+            print(
+                f"[ReportPipeline] Order issues: {structure_validation['order_issues']}"
+            )
+
         # Stage 4: Convert to LaTeX
         latex_source = self._convert_to_latex(markdown_report, task, template)
-        
+
         # Stage 5: Sanitize LaTeX (remove Markdown artifacts, fix math, etc.)
         latex_source = sanitize_latex(latex_source)
         is_valid, warnings = validate_latex(latex_source)
         if warnings:
             for w in warnings:
                 print(f"[ReportPipeline] LaTeX Warning: {w}")
-        
+
         # Stage 6: Save files and compile PDF
-        md_path = os.path.join(self.output_dir, f"research_{job_id}.md")
-        tex_path = os.path.join(self.output_dir, f"research_{job_id}.tex")
-        docx_path = os.path.join(self.output_dir, f"research_{job_id}.docx")
+        md_path = os.path.join(self._get_job_dir(job_id), f"research_{job_id}.md")
+        tex_path = os.path.join(self._get_job_dir(job_id), f"research_{job_id}.tex")
+        docx_path = os.path.join(self._get_job_dir(job_id), f"research_{job_id}.docx")
         pdf_path = None
-        
+
         # Save markdown
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(markdown_report)
         print(f"[ReportPipeline] Markdown saved: {md_path}")
-        
+
         # Create Word document
         try:
             self._create_docx(markdown_report, task, docx_path, findings)
@@ -199,16 +241,20 @@ class ReportPipeline:
             print(f"[ReportPipeline] Word export failed: {docx_err}")
             docx_path = None
 
-        emit_event("writing", "Compiling PDF document...", research_id=int(job_id) if str(job_id).isdigit() else None)
-        
+        emit_event(
+            "writing",
+            "Compiling PDF document...",
+            research_id=int(job_id) if str(job_id).isdigit() else None,
+        )
+
         # Save LaTeX
         with open(tex_path, "w", encoding="utf-8") as f:
             f.write(latex_source)
         print(f"[ReportPipeline] LaTeX saved: {tex_path}")
-        
+
         # Try to compile PDF
         pdf_path = self._compile_pdf(tex_path, job_id)
-        
+
         return {
             "markdown_report": markdown_report,
             "latex_source": latex_source,
@@ -219,9 +265,9 @@ class ReportPipeline:
             "tex_path": tex_path,
             "pdf_path": pdf_path,
             "docx_path": docx_path,
-            "visualizations": findings.get("visualization", {})
+            "visualizations": findings.get("visualization", {}),
         }
-    
+
     def _create_docx(self, markdown: str, task: str, output_path: str, findings: dict):
         """Create a professional Word document from markdown."""
         try:
@@ -229,62 +275,69 @@ class ReportPipeline:
             from docx.shared import Inches, Pt
             from docx.enum.text import WD_ALIGN_PARAGRAPH
         except ImportError:
-             print("[ReportPipeline] python-docx not installed, skipping Word export.")
-             return
+            print("[ReportPipeline] python-docx not installed, skipping Word export.")
+            return
 
         doc = Document()
-        
+
         # Title
         title = doc.add_heading(task, 0)
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
+
         # Metadata
         meta = doc.add_paragraph()
-        meta.add_run(f"Generated by AI Research Engine\nDate: {datetime.now().strftime('%Y-%m-%d')}").italic = True
+        meta.add_run(
+            f"Generated by AI Research Engine\nDate: {datetime.now().strftime('%Y-%m-%d')}"
+        ).italic = True
         meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
+
         doc.add_page_break()
-        
+
         # Parse Markdown sections
-        lines = markdown.split('\n')
+        lines = markdown.split("\n")
         for line in lines:
-            if line.startswith('# '):
-                continue # Skip main title already added
-            elif line.startswith('## '):
+            if line.startswith("# "):
+                continue  # Skip main title already added
+            elif line.startswith("## "):
                 doc.add_heading(line[3:], level=1)
-            elif line.startswith('### '):
+            elif line.startswith("### "):
                 doc.add_heading(line[4:], level=2)
-            elif line.startswith('#### '):
+            elif line.startswith("#### "):
                 doc.add_heading(line[5:], level=3)
-            elif line.startswith('- '):
-                doc.add_paragraph(line[2:], style='List Bullet')
+            elif line.startswith("- "):
+                doc.add_paragraph(line[2:], style="List Bullet")
             elif line.strip():
                 doc.add_paragraph(line)
-        
+
         # Integrate Visuals
         viz = findings.get("visualization", {})
         if isinstance(viz, dict) and "images_metadata" in viz:
-             doc.add_heading("Visual Appendix", level=1)
-             for img in viz["images_metadata"]:
-                 local_path = img.get("local")
-                 if local_path and os.path.exists(local_path):
-                      try:
-                          doc.add_picture(local_path, width=Inches(6))
-                          doc.add_paragraph(f"Source: {img.get('original', 'Web Discovery')}")
-                      except: pass
+            doc.add_heading("Visual Appendix", level=1)
+            for img in viz["images_metadata"]:
+                local_path = img.get("local")
+                if local_path and os.path.exists(local_path):
+                    try:
+                        doc.add_picture(local_path, width=Inches(6))
+                        doc.add_paragraph(
+                            f"Source: {img.get('original', 'Web Discovery')}"
+                        )
+                    except:
+                        pass
 
         doc.save(output_path)
-    
-    def _assemble_markdown(self, sections: Dict[str, str], task: str, template: DomainTemplate) -> str:
+
+    def _assemble_markdown(
+        self, sections: Dict[str, str], task: str, template: DomainTemplate
+    ) -> str:
         """Assemble individual sections into a complete markdown document."""
         parts = []
-        
+
         # Title
         parts.append(f"# {task}\n")
         parts.append(f"*Generated by AI Research Engine - {template['name']} Format*\n")
         parts.append(f"*Date: {datetime.now().strftime('%Y-%m-%d')}*\n")
         parts.append("---\n")
-        
+
         # Section headers mapping
         section_titles = {
             "abstract": "Abstract",
@@ -306,18 +359,22 @@ class ReportPipeline:
             "discussion": "5. Discussion",
             "policy_implications": "6. Policy Implications",
             "conclusion": "6. Conclusion",
-            "references": "References"
+            "references": "References",
         }
-        
+
         # Add each section
         section_num = 1
         for section_name in template["sections"]:
             if section_name in sections:
-                content = self._sanitize_section_content(str(sections[section_name] or ""))
-                
+                content = self._sanitize_section_content(
+                    str(sections[section_name] or "")
+                )
+
                 # Get title (use numbered title or default)
-                title = section_titles.get(section_name, section_name.replace("_", " ").title())
-                
+                title = section_titles.get(
+                    section_name, section_name.replace("_", " ").title()
+                )
+
                 # Special formatting for abstract
                 if section_name == "abstract":
                     parts.append(f"## Abstract\n")
@@ -325,9 +382,9 @@ class ReportPipeline:
                 else:
                     parts.append(f"## {title}\n")
                     parts.append(f"{content}\n")
-                
+
                 parts.append("")  # Empty line between sections
-        
+
         return "\n".join(parts)
 
     def _sanitize_section_content(self, text: str) -> str:
@@ -340,7 +397,14 @@ class ReportPipeline:
 
         lines = text.splitlines()
         cleaned = []
-        noise_prefixes = ("user:", "assistant:", "ai:", "prompt", "instruction", "system:")
+        noise_prefixes = (
+            "user:",
+            "assistant:",
+            "ai:",
+            "prompt",
+            "instruction",
+            "system:",
+        )
 
         for raw in lines:
             line = raw.strip()
@@ -363,12 +427,14 @@ class ReportPipeline:
         merged = "\n".join(cleaned)
         merged = re.sub(r"\n{3,}", "\n\n", merged)
         return merged.strip()
-    
-    def _convert_to_latex(self, markdown: str, task: str, template: DomainTemplate) -> str:
+
+    def _convert_to_latex(
+        self, markdown: str, task: str, template: DomainTemplate
+    ) -> str:
         """Convert markdown report to LaTeX source."""
         latex_class = template.get("latex_class", "article")
         citation_style = template.get("citation_style", "plain")
-        
+
         # Start with preamble
         preamble = f"""\\documentclass[12pt, a4paper]{{{latex_class}}}
 \\usepackage[margin=1in]{{geometry}}
@@ -397,21 +463,21 @@ class ReportPipeline:
 \\newpage
 
 """
-        
+
         # Convert markdown to LaTeX
         body = self._markdown_to_latex(markdown)
-        
+
         # End document
         ending = """
 \\end{document}
 """
-        
+
         return preamble + body + ending
-    
+
     def _markdown_to_latex(self, markdown: str) -> str:
         """Convert markdown content to LaTeX body."""
         content = markdown
-        
+
         # Remove the title section (we already have it in LaTeX)
         lines = content.split("\n")
         start_idx = 0
@@ -420,19 +486,29 @@ class ReportPipeline:
                 start_idx = i + 1
                 break
         content = "\n".join(lines[start_idx:])
-        
+
         # Headers
-        content = re.sub(r'^## Abstract\s*$', r'\\begin{abstract}', content, flags=re.MULTILINE)
-        content = re.sub(r'^## (References)\s*$', r'\\section*{\1}', content, flags=re.MULTILINE)
-        content = re.sub(r'^## (\d+\.?\s*)(.+)$', r'\\section{\2}', content, flags=re.MULTILINE)
-        content = re.sub(r'^### (.+)$', r'\\subsection{\1}', content, flags=re.MULTILINE)
-        content = re.sub(r'^#### (.+)$', r'\\subsubsection{\1}', content, flags=re.MULTILINE)
-        
+        content = re.sub(
+            r"^## Abstract\s*$", r"\\begin{abstract}", content, flags=re.MULTILINE
+        )
+        content = re.sub(
+            r"^## (References)\s*$", r"\\section*{\1}", content, flags=re.MULTILINE
+        )
+        content = re.sub(
+            r"^## (\d+\.?\s*)(.+)$", r"\\section{\2}", content, flags=re.MULTILINE
+        )
+        content = re.sub(
+            r"^### (.+)$", r"\\subsection{\1}", content, flags=re.MULTILINE
+        )
+        content = re.sub(
+            r"^#### (.+)$", r"\\subsubsection{\1}", content, flags=re.MULTILINE
+        )
+
         # Bold and italic
-        content = re.sub(r'\*\*\*(.+?)\*\*\*', r'\\textbf{\\textit{\1}}', content)
-        content = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', content)
-        content = re.sub(r'\*(.+?)\*', r'\\textit{\1}', content)
-        
+        content = re.sub(r"\*\*\*(.+?)\*\*\*", r"\\textbf{\\textit{\1}}", content)
+        content = re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", content)
+        content = re.sub(r"\*(.+?)\*", r"\\textit{\1}", content)
+
         # Close abstract
         # Find where abstract content ends (at next section)
         if "\\begin{abstract}" in content:
@@ -452,10 +528,10 @@ class ReportPipeline:
             if in_abstract:
                 new_lines.append("\\end{abstract}")
             content = "\n".join(new_lines)
-        
+
         # Bullet points
-        content = re.sub(r'^- (.+)$', r'\\item \1', content, flags=re.MULTILINE)
-        
+        content = re.sub(r"^- (.+)$", r"\\item \1", content, flags=re.MULTILINE)
+
         # Wrap itemize environments
         lines = content.split("\n")
         new_lines = []
@@ -471,73 +547,84 @@ class ReportPipeline:
         if in_list:
             new_lines.append("\\end{itemize}")
         content = "\n".join(new_lines)
-        
+
         # Escape special characters (but not already escaped ones)
         content = self._escape_latex_content(content)
-        
+
         return content
-    
+
     def _escape_latex(self, text: str) -> str:
         """Escape special LaTeX characters in text."""
         replacements = [
-            ('\\', '\\textbackslash{}'),
-            ('&', '\\&'),
-            ('%', '\\%'),
-            ('$', '\\$'),
-            ('#', '\\#'),
-            ('_', '\\_'),
-            ('{', '\\{'),
-            ('}', '\\}'),
-            ('~', '\\textasciitilde{}'),
-            ('^', '\\textasciicircum{}'),
+            ("\\", "\\textbackslash{}"),
+            ("&", "\\&"),
+            ("%", "\\%"),
+            ("$", "\\$"),
+            ("#", "\\#"),
+            ("_", "\\_"),
+            ("{", "\\{"),
+            ("}", "\\}"),
+            ("~", "\\textasciitilde{}"),
+            ("^", "\\textasciicircum{}"),
         ]
         for old, new in replacements:
             text = text.replace(old, new)
         return text
-    
+
     def _escape_latex_content(self, content: str) -> str:
         """Escape LaTeX special chars while preserving LaTeX commands."""
         # Only escape specific problematic characters that aren't part of commands
-        content = re.sub(r'(?<!\\)&(?!\\)', r'\\&', content)
-        content = re.sub(r'(?<!\\)%', r'\\%', content)
-        content = re.sub(r'(?<!\\)#(?!\\)', r'\\#', content)
+        content = re.sub(r"(?<!\\)&(?!\\)", r"\\&", content)
+        content = re.sub(r"(?<!\\)%", r"\\%", content)
+        content = re.sub(r"(?<!\\)#(?!\\)", r"\\#", content)
         # Don't escape $ as it's used for math
         # Don't escape _ as it's common in text and already handled
         return content
-    
-    def _compile_pdf(self, tex_path: str, job_id: str) -> Optional[str]:
-        """Compile LaTeX to PDF using pdflatex."""
+
+    def _compile_pdf(self, tex_path: str, job_id: str = "unknown") -> Optional[str]:
+        """Compile LaTeX to PDF using pdflatex in an isolated job directory."""
         try:
+            job_dir = self._get_job_dir(job_id)
             # Run pdflatex twice for TOC
             for _ in range(2):
                 result = subprocess.run(
-                    ["pdflatex", "-interaction=nonstopmode", "-output-directory", self.output_dir, tex_path],
+                    [
+                        "pdflatex",
+                        "-interaction=nonstopmode",
+                        "-output-directory",
+                        job_dir,
+                        tex_path,
+                    ],
                     capture_output=True,
                     text=True,
                     timeout=120,
-                    cwd=self.output_dir
+                    cwd=job_dir,
                 )
-            
-            pdf_path = os.path.join(self.output_dir, f"research_{job_id}.pdf")
+
+            pdf_path = os.path.join(job_dir, f"research_{job_id}.pdf")
             if os.path.exists(pdf_path):
                 print(f"[ReportPipeline] PDF compiled: {pdf_path}")
-                
+
                 # Clean up auxiliary files
                 for ext in [".aux", ".log", ".toc", ".out"]:
-                    aux_file = os.path.join(self.output_dir, f"research_{job_id}{ext}")
+                    aux_file = os.path.join(job_dir, f"research_{job_id}{ext}")
                     if os.path.exists(aux_file):
                         try:
                             os.remove(aux_file)
                         except:
                             pass
-                
+
                 return pdf_path
             else:
-                print(f"[ReportPipeline] PDF compilation failed. Check {tex_path} for errors.")
+                print(
+                    f"[ReportPipeline] PDF compilation failed. Check {tex_path} for errors."
+                )
                 return None
-                
+
         except FileNotFoundError:
-            print("[ReportPipeline] pdflatex not found. Install TeX Live or MiKTeX for PDF generation.")
+            print(
+                "[ReportPipeline] pdflatex not found. Install TeX Live or MiKTeX for PDF generation."
+            )
             return None
         except subprocess.TimeoutExpired:
             print("[ReportPipeline] PDF compilation timed out.")
@@ -551,39 +638,48 @@ class ReportPipeline:
         parts = []
         parts.append(f"# Data Gathering Report: {task}")
         parts.append(f"*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n")
-        
+
         parts.append("## 📌 Executive Summary")
-        parts.append("This report summarizes the raw data gathered and analyzed during this session.\n")
-        
+        parts.append(
+            "This report summarizes the raw data gathered and analyzed during this session.\n"
+        )
+
         # Section: Sources & Links
         parts.append("## 🔗 Sources & Data Points")
-        sources = findings.get("slr", {}).get("sources", []) or findings.get("news", {}).get("sources", [])
+        sources = findings.get("slr", {}).get("sources", []) or findings.get(
+            "news", {}
+        ).get("sources", [])
         if sources:
             for s in sources[:10]:
-                parts.append(f"- **{s.get('title', 'Unknown Source')}**: {s.get('url')}")
+                parts.append(
+                    f"- **{s.get('title', 'Unknown Source')}**: {s.get('url')}"
+                )
         else:
             parts.append("*No external links found.*")
-        
+
         # Section: Key Findings
         parts.append("\n## 💡 Key Findings & Analysis")
         for agent, output in findings.items():
-            if agent in ["visualization", "scoring", "writing", "latex"]: continue
-            
+            if agent in ["visualization", "scoring", "writing", "latex"]:
+                continue
+
             clean_name = agent.replace("_", " ").title()
             parts.append(f"### {clean_name}")
-            
+
             if isinstance(output, dict):
                 # Extract summary or key fields
                 resp = output.get("response", {})
                 if isinstance(resp, dict):
-                    if "summary" in resp: parts.append(resp["summary"])
+                    if "summary" in resp:
+                        parts.append(resp["summary"])
                     if "key_findings" in resp:
-                        for f in resp["key_findings"]: parts.append(f"- {f}")
+                        for f in resp["key_findings"]:
+                            parts.append(f"- {f}")
                 else:
                     parts.append(str(resp)[:1000])
             else:
                 parts.append(str(output)[:1000])
-        
+
         # Section: Image Analysis
         vision = findings.get("vision_analysis", {})
         if vision and "image_analysis" in vision.get("response", {}):
@@ -594,11 +690,14 @@ class ReportPipeline:
                         f"#### Analysis for image: {img.get('url', 'unknown source')}"
                     )
                     parts.append(str(img["analysis"]))
-        
+
         parts.append("\n## 🏁 Conclusion")
-        parts.append("Data gathering complete. The raw data provides a solid foundation for further deep research.")
-        
+        parts.append(
+            "Data gathering complete. The raw data provides a solid foundation for further deep research."
+        )
+
         return "\n".join(parts)
+
 
 # ============================================
 # AGENT WRAPPER FOR PIPELINE INTEGRATION
@@ -613,22 +712,29 @@ try:
     )
 except ImportError:
     # Fallback if running standalone
-    def emit_agent_start(*args, **kwargs): pass
-    def emit_agent_complete(*args, **kwargs): pass
-    def emit_stage_change(*args, **kwargs): pass
+    def emit_agent_start(*args, **kwargs):
+        pass
+
+    def emit_agent_complete(*args, **kwargs):
+        pass
+
+    def emit_stage_change(*args, **kwargs):
+        pass
+
 
 import time
 
 
 class MultiStageReportAgent:
     """Wrapper to make ReportPipeline compatible with agent-based pipeline."""
-    
+
     def __init__(self, **kwargs):
         self.name = "MultiStageReport"
         self.pipeline = ReportPipeline()
-    
+
     async def arun(self, state: dict) -> dict:
         import asyncio
+
         return await asyncio.to_thread(self.run, state)
 
     def run(self, state: dict) -> dict:
@@ -637,13 +743,13 @@ class MultiStageReportAgent:
         task = state.get("task", "Research Report")
         job_id = state.get("_job_id", "unknown")
         research_id = int(job_id) if str(job_id).isdigit() else None
-        
+
         start_time = time.time()
-        
+
         # Emit agent start
         emit_agent_start(self.name, research_id=research_id)
         emit_stage_change("report_generation", research_id=research_id)
-        
+
         try:
             result = self.pipeline.generate_report(
                 findings,
@@ -652,13 +758,15 @@ class MultiStageReportAgent:
                 depth=state.get("depth", "deep"),
                 brain_context=state.get("brain_context", {}),
             )
-            
+
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)
-            
+
             # Emit success
-            emit_agent_complete(self.name, elapsed_ms, success=True, research_id=research_id)
-            
+            emit_agent_complete(
+                self.name, elapsed_ms, success=True, research_id=research_id
+            )
+
             return {
                 "response": {
                     "markdown_report": result["markdown_report"],
@@ -666,24 +774,23 @@ class MultiStageReportAgent:
                     "domain": result.get("domain", "General"),
                     "template": result.get("template", "Findings"),
                     "tex_path": result.get("tex_path"),
-                    "pdf_path": result.get("pdf_path")
+                    "pdf_path": result.get("pdf_path"),
                 },
                 "raw": result["markdown_report"],
                 "agent": self.name,
-                "execution_time": elapsed
+                "execution_time": elapsed,
             }
         except Exception as e:
             elapsed = time.time() - start_time
             elapsed_ms = int(elapsed * 1000)
-            
+
             # Emit failure
-            emit_agent_complete(self.name, elapsed_ms, success=False, research_id=research_id)
-            
+            emit_agent_complete(
+                self.name, elapsed_ms, success=False, research_id=research_id
+            )
+
             return {
                 "error": str(e),
                 "raw": f"Report generation failed: {e}",
-                "agent": self.name
+                "agent": self.name,
             }
-
-
-

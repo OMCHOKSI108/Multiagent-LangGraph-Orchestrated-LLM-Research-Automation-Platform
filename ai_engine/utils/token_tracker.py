@@ -84,12 +84,13 @@ class TokenTracker:
                 self.usage_records = []
 
     def _save_to_disk(self):
-        """Persist usage data to disk synchronously.
+        """Persist usage data to disk synchronously using atomic writes.
 
-        Keeping this synchronous avoids test flakiness (read-after-write) and
-        prevents Windows temp-file deletion errors caused by background threads
-        holding file handles.
+        Writes to a temp file first, then uses os.replace() for an atomic rename.
+        This prevents file corruption if the process crashes mid-write.
         """
+        import tempfile
+
         try:
             os.makedirs(os.path.dirname(self.persist_path), exist_ok=True)
             with self._lock:
@@ -97,8 +98,21 @@ class TokenTracker:
                     "last_updated": datetime.now(timezone.utc).isoformat(),
                     "records": [asdict(record) for record in self.usage_records],
                 }
-            with open(self.persist_path, "w") as f:
-                json.dump(data, f, indent=2)
+            # Write to temp file in the same directory (ensures same filesystem for atomic rename)
+            dir_name = os.path.dirname(self.persist_path)
+            fd, tmp_path = tempfile.mkstemp(dir=dir_name, suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w") as f:
+                    json.dump(data, f, indent=2)
+                # Atomic rename — replaces the target file
+                os.replace(tmp_path, self.persist_path)
+            except:
+                # Clean up temp file on failure
+                try:
+                    os.unlink(tmp_path)
+                except:
+                    pass
+                raise
         except Exception as e:
             print(f"[TokenTracker] Warning: Could not save data: {e}")
 

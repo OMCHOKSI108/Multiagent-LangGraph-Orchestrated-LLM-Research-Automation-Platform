@@ -47,7 +47,9 @@ class GroqProvider(LLMProvider):
         temperature: float = 0.7,
         fallback_models: Optional[List[str]] = None,
     ):
-        super().__init__(provider_name="groq", model_name=model_name, temperature=temperature)
+        super().__init__(
+            provider_name="groq", model_name=model_name, temperature=temperature
+        )
 
         self.api_keys = [k.strip() for k in api_keys if k and k.strip()]
         self.models = self._build_model_list(model_name, fallback_models)
@@ -56,15 +58,25 @@ class GroqProvider(LLMProvider):
         self._model_index = 0
         self._lock = threading.Lock()
         self._llm_cache: Dict[Tuple[int, str], Any] = {}
-        self._rate_limit_hits: Dict[int, int] = {i: 0 for i in range(len(self.api_keys))}
+        self._rate_limit_hits: Dict[int, int] = {
+            i: 0 for i in range(len(self.api_keys))
+        }
         self._model_failures: Dict[str, int] = {model: 0 for model in self.models}
 
         if not self.api_keys:
-            logger.warning("[GroqProvider] No API keys provided! Provider will not be available.")
+            logger.warning(
+                "[GroqProvider] No API keys provided! Provider will not be available."
+            )
 
-    def _build_model_list(self, primary_model: str, fallback_models: Optional[List[str]]) -> List[str]:
+    def _build_model_list(
+        self, primary_model: str, fallback_models: Optional[List[str]]
+    ) -> List[str]:
         models: List[str] = []
-        for candidate in [primary_model, *(fallback_models or []), *DEFAULT_GROQ_MODELS]:
+        for candidate in [
+            primary_model,
+            *(fallback_models or []),
+            *DEFAULT_GROQ_MODELS,
+        ]:
             if candidate and candidate not in models:
                 models.append(candidate)
         return models or DEFAULT_GROQ_MODELS.copy()
@@ -128,7 +140,9 @@ class GroqProvider(LLMProvider):
         cache_key = (key_idx, self.active_model)
 
         if cache_key not in self._llm_cache:
-            self._llm_cache[cache_key] = self._create_llm_for_key(key_idx, self.active_model)
+            self._llm_cache[cache_key] = self._create_llm_for_key(
+                key_idx, self.active_model
+            )
             logger.info(
                 f"[GroqProvider] Created ChatGroq instance with key #{key_idx + 1} "
                 f"(model: {self.active_model})"
@@ -148,18 +162,48 @@ class GroqProvider(LLMProvider):
         logger.error(f"[GroqProvider] Model '{model_name}' failed: {error}")
 
     def _shrink_if_needed(self, messages: list, max_chars: int = 15000) -> list:
-        """Trims the last message (usually context) if it exceeds token/character limit."""
+        """Trims middle messages (older context) if total exceeds limit.
+
+        Preserves system prompt (index 0) and the last 2 messages (most
+        recent user/assistant context) since those are the most important.
+        Only truncates messages in the middle range.
+        """
         if not messages:
             return messages
-            
+
         import copy
+
         msgs = copy.deepcopy(messages)
-        last_msg = msgs[-1]
-        
-        if hasattr(last_msg, "content") and isinstance(last_msg.content, str):
-            if len(last_msg.content) > max_chars:
-                logger.warning(f"[GroqProvider] Token overflow protected: Shrunk message from {len(last_msg.content)} to {max_chars} chars")
-                last_msg.content = last_msg.content[:max_chars] + "\n...(TRUNCATED DUE TO LENGTH)..."
+
+        total_chars = sum(
+            len(m.content)
+            if hasattr(m, "content") and isinstance(m.content, str)
+            else 0
+            for m in msgs
+        )
+
+        if total_chars <= max_chars:
+            return msgs
+
+        # Protect: system prompt (index 0) + last 2 messages
+        protected_indices = {0}
+        if len(msgs) >= 2:
+            protected_indices.add(len(msgs) - 1)
+            protected_indices.add(len(msgs) - 2)
+
+        # Find truncatable messages
+        truncatable = [i for i in range(len(msgs)) if i not in protected_indices]
+        if not truncatable:
+            return msgs  # Nothing to truncate
+
+        # Distribute the truncation budget across truncatable messages
+        budget_per_msg = max_chars // len(msgs)  # rough equal share
+        for i in truncatable:
+            msg = msgs[i]
+            if hasattr(msg, "content") and isinstance(msg.content, str):
+                if len(msg.content) > budget_per_msg:
+                    msg.content = msg.content[:budget_per_msg] + "...\n"
+
         return msgs
 
     def _invoke_once(self, messages: list) -> Any:
@@ -192,8 +236,14 @@ class GroqProvider(LLMProvider):
                         break
 
                     if classification == "retryable":
-                        current_idx = (self._key_index - 1) % len(self.api_keys) if self.api_keys else 0
-                        self._rate_limit_hits[current_idx] = self._rate_limit_hits.get(current_idx, 0) + 1
+                        current_idx = (
+                            (self._key_index - 1) % len(self.api_keys)
+                            if self.api_keys
+                            else 0
+                        )
+                        self._rate_limit_hits[current_idx] = (
+                            self._rate_limit_hits.get(current_idx, 0) + 1
+                        )
                         self._invalidate_current_cache_entry()
                         logger.warning(
                             f"[GroqProvider] Transient failure on model '{model_name}'. "
@@ -231,8 +281,14 @@ class GroqProvider(LLMProvider):
                         break
 
                     if classification == "retryable":
-                        current_idx = (self._key_index - 1) % len(self.api_keys) if self.api_keys else 0
-                        self._rate_limit_hits[current_idx] = self._rate_limit_hits.get(current_idx, 0) + 1
+                        current_idx = (
+                            (self._key_index - 1) % len(self.api_keys)
+                            if self.api_keys
+                            else 0
+                        )
+                        self._rate_limit_hits[current_idx] = (
+                            self._rate_limit_hits.get(current_idx, 0) + 1
+                        )
                         self._invalidate_current_cache_entry()
                         logger.warning(
                             f"[GroqProvider] Transient failure on model '{model_name}'. "
@@ -267,5 +323,3 @@ class GroqProvider(LLMProvider):
             "key_rotation": "round-robin",
             "model_fallback": True,
         }
-
-

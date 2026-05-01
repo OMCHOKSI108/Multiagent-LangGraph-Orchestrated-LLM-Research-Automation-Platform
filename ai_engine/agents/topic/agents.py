@@ -11,7 +11,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 import re
 
 
-def _compact_topic(text: str) -> str:
+def _compact_topic(text: str, max_words: int = 18) -> str:
     value = " ".join((text or "").split())
     if not value:
         return "the requested topic"
@@ -28,15 +28,23 @@ def _compact_topic(text: str) -> str:
     for marker in split_markers:
         parts = re.split(marker, value, maxsplit=1, flags=re.IGNORECASE)
         if len(parts) > 1:
-            value = parts[0].strip(" :;,.\"")
+            value = parts[0].strip(' :;,."')
             break
 
     if "." in value:
         value = value.split(".", 1)[0].strip()
 
     words = value.split()
-    if len(words) > 18:
-        value = " ".join(words[:18])
+    if len(words) > max_words:
+        # Truncate at word boundary, then try to find a natural break point
+        truncated = " ".join(words[:max_words])
+        # Look for last sentence boundary within truncated text
+        for sep in [". ", "? ", "! ", "; ", ": ", ", "]:
+            last_idx = truncated.rfind(sep)
+            if last_idx > len(truncated) * 0.5:  # Only if past midpoint
+                truncated = truncated[: last_idx + len(sep)].strip()
+                break
+        value = truncated
 
     return value or "the requested topic"
 
@@ -64,15 +72,16 @@ def fallback_topic_suggestions(input_topic: str):
         },
     ]
 
+
 class TopicDiscoveryAgent(BaseAgent):
     """
     Topic Discovery Agent - PHASE 0 Gate
-    
+
     Generates 5-10 professional research titles based on user input.
     User MUST SELECT one title before topic is LOCKED.
     NO agent can proceed until topic_locked = True.
     """
-    
+
     def __init__(self, **kwargs):
         super().__init__(
             name="TopicDiscovery",
@@ -119,56 +128,67 @@ Constraints:
 - Titles must be specific, not generic
 - Avoid overlapping research angles
 """,
-            **kwargs
+            **kwargs,
         )
 
     def run(self, state: dict) -> dict:
         print(f"[{self.name}] Generating Research Topic Suggestions...")
-        
+
         task = state.get("task", "")
-        
+
         # If topic already locked, skip
         if state.get("topic_locked"):
             print(f"[{self.name}] Topic already locked: {state.get('selected_topic')}")
             return {
                 "topic_locked": True,
                 "selected_topic": state.get("selected_topic"),
-                "response": {"status": "already_locked"}
+                "response": {"status": "already_locked"},
             }
-        
+
         messages = [
             SystemMessage(content=self.system_prompt),
-            HumanMessage(content=f"""Analyze this input:
+            HumanMessage(
+                content=f"""Analyze this input:
 
 User Query: {task}
 
 If specific, return is_specific=true and the refined title.
 If vague, return is_specific=false and 5-10 suggestions.
 
-Output as JSON.""")
+Output as JSON."""
+            ),
         ]
-        
+
         # Check if suggestions already exist (avoid re-generation loop)
         existing_suggestions = state.get("topic_suggestions")
         if existing_suggestions and len(existing_suggestions) > 0:
-            print(f"[{self.name}] Waiting for user selection from {len(existing_suggestions)} suggestions...")
-            
+            print(
+                f"[{self.name}] Waiting for user selection from {len(existing_suggestions)} suggestions..."
+            )
+
             # Check external state store for updates
             try:
                 from state_store import RESEARCH_STATES
-                job_id = int(state.get("_job_id")) if str(state.get("_job_id")).isdigit() else None
-                
+
+                job_id = (
+                    int(state.get("_job_id"))
+                    if str(state.get("_job_id")).isdigit()
+                    else None
+                )
+
                 if job_id and job_id in RESEARCH_STATES:
                     external_state = RESEARCH_STATES[job_id]
                     if external_state.get("topic_locked"):
                         selected_topic = external_state.get("selected_topic")
-                        print(f"[{self.name}] Detected EXTERNAL TOPIC LOCK: {selected_topic}")
+                        print(
+                            f"[{self.name}] Detected EXTERNAL TOPIC LOCK: {selected_topic}"
+                        )
                         return {
                             "topic_locked": True,
                             "selected_topic": selected_topic,
-                            "final_topic": selected_topic # ensure it propagates
+                            "final_topic": selected_topic,  # ensure it propagates
                         }
-                
+
                 # Always keep suggestions in RESEARCH_STATES for frontend polling
                 if job_id:
                     if job_id not in RESEARCH_STATES:
@@ -180,6 +200,7 @@ Output as JSON.""")
 
             # Re-emit event in case frontend reconnected
             from ai_engine.utils.event_emitter import emit_event
+
             try:
                 emit_event(
                     stage="topic_discovery",
@@ -187,75 +208,91 @@ Output as JSON.""")
                     severity="info",
                     category="user_action_required",
                     details={"suggestions": existing_suggestions},
-                    research_id=int(state.get("_job_id")) if str(state.get("_job_id")).isdigit() else None
+                    research_id=int(state.get("_job_id"))
+                    if str(state.get("_job_id")).isdigit()
+                    else None,
                 )
                 print(f"[{self.name}] Event emitted successfully")
             except Exception as e:
                 print(f"[{self.name}] Event emission error: {e}")
 
-            # RETURN IMMEDIATELY — The graph orchestrator/router_graph.py 
+            # RETURN IMMEDIATELY — The graph orchestrator/router_graph.py
             # will handle the 'loop back' or 'wait' condition based on topic_locked=False
-            return {
-                "topic_locked": False,
-                "topic_suggestions": existing_suggestions
-            }
+            return {"topic_locked": False, "topic_suggestions": existing_suggestions}
 
         try:
             print(f"[{self.name}] DEBUG: Invoking LLM...")
             response = self.llm.invoke(messages)
-            print(f"[{self.name}] DEBUG: LLM Response received. Length: {len(response.content)}")
-            
+            print(
+                f"[{self.name}] DEBUG: LLM Response received. Length: {len(response.content)}"
+            )
+
             print(f"[{self.name}] DEBUG: Extracting JSON...")
             result = self._extract_json(response.content)
             print(f"[{self.name}] DEBUG: JSON Extracted. Keys: {result.keys()}")
-            
+
             # CRITICAL FIX: BaseAgent returns {"raw_text": ...} on failure
             if "raw_text" in result:
-                print(f"[{self.name}] JSON Parse Failed (Raw Text). Triggering fallback.")
+                print(
+                    f"[{self.name}] JSON Parse Failed (Raw Text). Triggering fallback."
+                )
                 raise ValueError("Output was not valid JSON.")
 
             # SMART LOCK LOGIC
             if result.get("is_specific", False):
                 selected_topic = result.get("selected_topic", task)
-                print(f"[{self.name}] Detected SPECIFIC topic. Auto-locking: {selected_topic}")
-                
-                 # Emit success event
+                print(
+                    f"[{self.name}] Detected SPECIFIC topic. Auto-locking: {selected_topic}"
+                )
+
+                # Emit success event
                 from ai_engine.utils.event_emitter import emit_event
+
                 emit_event(
                     stage="topic_discovery",
                     message=f"Topic accepted: {selected_topic}",
                     severity="success",
                     category="stage",
-                    research_id=int(state.get("_job_id")) if str(state.get("_job_id")).isdigit() else None
+                    research_id=int(state.get("_job_id"))
+                    if str(state.get("_job_id")).isdigit()
+                    else None,
                 )
-                
+
                 return {
                     "topic_locked": True,
                     "selected_topic": selected_topic,
                     "topic_suggestions": [],
                     "response": result,
-                    "agent": self.name
+                    "agent": self.name,
                 }
 
             # FALLBACK TO SUGGESTIONS
             suggestions = result.get("topic_suggestions", [])
             print(f"[{self.name}] Generated {len(suggestions)} suggestions")
-            
+
             # Store suggestions in RESEARCH_STATES for frontend polling
             try:
                 from state_store import RESEARCH_STATES
-                job_id = int(state.get("_job_id")) if str(state.get("_job_id")).isdigit() else None
+
+                job_id = (
+                    int(state.get("_job_id"))
+                    if str(state.get("_job_id")).isdigit()
+                    else None
+                )
                 if job_id:
                     if job_id not in RESEARCH_STATES:
                         RESEARCH_STATES[job_id] = {}
                     RESEARCH_STATES[job_id]["topic_suggestions"] = suggestions
                     RESEARCH_STATES[job_id]["topic_locked"] = False
-                    print(f"[{self.name}] Stored {len(suggestions)} suggestions in RESEARCH_STATES[{job_id}]")
+                    print(
+                        f"[{self.name}] Stored {len(suggestions)} suggestions in RESEARCH_STATES[{job_id}]"
+                    )
             except Exception as e:
                 print(f"[{self.name}] Failed to store in RESEARCH_STATES: {e}")
-            
+
             # EMIT TOPIC SUGGESTIONS EVENT
             from ai_engine.utils.event_emitter import emit_event
+
             try:
                 emit_event(
                     stage="topic_discovery",
@@ -263,7 +300,9 @@ Output as JSON.""")
                     severity="info",
                     category="user_action_required",
                     details={"suggestions": suggestions},
-                    research_id=int(state.get("_job_id")) if str(state.get("_job_id")).isdigit() else None
+                    research_id=int(state.get("_job_id"))
+                    if str(state.get("_job_id")).isdigit()
+                    else None,
                 )
                 print(f"[{self.name}] Topic suggestions event emitted successfully")
             except Exception as e:
@@ -275,9 +314,9 @@ Output as JSON.""")
                 "topic_suggestions": suggestions,
                 "response": result,
                 "raw": response.content,
-                "agent": self.name
+                "agent": self.name,
             }
-            
+
         except Exception as e:
             print(f"[{self.name}] Error: {e}")
 
@@ -295,57 +334,64 @@ Output as JSON.""")
                     "error": str(e),
                     "fallback": True,
                 },
-                "agent": self.name
+                "agent": self.name,
             }
 
 
 class TopicLockAgent(BaseAgent):
     """
     Topic Lock Agent
-    
+
     Locks the selected topic and prevents further topic changes.
     This is the GATE that allows other agents to proceed.
     """
-    
+
     def __init__(self, **kwargs):
         super().__init__(
             name="TopicLock",
             system_prompt="Lock the user's selected research topic.",
-            **kwargs
+            **kwargs,
         )
-    
+
     def run(self, state: dict) -> dict:
         selected_index = state.get("selected_topic_index")
         selected_title = state.get("selected_topic")
         suggestions = state.get("topic_suggestions", [])
-        
+
         # If explicitly provided title
         if selected_title:
             print(f"[{self.name}] TOPIC LOCKED: {selected_title}")
             return {
                 "topic_locked": True,
                 "selected_topic": selected_title,
-                "response": {"status": "locked", "title": selected_title}
+                "response": {"status": "locked", "title": selected_title},
             }
-        
+
         # If provided index to select from suggestions
         if selected_index is not None and suggestions:
             if 0 <= selected_index < len(suggestions):
-                title = suggestions[selected_index].get("title", suggestions[selected_index])
+                title = suggestions[selected_index].get(
+                    "title", suggestions[selected_index]
+                )
                 print(f"[{self.name}] TOPIC LOCKED (Index {selected_index}): {title}")
                 return {
                     "topic_locked": True,
                     "selected_topic": title,
-                    "response": {"status": "locked", "title": title}
+                    "response": {"status": "locked", "title": title},
                 }
-        
+
         # ---------------------------------------------------------
         # ROBUSTNESS FIX: Check External State Store (RESEARCH_STATES)
         # ---------------------------------------------------------
         try:
             from state_store import RESEARCH_STATES
-            job_id = int(state.get("_job_id")) if str(state.get("_job_id")).isdigit() else None
-            
+
+            job_id = (
+                int(state.get("_job_id"))
+                if str(state.get("_job_id")).isdigit()
+                else None
+            )
+
             if job_id and job_id in RESEARCH_STATES:
                 external_state = RESEARCH_STATES[job_id]
                 if external_state.get("topic_locked"):
@@ -354,7 +400,7 @@ class TopicLockAgent(BaseAgent):
                     return {
                         "topic_locked": True,
                         "selected_topic": ext_topic,
-                        "response": {"status": "locked", "title": ext_topic}
+                        "response": {"status": "locked", "title": ext_topic},
                     }
         except Exception as e:
             print(f"[{self.name}] Error checking external state: {e}")
@@ -362,12 +408,7 @@ class TopicLockAgent(BaseAgent):
 
         # AUTO-SELECTION DISABLED - User must select via API
         # We just wait here (returning False loops back to TopicDiscovery which sleeps)
-        
+
         # Check if we have been stuck here too long? For now, infinite wait is fine.
         print(f"[{self.name}] Waiting for user topic selection...")
-        return {
-            "topic_locked": False,
-            "response": {"status": "waiting_for_user"}
-        }
-
-
+        return {"topic_locked": False, "response": {"status": "waiting_for_user"}}

@@ -1,9 +1,22 @@
-:root {
-  --admin-primary: #6366f1;
-  --admin-secondary: #4f46e5;
-  --admin-bg: #f8fafc;
-  --admin-card-bg: rgba(255, 255, 255, 0.8);
-  --admin-border: rgba(226, 232, 240, 0.8);
+:root,
+[data-theme="dark"] {
+  --admin-primary: var(--accent-teal);
+  --admin-secondary: var(--accent-blue);
+  --admin-bg: var(--bg-primary);
+  --admin-card-bg: var(--bg-card);
+  --admin-border: var(--border-default);
+  --admin-text: var(--text-primary);
+  --admin-text-muted: var(--text-muted);
+}
+
+[data-theme="light"] {
+  --admin-primary: var(--accent-teal);
+  --admin-secondary: var(--accent-blue);
+  --admin-bg: var(--bg-primary);
+  --admin-card-bg: var(--bg-card);
+  --admin-border: var(--border-default);
+  --admin-text: var(--text-primary);
+  --admin-text-muted: var(--text-muted);
 }
 
 .admin-glass {
@@ -11,11 +24,12 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--admin-border);
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  box-shadow: var(--shadow-card);
 }
 
 .admin-gradient-text {
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-violet) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

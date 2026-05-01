@@ -9,6 +9,24 @@ if (!global.SSE_TOKENS) {
     global.SSE_TOKENS = new Map();
 }
 
+// Periodic cleanup of expired SSE tokens (runs every 5 minutes)
+if (!global.SSE_CLEANUP_INTERVAL) {
+    global.SSE_CLEANUP_INTERVAL = setInterval(() => {
+        const now = Date.now();
+        let cleaned = 0;
+        for (const [token, data] of global.SSE_TOKENS) {
+            if (data.expiresAt && now > data.expiresAt) {
+                global.SSE_TOKENS.delete(token);
+                cleaned++;
+            }
+        }
+        if (cleaned > 0) {
+            logger.debug(`[SSE Cleanup] Removed ${cleaned} expired tokens. Remaining: ${global.SSE_TOKENS.size}`);
+        }
+    }, 5 * 60 * 1000);
+    global.SSE_CLEANUP_INTERVAL.unref(); // Don't prevent process exit
+}
+
 /**
  * Verify research ownership across both research_logs and research_sessions.
  * Returns the table name if found, null otherwise.

@@ -67,25 +67,56 @@ def _ensure_worker() -> None:
         atexit.register(_shutdown_worker)
 
 
+_DEAD_LETTERS: list = []
+_DEAD_LETTER_LOCK = threading.Lock()
+_MAX_DEAD_LETTERS = 500
+
+
 def _worker_loop() -> None:
     while True:
-        item = _EVENT_QUEUE.get()
-        if item is None:
-            _EVENT_QUEUE.task_done()
-            break
-
-        url, payload = item
         try:
-            assert _CLIENT is not None
-            response = _CLIENT.post(url, json=payload)
-            if response.status_code != 200:
-                logger.warning(
-                    f"[EventEmitter] Failed to emit (HTTP {response.status_code}): {response.text[:200]}"
-                )
+            item = _EVENT_QUEUE.get()
+            if item is None:
+                _EVENT_QUEUE.task_done()
+                break
+
+            url, payload = item
+            try:
+                assert _CLIENT is not None
+                response = _CLIENT.post(url, json=payload)
+                if response.status_code != 200:
+                    logger.warning(
+                        f"[EventEmitter] Failed to emit (HTTP {response.status_code}): {response.text[:200]}"
+                    )
+                    _record_dead_letter(url, payload, f"HTTP {response.status_code}")
+            except Exception as e:
+                logger.error(f"[EventEmitter] Emission failed: {e}")
+                _record_dead_letter(url, payload, str(e))
+            finally:
+                _EVENT_QUEUE.task_done()
         except Exception as e:
-            logger.warning(f"[EventEmitter] Emission failed: {e}")
-        finally:
-            _EVENT_QUEUE.task_done()
+            # Top-level guard: prevent worker thread from dying silently
+            logger.error(f"[EventEmitter] Worker loop crashed: {e}")
+            # Re-enter loop to keep processing — the queue.get() will block
+            continue
+
+
+def _record_dead_letter(url: str, payload: dict, reason: str) -> None:
+    """Store failed events in a bounded dead-letter queue for diagnostics."""
+    with _DEAD_LETTER_LOCK:
+        if len(_DEAD_LETTERS) < _MAX_DEAD_LETTERS:
+            _DEAD_LETTERS.append(
+                {
+                    "url": url,
+                    "payload": payload,
+                    "reason": reason,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+            if len(_DEAD_LETTERS) == _MAX_DEAD_LETTERS:
+                logger.warning(
+                    "[EventEmitter] Dead-letter queue is full. Oldest entries will be lost."
+                )
 
 
 def _shutdown_worker() -> None:

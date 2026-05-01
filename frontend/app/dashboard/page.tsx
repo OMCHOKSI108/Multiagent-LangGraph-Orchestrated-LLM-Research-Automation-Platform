@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { workspaces as wsApi, type Workspace } from '@/lib/api';
 import Link from 'next/link';
+import LoadingScreen from '@/components/LoadingScreen';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 function WorkspaceCard({ ws, onClick }: { ws: Workspace; onClick: () => void }) {
   const last = ws.last_activity
@@ -90,9 +92,7 @@ export default function DashboardPage() {
   );
 
   if (loading) {
-    return (
-      <div className="section-shell mt-16 text-slate-400 text-sm">Loading your workspaces…</div>
-    );
+    return <LoadingScreen message="Loading your workspaces…" />;
   }
 
   return (
@@ -120,23 +120,28 @@ export default function DashboardPage() {
         <div className="surface-card p-5">
           <div className="mb-3 flex items-start gap-3">
             <div className="flex-1">
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Workspace name *</label>
+              <label htmlFor="ws-name" className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">Workspace name *</label>
               <input
+                id="ws-name"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="e.g. LLMs for medical question answering"
                 className="input-field"
+                aria-label="Workspace name"
+                aria-required="true"
               />
             </div>
           </div>
           <div className="mb-3">
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Description (optional)</label>
-            <input
-              value={newDesc}
-              onChange={e => setNewDesc(e.target.value)}
-              placeholder="What is this workspace exploring?"
-              className="input-field"
-            />
+              <label htmlFor="ws-desc" className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">Description (optional)</label>
+              <input
+                id="ws-desc"
+                value={newDesc}
+                onChange={e => setNewDesc(e.target.value)}
+                placeholder="What is this workspace exploring?"
+                className="input-field"
+                aria-label="Workspace description"
+              />
           </div>
           {createErr && <p className="text-rose-300 text-xs mb-2">{createErr}</p>}
           <div className="flex gap-2">
@@ -170,7 +175,9 @@ export default function DashboardPage() {
       {/* List */}
       <div className="surface-card p-4">
         {fetching ? (
-          <p className="text-sm text-slate-400">Loading workspaces…</p>
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+          </div>
         ) : fetchErr ? (
           <p className="text-sm text-rose-300">{fetchErr}</p>
         ) : filtered.length === 0 ? (

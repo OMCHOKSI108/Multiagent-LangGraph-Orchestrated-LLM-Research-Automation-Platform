@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { admin as adminApi, type User, type ResearchSession, type Workspace, type Memory } from '@/lib/api';
 import './admin.css';
+import ConfirmModal from '@/components/ConfirmModal';
+import { useToast } from '@/components/ToastProvider';
+import LoadingScreen from '@/components/LoadingScreen';
 
 type Tab = 'overview' | 'users' | 'research' | 'workspaces' | 'chats' | 'memories' | 'api-keys' | 'monitoring' | 'api-usage' | 'system-health' | 'ai-models' | 'alerts' | 'logs';
 
@@ -55,8 +58,10 @@ function safeDate(value: unknown, mode: 'date' | 'datetime' = 'date') {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  
+  const { addToast } = useToast();
+
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; onConfirm: () => void; variant?: 'danger' | 'warning' } | null>(null);
   const [data, setData] = useState<AdminPageData>({
     stats: null,
     users: [],
@@ -136,10 +141,20 @@ export default function AdminPage() {
     loadTabData(activeTab);
   }, [user, loading, router, activeTab, loadTabData]);
 
-  if (loading) return <div className="p-10 text-gray-400">Loading auth...</div>;
+  if (loading) return <LoadingScreen message="Checking admin access..." />;
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans text-slate-900">
+      <ConfirmModal
+        isOpen={confirmAction !== null}
+        title={confirmAction?.title || ''}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.variant === 'danger' ? 'Delete' : confirmAction?.variant === 'warning' ? 'Revoke' : 'Confirm'}
+        cancelLabel="Cancel"
+        variant={confirmAction?.variant || 'default'}
+        onConfirm={() => { confirmAction?.onConfirm(); setConfirmAction(null); }}
+        onCancel={() => setConfirmAction(null)}
+      />
       <div className="max-w-7xl mx-auto">
         <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -216,17 +231,18 @@ export default function AdminPage() {
 
           {activeTab === 'users' && (
             <div className="admin-glass rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">User</th>
-                      <th className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Role</th>
-                      <th className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Status</th>
-                      <th className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Joined</th>
-                      <th className="text-right p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Actions</th>
-                    </tr>
-                  </thead>
+               <div className="overflow-x-auto">
+                 <table className="w-full text-sm" aria-label="Users table">
+                   <caption className="sr-only">List of all users in the system</caption>
+                   <thead>
+                     <tr className="bg-slate-50/50 border-b border-slate-100">
+                       <th scope="col" className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">User</th>
+                       <th scope="col" className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Role</th>
+                       <th scope="col" className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Status</th>
+                       <th scope="col" className="text-left p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Joined</th>
+                       <th scope="col" className="text-right p-4 font-semibold text-slate-500 uppercase tracking-xs text-[10px]">Actions</th>
+                     </tr>
+                   </thead>
                   <tbody>
                     {data.users.map(u => (
                       <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors">
@@ -305,11 +321,11 @@ export default function AdminPage() {
                           {(() => {
                             const normalizedStatus = safeLabel(r.status, 'unknown');
                             return (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            normalizedStatus === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            normalizedStatus === 'failed' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                            'bg-amber-50 text-amber-600 border-amber-100'
-                          }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              normalizedStatus === 'completed' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                              normalizedStatus === 'failed' ? 'bg-rose-100 text-rose-800 border-rose-200' :
+                              'bg-amber-100 text-amber-800 border-amber-200'
+                            }`}>
                             {normalizedStatus.toUpperCase()}
                           </span>
                             );
@@ -334,11 +350,20 @@ export default function AdminPage() {
 
                             return (
                               <button
-                                onClick={async () => {
-                                  if (!confirm(`Delete research #${r.id}?`)) return;
-                                  await adminApi.deleteResearch(r.id);
-                                  loadTabData('research');
-                                }}
+                                  onClick={() => setConfirmAction({
+                                    title: 'Delete Research',
+                                    description: `Are you sure you want to delete research #${r.id}? This cannot be undone.`,
+                                    variant: 'danger',
+                                    onConfirm: async () => {
+                                      try {
+                                        await adminApi.deleteResearch(r.id);
+                                        setData((prev: AdminPageData) => ({ ...prev, research: prev.research.filter(x => x.id !== r.id) }));
+                                        addToast('Research deleted successfully', 'success');
+                                      } catch {
+                                        addToast('Failed to delete research', 'error');
+                                      }
+                                    }
+                                  })}
                                 className="px-3 py-1 rounded-lg text-xs font-medium border border-rose-100 text-rose-600 hover:bg-rose-50"
                               >
                                 Delete
@@ -426,12 +451,20 @@ export default function AdminPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="text-[10px] font-bold text-slate-300 uppercase leading-none">Global Memory</div>
                     <button 
-                      onClick={async () => {
-                        if (confirm('Delete this memory?')) {
-                          await adminApi.deleteMemory(m.id);
-                          loadTabData('memories');
-                        }
-                      }}
+                        onClick={() => setConfirmAction({
+                          title: 'Delete Memory',
+                          description: 'Are you sure you want to delete this memory? This cannot be undone.',
+                          variant: 'danger',
+                          onConfirm: async () => {
+                            try {
+                              await adminApi.deleteMemory(m.id);
+                              setData((prev: AdminPageData) => ({ ...prev, memories: prev.memories.filter(x => x.id !== m.id) }));
+                              addToast('Memory deleted successfully', 'success');
+                            } catch {
+                              addToast('Failed to delete memory', 'error');
+                            }
+                          }
+                        })}
                       className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-opacity"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -460,7 +493,7 @@ export default function AdminPage() {
                     const key_name = formData.get('key_name') as string;
 
                     if (!user_email || !key_name) {
-                      alert('Please fill in all fields');
+                      addToast('Please fill in all fields', 'warning');
                       return;
                     }
 
@@ -468,9 +501,9 @@ export default function AdminPage() {
                       await adminApi.generateApiKey(user_email, key_name);
                       (e.target as HTMLFormElement).reset();
                       loadTabData('api-keys');
-                      alert('API key generated successfully!');
+                      addToast('API key generated successfully!', 'success');
                     } catch (err) {
-                      alert('Failed to generate API key');
+                      addToast('Failed to generate API key', 'error');
                     }
                   }}
                   className="grid grid-cols-1 md:grid-cols-3 gap-4"
@@ -533,12 +566,20 @@ export default function AdminPage() {
                             <td className="p-4 text-xs text-slate-500">{k.user_email}</td>
                             <td className="p-4 text-right">
                               <button
-                                onClick={async () => {
-                                  if (confirm('Revoke this key?')) {
-                                    await adminApi.revokeApiKey(k.id);
-                                    loadTabData('api-keys');
+                                onClick={() => setConfirmAction({
+                                  title: 'Revoke API Key',
+                                  description: 'Are you sure you want to revoke this API key? This cannot be undone.',
+                                  variant: 'warning',
+                                  onConfirm: async () => {
+                                    try {
+                                      await adminApi.revokeApiKey(k.id);
+                                      loadTabData('api-keys');
+                                      addToast('API key revoked successfully', 'success');
+                                    } catch {
+                                      addToast('Failed to revoke API key', 'error');
+                                    }
                                   }
-                                }}
+                                })}
                                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>

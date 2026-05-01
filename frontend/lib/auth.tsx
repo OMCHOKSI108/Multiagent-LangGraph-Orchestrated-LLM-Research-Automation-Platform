@@ -61,6 +61,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setLoading(false);
     }
+
+    // Listen for cross-tab logout events
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'dr_token' && !e.newValue) {
+        setTokenState(null);
+        setUser(null);
+        window.location.href = '/login';
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Also listen for BroadcastChannel logout
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('marp_auth');
+      channel.onmessage = (e) => {
+        if (e.data?.type === 'logout') {
+          clearToken();
+          setTokenState(null);
+          setUser(null);
+          window.location.href = '/login';
+        }
+      };
+    } catch {
+      // BroadcastChannel not supported
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      channel?.close();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

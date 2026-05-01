@@ -56,7 +56,12 @@ class LLMProvider(ABC):
         "gateway timeout",
     )
 
-    def __init__(self, provider_name: str = "unknown", model_name: str = "", temperature: float = 0.7):
+    def __init__(
+        self,
+        provider_name: str = "unknown",
+        model_name: str = "",
+        temperature: float = 0.7,
+    ):
         self._provider_name = provider_name
         self.model_name = model_name
         self.temperature = temperature
@@ -152,7 +157,9 @@ class LLMProvider(ABC):
                 backoff *= 2.0
                 last_exception = e
 
-        logger.error(f"[{self.provider_name}] All {max_retries} sync retry attempts exhausted.")
+        logger.error(
+            f"[{self.provider_name}] All {max_retries} sync retry attempts exhausted."
+        )
         raise last_exception
 
     async def ainvoke_with_retry(self, messages: list) -> Any:
@@ -188,8 +195,12 @@ class LLMProvider(ABC):
                 backoff *= 2.0
                 last_exception = e
 
-        logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
-        raise last_exception or RuntimeError(f"All {self.provider_name} sync API retries exhausted")
+        logger.error(
+            f"[{self.provider_name}] All {max_retries} async retry attempts exhausted."
+        )
+        raise last_exception or RuntimeError(
+            f"All {self.provider_name} sync API retries exhausted"
+        )
 
     async def astream_with_retry(self, messages: list):
         """
@@ -206,7 +217,7 @@ class LLMProvider(ABC):
                 llm = self.get_langchain_llm()
                 async for chunk in llm.astream(messages):
                     yield chunk
-                return # Successful completion
+                return  # Successful completion
             except Exception as e:
                 classification = self.classify_error(e)
                 if classification != "retryable":
@@ -221,44 +232,18 @@ class LLMProvider(ABC):
                 backoff *= 2.0
                 last_exception = e
 
-        logger.error(f"[{self.provider_name}] All {max_retries} async stream retry attempts exhausted.")
-        raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
-
-    async def ainvoke_with_retry(self, messages: list) -> Any:
-        """
-        Asynchronous version of invoke_with_retry.
-        """
-        import asyncio
-
-        max_retries = 3
-        backoff = 1.0
-        last_exception = None
-
-        for attempt in range(max_retries):
-            try:
-                llm = self.get_langchain_llm()
-                return await llm.ainvoke(messages)
-            except Exception as e:
-                classification = self.classify_error(e)
-                if classification != "retryable":
-                    raise e
-
-                logger.warning(
-                    f"[{self.provider_name}] Transient failure. "
-                    f"Attempt {attempt + 1}/{max_retries}. Backing off for {backoff:.1f}s. Error: {e}"
-                )
-                self.rotate_key()
-                await asyncio.sleep(backoff)
-                backoff *= 2.0
-                last_exception = e
-
-        logger.error(f"[{self.provider_name}] All {max_retries} async retry attempts exhausted.")
-        raise last_exception or RuntimeError(f"All {self.provider_name} async API retries exhausted")
+        logger.error(
+            f"[{self.provider_name}] All {max_retries} async stream retry attempts exhausted."
+        )
+        raise last_exception or RuntimeError(
+            f"All {self.provider_name} async API retries exhausted"
+        )
 
     def _record_api_call_start(self) -> None:
         """Record the start of an API call for monitoring."""
         try:
             import time
+
             self._call_start_time = time.time()
         except:
             pass
@@ -272,13 +257,17 @@ class LLMProvider(ABC):
             import os
 
             end_time = time.time()
-            response_time = end_time - getattr(self, '_call_start_time', end_time)
+            response_time = end_time - getattr(self, "_call_start_time", end_time)
 
             # Extract token usage
             tokens_input, tokens_output = self._extract_token_usage(result)
 
             # Send to monitoring backend
-            backend = os.getenv("MONITORING_BACKEND_URL") or os.getenv("BACKEND_URL") or "http://localhost:5001/api"
+            backend = (
+                os.getenv("MONITORING_BACKEND_URL")
+                or os.getenv("BACKEND_URL")
+                or "http://localhost:5001/api"
+            )
             backend = str(backend).rstrip("/")
             monitoring_url = f"{backend}/admin/metrics/llm/request"
             payload = {
@@ -289,7 +278,7 @@ class LLMProvider(ABC):
                 "tokens_input": tokens_input,
                 "tokens_output": tokens_output,
                 "error": None,
-                "success": True
+                "success": True,
             }
 
             # Non-blocking HTTP call
@@ -309,6 +298,7 @@ class LLMProvider(ABC):
                     pass  # Silently fail if monitoring backend is unavailable
 
             import threading
+
             thread = threading.Thread(target=send_metric, daemon=True)
             thread.start()
 
@@ -325,10 +315,14 @@ class LLMProvider(ABC):
             import os
 
             end_time = time.time()
-            response_time = end_time - getattr(self, '_call_start_time', end_time)
+            response_time = end_time - getattr(self, "_call_start_time", end_time)
 
             # Send to monitoring backend
-            backend = os.getenv("MONITORING_BACKEND_URL") or os.getenv("BACKEND_URL") or "http://localhost:5001/api"
+            backend = (
+                os.getenv("MONITORING_BACKEND_URL")
+                or os.getenv("BACKEND_URL")
+                or "http://localhost:5001/api"
+            )
             backend = str(backend).rstrip("/")
             monitoring_url = f"{backend}/admin/metrics/llm/request"
             payload = {
@@ -339,7 +333,7 @@ class LLMProvider(ABC):
                 "tokens_input": 0,
                 "tokens_output": 0,
                 "error": str(error),
-                "success": False
+                "success": False,
             }
 
             # Non-blocking HTTP call
@@ -359,6 +353,7 @@ class LLMProvider(ABC):
                     pass  # Silently fail if monitoring backend is unavailable
 
             import threading
+
             thread = threading.Thread(target=send_metric, daemon=True)
             thread.start()
 
@@ -370,22 +365,30 @@ class LLMProvider(ABC):
         """Extract token usage from LLM response if available."""
         try:
             # Try to extract from response metadata
-            if hasattr(response, 'usage_metadata'):
+            if hasattr(response, "usage_metadata"):
                 usage = response.usage_metadata
-                input_tokens = getattr(usage, 'input_tokens', 0)
-                output_tokens = getattr(usage, 'output_tokens', 0)
+                input_tokens = getattr(usage, "input_tokens", 0)
+                output_tokens = getattr(usage, "output_tokens", 0)
                 return input_tokens, output_tokens
 
             # Try LangChain response format
-            if hasattr(response, 'usage'):
+            if hasattr(response, "usage"):
                 usage = response.usage
-                input_tokens = getattr(usage, 'prompt_tokens', 0) or getattr(usage, 'input_tokens', 0)
-                output_tokens = getattr(usage, 'completion_tokens', 0) or getattr(usage, 'output_tokens', 0)
+                input_tokens = getattr(usage, "prompt_tokens", 0) or getattr(
+                    usage, "input_tokens", 0
+                )
+                output_tokens = getattr(usage, "completion_tokens", 0) or getattr(
+                    usage, "output_tokens", 0
+                )
                 return input_tokens, output_tokens
 
             # Try direct attributes
-            input_tokens = getattr(response, 'prompt_tokens', 0) or getattr(response, 'input_tokens', 0)
-            output_tokens = getattr(response, 'completion_tokens', 0) or getattr(response, 'output_tokens', 0)
+            input_tokens = getattr(response, "prompt_tokens", 0) or getattr(
+                response, "input_tokens", 0
+            )
+            output_tokens = getattr(response, "completion_tokens", 0) or getattr(
+                response, "output_tokens", 0
+            )
             return input_tokens, output_tokens
 
         except Exception as e:
@@ -397,6 +400,7 @@ class RetryLLMWrapper:
     Wraps an LLMProvider to provide a LangChain-compatible interface
     (invoke/ainvoke) that automatically uses the provider's retry logic.
     """
+
     def __init__(self, provider: LLMProvider):
         self.provider = provider
 
@@ -413,4 +417,3 @@ class RetryLLMWrapper:
     @property
     def model_name(self) -> str:
         return self.provider.model_name
-

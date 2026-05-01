@@ -51,7 +51,7 @@ app.use(cors({
             .split(',')
             .map(origin => origin.trim())
             .filter(Boolean);
-        
+
         if (!origin) return callback(null, true);
         if (allowedOrigins.includes(origin)) return callback(null, true);
         return callback(new Error('Not allowed by CORS'));
@@ -62,6 +62,15 @@ app.use(globalLimiter);
 app.use(express.json({ limit: '5mb' })); // Reduced for serverless
 app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
+
+// Vercel strips /api prefix via vercel.json rewrites, but route files
+// may still expect it. Add middleware to strip /api prefix if present.
+app.use((req, res, next) => {
+    if (req.url.startsWith('/api/')) {
+        req.url = req.url.replace(/^\/api/, '');
+    }
+    next();
+});
 
 // Routes (remove WebSocket and worker routes)
 const auth = require('./middleware/auth');
