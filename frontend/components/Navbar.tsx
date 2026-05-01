@@ -40,7 +40,7 @@ export default function Navbar() {
     <nav className="sticky top-0 z-40 border-b backdrop-blur-xl h-14 marp-nav">
       <div className="section-shell h-full flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 no-underline">
-          <span className="relative h-8 w-8 overflow-hidden rounded-xl bg-[var(--bg-surface)] ring-1 ring-[var(--border-default)] shadow-md">
+          <span className="relative h-8 w-8 overflow-hidden rounded-lg bg-[var(--bg-surface)] ring-1 ring-[var(--border-default)] shadow-md">
             <Image
               src={Logo}
               alt="MARP logo"
