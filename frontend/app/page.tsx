@@ -55,7 +55,7 @@ const COMMANDS = [
   ['/gatherdata [topic]', 'Heavier on data collection & structuring'],
   ['/search [query]', 'Focused web search + one‑shot scrape'],
   ['/paper', 'Compile structured findings into IEEE‑style paper'],
-  ['/expand [section]', 'Iterate on a specific report section'],
+  ['/visualize [data]', 'Generate a chart from data'],
 ];
 
 export default function HomePage() {
