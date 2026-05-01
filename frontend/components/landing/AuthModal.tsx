@@ -90,7 +90,7 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
               <input
                 type="email" required autoFocus
                 value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="enter your email address"
                 className="input-field"
               />
             </div>
@@ -147,7 +147,7 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
               <input
                 type="email" required
                 value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="enter your email address"
                 className="input-field"
               />
             </div>
