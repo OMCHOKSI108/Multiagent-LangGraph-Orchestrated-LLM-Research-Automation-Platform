@@ -26,10 +26,10 @@ export default function Navbar() {
     <Link
       key={href}
       href={href}
-      className={`text-sm ml-4 transition-colors ${
+      className={`text-sm ml-4 transition-colors px-2 py-1 rounded-md ${
         pathname === href
-          ? 'text-[var(--accent-teal)]'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+          ? 'text-[var(--accent-teal)] bg-[var(--accent-teal-muted)]'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'
       }`}
     >
       {label}
