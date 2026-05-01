@@ -8,7 +8,7 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalProps) {
+export default function AuthModal({ defaultTab = 'signup', onClose }: AuthModalProps) {
   const [tab, setTab] = useState<'login' | 'signup'>(defaultTab);
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
