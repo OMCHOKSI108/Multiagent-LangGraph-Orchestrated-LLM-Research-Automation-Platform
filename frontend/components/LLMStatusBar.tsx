@@ -105,6 +105,19 @@ export default function LLMStatusBar({
 
   if (loading) {
     return (
+      <div className={`flex items-center gap-2 text-xs text-[var(--text-tertiary)] animate-pulse ${className}`}>
+        <div className="h-2 w-2 rounded-full bg-gray-400" />
+        <span>Loading LLM status...</span>
+      </div>
+    );
+  }
+      document.addEventListener('mousedown', handleClick);
+    }
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showDropdown]);
+
+  if (loading) {
+    return (
       <div className={`flex items-center gap-1.5 ${className}`}>
         <span
           className="w-2 h-2 rounded-full animate-pulse"
