@@ -154,37 +154,98 @@ def patch_local_env(env: dict) -> dict:
 
 # ─── Auto Dependency Installers ───────────────────────────────────────────────
 def ensure_pip_deps(python_exec: str):
-    """Auto-install Python requirements if any are missing."""
+    """
+    Read requirements.txt and install any packages that are missing.
+    Uses pip's dry-run check first to avoid reinstalling everything.
+    """
     if not REQ_FILE.exists():
+        log("AI Engine", "No requirements.txt found — skipping pip check.", C_YELLOW)
         return
 
     log("AI Engine", "Checking Python dependencies...", C_GREEN)
-    result = subprocess.run(
-        [python_exec, "-m", "pip", "check"],
-        capture_output=True, text=True, cwd=str(ROOT)
-    )
-    # Also do a fast import check
-    check_imports = ["fastapi", "uvicorn", "langchain", "httpx"]
-    missing = []
-    for pkg in check_imports:
-        r = subprocess.run(
-            [python_exec, "-c", f"import {pkg}"],
+
+    # Map package names (in requirements.txt) → importable module names
+    # Only entries that differ from the install name need to be listed here
+    IMPORT_NAME_MAP = {
+        "langchain-openai":        "langchain_openai",
+        "langchain-core":          "langchain_core",
+        "langchain-community":     "langchain_community",
+        "langchain-groq":          "langchain_groq",
+        "langchain-google-genai":  "langchain_google_genai",
+        "langchain-huggingface":   "langchain_huggingface",
+        "langchain-ollama":        "langchain_ollama",
+        "langchain-text-splitters":"langchain_text_splitters",
+        "langgraph-checkpoint-sqlite": "langgraph_checkpoint_sqlite",
+        "python-dotenv":           "dotenv",
+        "python-docx":             "docx",
+        "duckduckgo-search":       "duckduckgo_search",
+        "googlesearch-python":     "googlesearch",
+        "beautifulsoup4":          "bs4",
+        "scikit-learn":            "sklearn",
+        "pillow":                  "PIL",
+        "sentence-transformers":   "sentence_transformers",
+        "uvicorn[standard]":       "uvicorn",
+        "fastapi":                 "fastapi",
+        "pydantic":                "pydantic",
+        "langchain":               "langchain",
+        "langgraph":               "langgraph",
+        "httpx":                   "httpx",
+        "redis":                   "redis",
+        "requests":                "requests",
+        "arxiv":                   "arxiv",
+        "wikipedia":               "wikipedia",
+        "pypdf":                   "pypdf",
+        "pymupdf":                 "fitz",
+        "chromadb":                "chromadb",
+        "nest_asyncio":            "nest_asyncio",
+        "numpy":                   "numpy",
+        "torch":                   "torch",
+        "diffusers":               "diffusers",
+        "transformers":            "transformers",
+        "accelerate":              "accelerate",
+        "ollama":                  "ollama",
+        "gradio":                  "gradio",
+    }
+
+    # Parse requirements.txt — collect install names (strip version specifiers)
+    to_check: list[tuple[str, str]] = []  # (install_name, import_name)
+    with open(REQ_FILE, encoding="utf-8") as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            # Strip version specifiers: langchain>=0.2 → langchain
+            pkg_name = re.split(r"[><=!;\[\s]", line)[0].strip().lower()
+            if not pkg_name:
+                continue
+            import_name = IMPORT_NAME_MAP.get(pkg_name, pkg_name.replace("-", "_"))
+            to_check.append((pkg_name, import_name))
+
+    # Quick import probe for each package
+    missing_installs: list[str] = []
+    for pkg_install, pkg_import in to_check:
+        result = subprocess.run(
+            [python_exec, "-c", f"import {pkg_import}"],
             capture_output=True, cwd=str(ROOT)
         )
-        if r.returncode != 0:
-            missing.append(pkg)
+        if result.returncode != 0:
+            missing_installs.append(pkg_install)
 
-    if missing:
-        log("AI Engine", f"{C_YELLOW}Missing packages detected: {', '.join(missing)}", C_YELLOW)
-        log("AI Engine", f"Installing from {REQ_FILE.name}...", C_YELLOW)
-        subprocess.run(
+    if missing_installs:
+        log("AI Engine", f"{C_YELLOW}Missing {len(missing_installs)} package(s): {', '.join(missing_installs[:8])}{'...' if len(missing_installs) > 8 else ''}", C_YELLOW)
+        log("AI Engine", "Installing from requirements.txt — this may take a moment...", C_YELLOW)
+        result = subprocess.run(
             [python_exec, "-m", "pip", "install", "-r", str(REQ_FILE),
              "--quiet", "--no-warn-script-location"],
-            cwd=str(ROOT), check=False
+            cwd=str(ROOT)
         )
-        log("AI Engine", "Pip install complete.", C_GREEN)
+        if result.returncode == 0:
+            log("AI Engine", "✓ All packages installed successfully.", C_GREEN)
+        else:
+            log("AI Engine", f"{C_RED}pip install had errors — check output above. Continuing anyway.", C_RED)
     else:
-        log("AI Engine", "All Python dependencies are present ✓", C_GREEN)
+        log("AI Engine", "✓ All Python dependencies present.", C_GREEN)
+
 
 
 def ensure_node_deps(directory: Path, label: str, npm_cmd: list):
