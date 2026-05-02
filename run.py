@@ -252,6 +252,44 @@ def wait_for_port(host: str, port: int, timeout: int = 60, label: str = "") -> b
     return False  # Don't abort — service may just be slow (ML model loading)
 
 
+def kill_port(port: int, label: str = ""):
+    """Kill any process currently occupying the given port."""
+    killed = False
+    if IS_WINDOWS:
+        try:
+            # netstat to find PID using the port
+            result = subprocess.run(
+                ["netstat", "-ano"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.splitlines():
+                if f":{port} " in line and "LISTENING" in line:
+                    parts = line.strip().split()
+                    pid = parts[-1]
+                    if pid.isdigit() and int(pid) != os.getpid():
+                        subprocess.run(["taskkill", "/F", "/PID", pid],
+                                       capture_output=True, timeout=5)
+                        log(label or f"Port {port}", f"Released port {port} (killed PID {pid})", C_YELLOW)
+                        killed = True
+        except Exception as e:
+            log(label or f"Port {port}", f"Could not check port {port}: {e}", C_DIM)
+    else:
+        try:
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True, text=True, timeout=5
+            )
+            for pid in result.stdout.strip().splitlines():
+                if pid.isdigit() and int(pid) != os.getpid():
+                    subprocess.run(["kill", "-9", pid], capture_output=True, timeout=5)
+                    log(label or f"Port {port}", f"Released port {port} (killed PID {pid})", C_YELLOW)
+                    killed = True
+        except Exception as e:
+            log(label or f"Port {port}", f"Could not check port {port}: {e}", C_DIM)
+    if not killed:
+        log(label or f"Port {port}", f"Port {port} is free ✓", C_GREEN)
+
+
 # ─── Service Starters ─────────────────────────────────────────────────────────
 def start_backend(env: dict, node: str):
     return start_process("Backend", [node, "server.js"], BACKEND_DIR, env, C_CYAN)
@@ -263,7 +301,13 @@ def start_worker(env: dict, node: str):
 
 def start_ai_engine(env: dict, python_exec: str):
     engine_env = env.copy()
-    engine_env["PYTHONPATH"] = str(ROOT)
+    # PYTHONPATH must include BOTH:
+    #   ROOT          → for "import ai_engine" (package-level imports)
+    #   ROOT/ai_engine → for bare "import llm", "import config" inside ai_engine/
+    engine_env["PYTHONPATH"] = os.pathsep.join([
+        str(ROOT),
+        str(AI_DIR),
+    ])
     cmd = [
         python_exec, "-m", "uvicorn",
         "ai_engine.main:app",
@@ -342,6 +386,7 @@ def main():
     # ── Backend ──────────────────────────────────────────────────────────────
     if start_all or args.backend:
         ensure_node_deps(BACKEND_DIR, "Backend", npm_cmd)
+        kill_port(int(env.get("PORT", 5000)), "Backend")
         start_backend(env, node)
         wait_for_port("localhost", int(env.get("PORT", 5000)), timeout=20, label="Backend")
         if not args.no_worker:
@@ -350,13 +395,14 @@ def main():
     # ── AI Engine ────────────────────────────────────────────────────────────
     if (start_all or args.ai) and not args.no_ai:
         ensure_pip_deps(python_exec)
+        kill_port(8000, "AI Engine")
         start_ai_engine(env, python_exec)
         log("AI Engine", "Starting... (first run may take 30-90s for model loading)", C_YELLOW)
-        # Non-blocking — worker will retry. Don't abort if slow.
         wait_for_port("localhost", 8000, timeout=90, label="AI Engine")
 
     # ── Frontend ─────────────────────────────────────────────────────────────
     if (start_all or args.frontend) and not args.no_frontend:
+        kill_port(3000, "Frontend")
         start_frontend(env, npm_cmd)
         wait_for_port("localhost", 3000, timeout=90, label="Frontend")
 
