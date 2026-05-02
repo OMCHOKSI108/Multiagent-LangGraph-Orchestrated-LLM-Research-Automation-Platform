@@ -1,0 +1,161 @@
+\documentclass[12pt,a4paper]{article}
+
+% ---------------------------------------------------------------
+% Packages
+% ---------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{cite}
+\usepackage{url}
+
+\geometry{
+  top=1.8cm,
+  bottom=1.8cm,
+  left=2.5cm,
+  right=2.5cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{0.85em}{0.4em}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{2em}
+
+% ---------------------------------------------------------------
+\begin{document}
+
+% ---------------------------------------------------------------
+% Header
+% ---------------------------------------------------------------
+\begin{center}
+  {\Large \textbf{Synopsis}}\\[0.5em]
+  {\large \textbf{BugReport AI: Automated Bug Report Generation and Root Cause Analysis
+  Using Pattern Matching, LLM Synthesis, and Semantic Retrieval}}\\[0.7em]
+  \normalsize
+  \textbf{Hari Patel} \quad \texttt{23aiml049@charusat.edu.in}\\[0.2em]
+  \textbf{Dev Patel} \quad \texttt{23aiml047@charusat.edu.in}\\[0.3em]
+  \small
+  Department of Artificial Intelligence and Machine Learning,
+  Chandubhai S. Patel Institute of Technology,\\
+  Charotar University of Science and Technology, Anand (Gujarat), India\\[0.3em]
+  \normalsize
+  \textbf{Guide:} Dr. Mukti Patel \qquad \textbf{Academic Year:} 2025--26
+\end{center}
+
+\vspace{0.3em}
+\hrule
+\vspace{0.6em}
+
+% ---------------------------------------------------------------
+\section{Introduction and Motivation}
+% ---------------------------------------------------------------
+
+Writing a good bug report is harder than it looks. Developers routinely receive incomplete submissions---missing reproduction steps, no expected-versus-actual contrast, no environment context---and each one triggers a slow round of clarification before the fix can begin. BugReport AI was built to change that. The platform accepts any raw error signal---a stack trace, a log snippet, a one-line description, or a JSON error payload---and automatically produces a complete, structured bug report along with the supporting analysis a senior engineer would otherwise assemble manually. It is not a text summarizer. It combines rule-based pattern matching, large language model synthesis, and embedding-based retrieval into a single pipeline that returns four distinct outputs in seconds. Triage bottlenecks are a predictable source of lost engineering time, and consistently improving the quality of the initial report has a meaningful compounding effect on team throughput.
+
+% ---------------------------------------------------------------
+\section{Problem Statement}
+% ---------------------------------------------------------------
+
+Given unstructured error input in any common format---natural language description, stack trace, raw log, or JSON blob---automatically produce a schema-conforming bug report with supporting diagnostics: ranked probable root causes with calibrated confidence values, concrete fix recommendations, and a set of similar historical issues for reference. Beyond analysis, the system must also behave like a production-grade API with identity-based access control, per-route rate limiting, traceable structured logging, versioned database migrations, and a working automated test suite.
+
+% ---------------------------------------------------------------
+\section{Objectives}
+% ---------------------------------------------------------------
+
+\begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=1pt, topsep=2pt]
+  \item Accept error inputs across multiple formats and normalize them into a consistent internal schema.
+  \item Identify probable root causes with supporting evidence and calibrated confidence scores.
+  \item Generate a structured bug report containing reproducible steps, expected and actual behavior, and severity and priority classifications.
+  \item Retrieve semantically similar historical issues from a curated GitHub corpus.
+  \item Expose all outputs through a stable, versioned API that frontend clients can depend on.
+  \item Enforce JWT authentication, per-route rate limiting, and end-to-end request traceability.
+  \item Persist analysis history per user with strict data isolation and a responsive web dashboard.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Proposed System and Methodology}
+% ---------------------------------------------------------------
+
+Every incoming request moves through a fixed pipeline of seven stages. The \textbf{InputProcessor} takes the raw payload and extracts error types, messages, file paths, line numbers, stack frames, and the inferred programming language using deterministic, language-specific regular expressions---no model inference, always reproducible. The extracted fields are then passed to the \textbf{Root Cause Analysis (RCA) engine}, which cross-references them against a curated pattern library of 31 patterns covering 79 distinct probable causes, returning the top three \texttt{RootCause} objects sorted by confidence score (0--1), each carrying a hypothesis, fix recommendation, and triggering evidence.
+
+\textbf{Bug report generation} follows a priority-ordered provider chain: Groq first, then OpenAI, then Ollama for local inference, and finally a deterministic template engine that always produces well-formed output regardless of external service availability. All providers must conform to a strict JSON schema covering title, description, reproduction steps, expected versus actual behavior, severity, priority, root cause summary, and affected components. \textbf{Semantic retrieval} uses a FAISS \texttt{IndexFlatIP} built over L2-normalized sentence-transformer embeddings---equivalent to cosine similarity ranking---constructed once from a curated corpus of 218 GitHub issues and queried at runtime to return the most relevant historical bugs with similarity scores and direct links. The \textbf{recommendation engine} assembles an ordered set of fixes, each with a title, description, implementation steps, optional code example, and difficulty rating. For authenticated users, all outputs are persisted as \texttt{AnalysisRecord} entries accessible through a paginated history API with strict per-user data isolation.
+
+% ---------------------------------------------------------------
+\section{System Architecture and Technology Stack}
+% ---------------------------------------------------------------
+
+The platform follows a conventional frontend-backend separation. The \textbf{frontend} is built with React 18, TypeScript, and Vite, covering Analyze, History, and Settings views. The \textbf{backend} is a FastAPI application exposing all functionality under the \texttt{/api/v1/*} namespace, backed by SQLite for development and PostgreSQL in production. JWT authentication, per-IP rate limiting via SlowAPI, correlation-ID-tagged structured logging, and Alembic-managed migrations are all enforced at the API boundary.
+
+\smallskip
+\noindent\textbf{Stack summary:} Python 3.11+, FastAPI, Uvicorn (backend); Node.js 18+, React 18, TypeScript, Vite (frontend); FAISS CPU index with \texttt{sentence-transformers} (vector search); pytest and httpx (testing); Docker and \texttt{docker-compose} (local orchestration); Render and Neon (cloud deployment target).
+
+% ---------------------------------------------------------------
+\section{Dataset and Evaluation}
+% ---------------------------------------------------------------
+
+Two primary artifacts underpin the system: a curated corpus of \textbf{218 GitHub issues} (repository name, title, URL, and body excerpt) that forms the semantic search index, and a hand-assembled \textbf{evaluation set of 30 cases} designed to exercise extraction logic, validate RCA pattern coverage, and benchmark report quality.
+
+Testing spans three levels: unit tests for the InputProcessor and RCA engine; integration tests using pytest and httpx against a running FastAPI instance with a real SQLite database and Alembic migrations applied, covering authentication, analysis, recommendations, rate limiting, and persistence; and frontend build validation via the TypeScript compiler and Vite. Output quality was assessed qualitatively across five dimensions---extraction consistency, RCA plausibility, report completeness, recommendation actionability, and retrieval relevance---with usable, coherent outputs produced across all 30 evaluation cases, including on sparse or ambiguous inputs.
+
+% ---------------------------------------------------------------
+\section{Key Contributions}
+% ---------------------------------------------------------------
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{Hybrid intelligence pipeline:} Rule-based analysis provides speed and interpretability; LLM synthesis adds fluency and coverage; semantic retrieval grounds the output in real historical precedent. Each layer compensates for the weaknesses of the others.
+  \item \textbf{Explainable RCA:} Every root cause hypothesis is paired with its triggering evidence and a calibrated confidence score---engineers understand the reasoning, not just the conclusion.
+  \item \textbf{Graceful degradation:} The provider chain guarantees a well-formed output even when all external LLM services are unreachable, with the deterministic fallback always available.
+  \item \textbf{Production-grade operational layer:} JWT authentication, per-route rate limiting, correlated structured logging, reproducible schema migrations, and a working test suite---deployed and functional, not aspirational.
+  \item \textbf{Dual-mode access:} Guest mode for quick anonymous submissions and an authenticated mode with full history persistence and a management dashboard.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Conclusion and Future Work}
+% ---------------------------------------------------------------
+
+BugReport AI demonstrates that the gap between an unstructured error signal and a polished engineering artifact can be meaningfully shortened with a compact, well-integrated stack. The combination of deterministic analysis, LLM synthesis, and vector retrieval yields a system more robust than any single technique alone---practically actionable, not merely technically correct.
+
+Future directions include expanding and automatically validating the RCA pattern library, supporting incremental FAISS index updates to avoid full corpus rebuilds, adding formal precision and recall metrics against labeled evaluation sets, and introducing IDE integration along with organization-level features such as shared workspaces, role-based access control, and audit logging.
+
+% ---------------------------------------------------------------
+% References
+% ---------------------------------------------------------------
+\begin{thebibliography}{9}
+\setlength{\itemsep}{1pt}
+
+\bibitem{fastapi}
+FastAPI Documentation. \url{https://fastapi.tiangolo.com/}.
+
+\bibitem{faiss}
+FAISS: Facebook AI Similarity Search. \url{https://github.com/facebookresearch/faiss}.
+
+\bibitem{faisspaper}
+J. Johnson, M. Douze, and H. J\'egou, ``Billion-scale similarity search with GPUs,'' \textit{IEEE Transactions on Big Data}, 2019.
+
+\bibitem{sentencebert}
+N. Reimers and I. Gurevych, ``Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks,'' \textit{EMNLP-IJCNLP}, 2019.
+
+\bibitem{sqlalchemy}
+SQLAlchemy Documentation. \url{https://docs.sqlalchemy.org/}.
+
+\bibitem{alembic}
+Alembic Documentation. \url{https://alembic.sqlalchemy.org/}.
+
+\bibitem{slowapi}
+SlowAPI Documentation. \url{https://slowapi.readthedocs.io/}.
+
+\end{thebibliography}
+
+\end{document}

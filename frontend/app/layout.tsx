@@ -6,13 +6,14 @@ import Navbar from '@/components/Navbar';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ToastProvider';
+
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
   title: 'MARP – Multi‑Agentic Research Platform',
   description:
-    'A multi‑agent AI research environment for serious academics: topic discovery, literature review, verification, and report generation.',
+    'An open-source platform for automated research: topic discovery, literature review, verification, and report generation.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -27,10 +28,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <Navbar />
                   <main className="flex-1 relative z-10">{children}</main>
                 </div>
+                {/* Subtle ambient light-mode background glows */}
                 <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-                  <div className="absolute -top-40 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-3xl" />
-                  <div className="absolute bottom-[-160px] right-[-80px] h-72 w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#0f172a_0,_transparent_55%),radial-gradient(circle_at_bottom,_#020617_0,_transparent_55%)] opacity-70" />
+                  <div className="absolute -top-40 left-1/2 h-80 w-[560px] -translate-x-1/2 rounded-full bg-teal-200/25 blur-3xl" />
+                  <div className="absolute bottom-[-160px] right-[-80px] h-72 w-[420px] rounded-full bg-blue-200/20 blur-3xl" />
+                  <div className="absolute top-1/3 left-[-100px] h-64 w-[320px] rounded-full bg-violet-200/15 blur-3xl" />
                 </div>
               </ThemeProvider>
             </AuthProvider>

@@ -8,7 +8,7 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalProps) {
+export default function AuthModal({ defaultTab = 'signup', onClose }: AuthModalProps) {
   const [tab, setTab] = useState<'login' | 'signup'>(defaultTab);
   const [name, setName]         = useState('');
   const [email, setEmail]       = useState('');
@@ -90,7 +90,7 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
               <input
                 type="email" required autoFocus
                 value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="enter your email address"
                 className="input-field"
               />
             </div>
@@ -147,7 +147,7 @@ export default function AuthModal({ defaultTab = 'login', onClose }: AuthModalPr
               <input
                 type="email" required
                 value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="enter your email address"
                 className="input-field"
               />
             </div>

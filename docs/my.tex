@@ -1,0 +1,184 @@
+\documentclass[12pt,a4paper]{article}
+
+% ---------------------------------------------------------------
+% Packages
+% ---------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{cite}
+\usepackage{url}
+
+\geometry{
+  top=1.8cm,
+  bottom=1.8cm,
+  left=2.5cm,
+  right=2.5cm
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{0.85em}{0.4em}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{2em}
+
+% ---------------------------------------------------------------
+\begin{document}
+
+% ---------------------------------------------------------------
+% Header
+% ---------------------------------------------------------------
+\begin{center}
+  {\Large \textbf{Synopsis}}\\[0.5em]
+  {\large \textbf{MARP: Multi-Agent LLM Research Automation Platform
+  Using LangGraph Orchestration, Multi-Provider LLMs, and Knowledge Graphs}}\\[0.7em]
+  \normalsize
+  \textbf{Om Choksi} \quad \texttt{23aiml010@charusat.edu.in}\\[0.2em]
+  \textbf{Devang Dhandhukiya} \quad \texttt{23aiml014@charusat.edu.in}\\[0.3em]
+  \small
+  Department of Artificial Intelligence and Machine Learning,
+  Chandubhai S. Patel Institute of Technology,\\
+  Charotar University of Science and Technology, Anand (Gujarat), India\\[0.3em]
+  \normalsize
+  \textbf{Guide:} Dr. Mukti Patel \qquad \textbf{Academic Year:} 2025--26
+\end{center}
+
+\vspace{0.3em}
+\hrule
+\vspace{0.6em}
+
+% ---------------------------------------------------------------
+\section{Introduction and Motivation}
+% ---------------------------------------------------------------
+
+When we started working on this project, the main thing we noticed was how much time goes into research tasks that do not actually require deep thinking. You spend hours searching for papers on Google Scholar, then downloading them from ArXiv, then reading through abstracts to figure out which ones are even relevant, then trying to find what has not been studied yet, and finally writing everything in a proper format. For a student who is just starting out, the process feels scattered because there is no single place where all of this comes together. You have to juggle multiple tabs, multiple tools, and a lot of manual copy-pasting.
+
+We wanted to build something that handles this entire flow from one place. The idea behind MARP is simple: you type in a research topic, and the system does the searching, reading, comparing, and writing for you. We used LangGraph to structure the whole thing as a pipeline where different agents handle different parts. One agent looks for papers, another one reads through them, another one finds gaps, and so on. The important thing is that these agents pull from real academic sources like ArXiv, PubMed, and OpenAlex, so the results are based on actual research and not something the model just made up. We also added agents that go through the final output and check for mistakes---one acts like a strict reviewer and another verifies that every claim is backed by a real source.
+
+% ---------------------------------------------------------------
+\section{Problem Statement}
+% ---------------------------------------------------------------
+
+We wanted to answer a specific question: if you give a system a research topic, can it handle the entire research process on its own? By that, we mean it should take a broad topic, narrow it down to something specific, find relevant papers from different databases, figure out what areas have not been covered yet, suggest research questions that are both new and doable, write a proper report with citations, and give you back an IEEE-formatted LaTeX file. On top of the core research pipeline, we also wanted the system to show you what it is doing while it works, let you save your research sessions for later, and function even without internet by running local models. All of this should work as a real application with user accounts, a database, and proper authentication.
+
+% ---------------------------------------------------------------
+\section{Objectives}
+% ---------------------------------------------------------------
+
+\begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*, itemsep=1pt, topsep=2pt]
+  \item Set up a multi-agent system using LangGraph where each agent has one specific job in the research process.
+  \item Build a query router that looks at what the user asked and decides if it needs a quick answer, a web search, or the full research pipeline.
+  \item Search for papers across multiple sources---ArXiv, PubMed, OpenAlex, DuckDuckGo, and Wikipedia---so that nothing important gets left out.
+  \item Go through the collected papers and find actual gaps in the research, then turn those gaps into specific research questions.
+  \item Write a structured report with proper citations and convert it into IEEE LaTeX format.
+  \item Add agents that review the output and check for hallucinations so the system can catch its own errors.
+  \item Show live progress to the user so they can see which agent is doing what at any given time.
+  \item Make the system work with different LLM providers---Groq, OpenRouter, Gemini, Ollama for offline use, and HuggingFace for local models.
+  \item Let users create workspaces where their research gets saved and can be exported in different formats.
+  \item Package the whole thing in Docker Compose so it starts up with one command.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Proposed System and Methodology}
+% ---------------------------------------------------------------
+
+Here is how the system works when you give it a research topic. First, the \textbf{Query Router} checks the input. If it is a simple question, the system answers it directly. If it needs a quick lookup, it does a web search. But if it is a complex topic that needs proper research, the full pipeline kicks in. The \textbf{TopicDiscoveryAgent} explores the topic and narrows it down, and then the \textbf{TopicLockAgent} makes sure the scope is specific enough before moving forward.
+
+After the topic is locked, the \textbf{OrchestratorAgent} starts multiple research streams at the same time. The \textbf{DomainIntelligenceAgent} figures out the key concepts and how they relate to each other. The \textbf{SystematicLiteratureReviewAgent} searches for papers using different methods depending on the source---it hits the ArXiv API for preprints, PubMed for medical papers, OpenAlex for citation data, and uses PyMuPDF to read actual PDFs when needed. The \textbf{HistoricalReviewAgent} looks at how the field has developed over time, and the \textbf{NewsAgent} picks up anything recent.
+
+Once all the streams are done, the \textbf{GapSynthesisAgent} takes everything and looks for patterns. It finds areas where there is not enough research, spots contradictions between papers, and identifies questions that nobody has answered yet. The \textbf{ResearchQuestionEngineeringAgent} then turns those gaps into actual research questions and checks whether each one is realistic to pursue. The \textbf{CentralBrainAgent} watches over the whole process and decides whether the system needs to dig deeper into something or if it has enough to move on.
+
+For the writing part, the \textbf{ScientificWritingAgent} and \textbf{MultiStageReportAgent} put together the report. They make sure the language is appropriate for academic writing, the citations are in the right format, and the sections flow logically. The \textbf{IEEEPaperAgent} converts everything to IEEE LaTeX. Before the user sees the result, the \textbf{ReviewerAdversarialCritiqueAgent} goes through the report and points out weaknesses, while the \textbf{HallucinationDetectionAgent} checks every claim against the sources to make sure nothing was fabricated. Both of these checks are used to improve the output before it is finalized.
+
+The user can watch all of this happen on the frontend, where a live feed shows what each agent is working on, and a 3D knowledge graph shows how the discovered papers and concepts connect to each other.
+
+% ---------------------------------------------------------------
+\section{System Architecture and Technology Stack}
+% ---------------------------------------------------------------
+
+The application runs as five separate services connected through Docker. The \textbf{frontend} is built with Next.js 14 and TypeScript, with Tailwind CSS for styling. It handles the workspace interface, the live agent feed, the 3D knowledge graph using Three.js, and the export options. The \textbf{backend} is an Express.js server that manages users, workspaces, and authentication. It uses Passport.js for Google and GitHub OAuth, JWT tokens for sessions, and Server-Sent Events to push live updates to the frontend.
+
+The \textbf{AI Engine} is a FastAPI application in Python that runs the LangGraph agent pipeline. It uses ChromaDB for vector-based semantic search and connects to whichever LLM provider the user has configured. \textbf{PostgreSQL} stores all the user data, workspace information, research history, and memory entries. \textbf{Redis} handles caching and background jobs.
+
+\smallskip
+\noindent\textbf{Stack summary:} Python 3.11, FastAPI, LangGraph, LangChain, ChromaDB, PyTorch, Transformers, sentence-transformers (AI engine); Node.js 20, Express.js, Passport.js, Puppeteer (backend); Next.js 14, React 18, TypeScript, Tailwind CSS, Three.js (frontend); PostgreSQL 16, Redis 7 (infrastructure); Docker Compose (orchestration); Groq, OpenRouter, Google Gemini, Ollama, HuggingFace (LLM providers).
+
+% ---------------------------------------------------------------
+\section{Agent Architecture and Evaluation}
+% ---------------------------------------------------------------
+
+Instead of having one LLM handle everything, we split the work across 30+ agents, each with one clear responsibility. They fall into eight groups: topic discovery agents, orchestration agents, discovery agents, literature review agents, synthesis agents, innovation agents, writing agents, and critique agents. The reason for this approach is that when each agent has a narrow focus, it does its job better, and the overall pipeline becomes more reliable. The agents also run in parallel where possible, which speeds things up, and they communicate through structured data rather than loose text, which makes debugging much easier.
+
+We tested the system across a few different domains---machine learning, biomedical informatics, and software engineering. The main things we checked were: does the pipeline run all the way through without errors, are the papers it finds from real academic sources, do the gaps it identifies actually exist, are the research questions it proposes genuinely new, and does the final report read like proper academic writing. The self-review agents turned out to be quite useful---they caught several cases where the LLM had made claims that were not fully backed up by the sources, which is exactly the kind of thing we wanted the system to catch before showing results to the user.
+
+% ---------------------------------------------------------------
+\section{Key Contributions}
+% ---------------------------------------------------------------
+
+\begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
+  \item \textbf{Multi-agent orchestration:} We split the research process across 30+ agents instead of relying on a single model. Each agent has a focused task, and the CentralBrain agent makes decisions about where the system should spend more time. This approach is more reliable than having one LLM try to do everything at once.
+  \item \textbf{Results based on real sources:} Every paper the system references comes from an actual academic database. The hallucination detection agent checks claims against the sources, and the critique agent catches statements that are too confident or not properly supported.
+  \item \textbf{Smart routing:} The Query Router prevents the system from wasting resources on simple questions. If a quick answer works, it gives one. The full pipeline only runs when it is actually needed.
+  \item \textbf{Works offline too:} The system supports cloud LLMs when internet is available, but it can also run completely offline with Ollama and local HuggingFace models.
+  \item \textbf{Full pipeline:} You give it a topic and get back an IEEE LaTeX document, a 3D knowledge graph, and a detailed report with citations.
+  \item \textbf{One-command deployment:} Everything runs through Docker Compose. The database, cache, backend, AI engine, and frontend all start with a single command.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Conclusion and Future Work}
+% ---------------------------------------------------------------
+
+We built MARP because the research workflow is broken up across too many tools and takes too much manual effort. What we have built does not replace the researcher---it handles the repetitive parts of the process so the researcher can focus on things that actually need human judgment. By using specialized agents, grounding everything in real academic sources, and adding self-review, the system produces output that is genuinely useful rather than generic.
+
+There are several things we want to add next. In the short term, we want to create agents for specific domains like clinical trials and patent analysis, and we want to improve the bibliography generation to produce proper BibTeX files. We also want to add collaborative workspaces where multiple people can work on the same project. Further down the line, we are looking at citation network analysis to help identify the most influential papers in a field, and we want to let users interact with the pipeline while it is running---like telling it to focus on a specific area or skip a step they already did themselves. The goal is to make MARP feel like a research partner rather than just an automation tool.
+
+% ---------------------------------------------------------------
+% References
+% ---------------------------------------------------------------
+\begin{thebibliography}{9}
+\setlength{\itemsep}{1pt}
+
+\bibitem{langgraph}
+LangGraph Documentation. \url{https://langchain-ai.github.io/langgraph/}.
+
+\bibitem{langchain}
+LangChain Documentation. \url{https://python.langchain.com/}.
+
+\bibitem{nextjs}
+Next.js Documentation. \url{https://nextjs.org/docs}.
+
+\bibitem{chromadb}
+ChromaDB: AI-Native Vector Database. \url{https://www.trychroma.com/}.
+
+\bibitem{transformers}
+T. Wolf et al., ``HuggingFace's Transformers: State-of-the-art Natural Language Processing,'' \textit{EMNLP}, 2020.
+
+\bibitem{sentencebert}
+N. Reimers and I. Gurevych, ``Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks,'' \textit{EMNLP-IJCNLP}, 2019.
+
+\bibitem{ollama}
+Ollama: Local LLM Framework. \url{https://ollama.com/}.
+
+\bibitem{fastapi}
+FastAPI Documentation. \url{https://fastapi.tiangolo.com/}.
+
+\bibitem{threejs}
+Three.js: JavaScript 3D Library. \url{https://threejs.org/}.
+
+\bibitem{redis}
+Redis Documentation. \url{https://redis.io/docs/}.
+
+\end{thebibliography}
+
+\end{document}

@@ -15,11 +15,11 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const STORAGE_KEY = "marp-theme";
 
 function getSystemTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
-    return "light";
+  if (typeof window === "undefined") return "light";
+  if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    return "dark";
   }
-  return "dark";
+  return "light";
 }
 
 function getStoredTheme(): Theme | null {
@@ -32,7 +32,7 @@ function getStoredTheme(): Theme | null {
 function getInitialTheme(): Theme {
   const stored = getStoredTheme();
   if (stored) return stored;
-  return getSystemTheme();
+  return "light"; // Default to light — user can toggle to dark
 }
 
 // Subscribe to system theme changes
@@ -51,13 +51,13 @@ function getSystemSnapshot(): Theme {
 }
 
 function getServerSnapshot(): Theme {
-  return "dark"; // SSR default
+  return "light"; // SSR default matches new CSS :root default
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
-  const [resolvedTheme, setResolvedTheme] = useState<Theme>("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<Theme>("light");
   
   // Subscribe to system theme for live updates
   useSyncExternalStore(
@@ -111,7 +111,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const contextValue: ThemeContextValue = {
     theme,
     toggleTheme,
-    resolvedTheme: mounted ? resolvedTheme : "dark",
+    resolvedTheme: mounted ? resolvedTheme : "light",
   };
 
   return (

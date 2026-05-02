@@ -107,7 +107,7 @@ export default function LLMStatusBar({
     return (
       <div className={`flex items-center gap-2 text-xs text-[var(--text-tertiary)] animate-pulse ${className}`}>
         <div className="h-2 w-2 rounded-full bg-gray-400" />
-        <span>Loading LLM status...</span>
+        <span>Syncing with AI Engine...</span>
       </div>
     );
   }

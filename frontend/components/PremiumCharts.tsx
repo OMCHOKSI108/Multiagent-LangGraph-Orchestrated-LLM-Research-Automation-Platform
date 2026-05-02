@@ -37,10 +37,10 @@ export default function PremiumCharts({ config, title, description }: PremiumCha
   };
 
   return (
-    <Card className="mb-6 overflow-hidden" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
+    <Card className="mb-6 overflow-hidden transition-all duration-300" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-default)' }}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold italic" style={{ color: 'var(--text-primary)' }}>
-          {title || "AI Insight Visualization"}
+          {title || "Automated Insight Visualization"}
         </CardTitle>
         {description && (
           <p className="text-[10px] leading-relaxed italic" style={{ color: 'var(--text-tertiary)' }}>

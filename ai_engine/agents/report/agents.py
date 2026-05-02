@@ -9,7 +9,7 @@ from ..base import BaseAgent
 from langchain_core.messages import SystemMessage, HumanMessage
 from .domain_templates import detect_domain, get_template
 from .latex_sanitizer import sanitize_llm_latex, sanitize_latex, check_balance
-from ai_engine.utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk
+from ai_engine.utils.event_emitter import emit_agent_start, emit_agent_complete, emit_report_chunk, flush_report_chunks
 
 
 class ScientificWritingAgent(BaseAgent):
@@ -162,6 +162,7 @@ AI Brain Research Plan:
             
             gc.collect()
             elapsed = time.time() - start_time
+            flush_report_chunks(research_id=research_id)  # Flush any remaining buffered content
             emit_agent_complete(self.name, int(elapsed * 1000), success=True, research_id=research_id)
             
             return {

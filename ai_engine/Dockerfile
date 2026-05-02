@@ -14,6 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     git \
+    texlive-latex-base \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-science \
+    latexmk \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

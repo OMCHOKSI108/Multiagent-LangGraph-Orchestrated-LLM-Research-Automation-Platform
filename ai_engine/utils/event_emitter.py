@@ -335,15 +335,75 @@ def emit_stage_change(
     )
 
 
+# ─── Report Chunk Buffering ─────────────────────────────────────────────────
+# Buffer accumulated per research_id to avoid flooding the UI with
+# one event per LLM token.
+_CHUNK_BUFFER: Dict[int, str] = {}
+_CHUNK_LOCK = threading.Lock()
+_CHUNK_FLUSH_THRESHOLD = 400  # chars before auto-flush
+
+
 def emit_report_chunk(chunk: str, research_id: Optional[int] = None):
     """
-    Emits a real-time report chunk for live typing in the Report tab.
+    Buffers streaming LLM output and emits to the UI only at natural
+    paragraph / sentence boundaries (or when the buffer exceeds the threshold).
+
+    This prevents the UI from receiving thousands of single-character events
+    and eliminates the 'Reporting chunk...' noise for LaTeX content.
     """
-    emit_event(
-        stage="writing",
-        message="Reporting chunk...",
-        severity="info",
-        category="brain_report_chunk",
-        details={"chunk": chunk},
-        research_id=research_id,
-    )
+    job_id = research_id or _current_job_id
+    if not job_id:
+        return
+
+    # Skip empty chunks
+    if not chunk or not chunk.strip():
+        return
+
+    with _CHUNK_LOCK:
+        _CHUNK_BUFFER.setdefault(job_id, "")
+        _CHUNK_BUFFER[job_id] += chunk
+
+        buf = _CHUNK_BUFFER[job_id]
+        # Flush on natural boundaries or when buffer is large enough
+        should_flush = (
+            len(buf) >= _CHUNK_FLUSH_THRESHOLD
+            or buf.endswith("\n\n")
+            or (buf.endswith("\n") and len(buf) > 80)
+        )
+
+        if should_flush:
+            _flush_chunk_buffer(job_id, buf)
+            _CHUNK_BUFFER[job_id] = ""
+
+
+def flush_report_chunks(research_id: Optional[int] = None):
+    """
+    Force-flush any remaining buffered content.
+    Call this at the end of LLM streaming.
+    """
+    job_id = research_id or _current_job_id
+    if not job_id:
+        return
+    with _CHUNK_LOCK:
+        buf = _CHUNK_BUFFER.pop(job_id, "")
+        if buf.strip():
+            _flush_chunk_buffer(job_id, buf)
+
+
+def _flush_chunk_buffer(job_id: int, content: str) -> None:
+    """Internal: emit a buffered content block to the UI."""
+    # Trim to a reasonable display length
+    preview = content.strip()[:1000]
+    if not preview:
+        return
+    event_id = f"chunk_{datetime.now().strftime('%H%M%S%f')}_{uuid.uuid4().hex[:6]}"
+    payload = {
+        "research_id": job_id,
+        "event_id": event_id,
+        "stage": "writing",
+        "severity": "info",
+        "category": "brain_report_chunk",
+        "message": preview,
+        "details": {"chunk": content},
+    }
+    _fire_and_forget(f"{BACKEND_URL}/events", payload)
