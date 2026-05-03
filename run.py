@@ -52,6 +52,10 @@ if IS_WINDOWS:
         kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
     except Exception:
         pass
+    # Force UTF-8 output so box-drawing / emoji chars don't crash
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 C_RESET  = "\033[0m"
 C_GREEN  = "\033[92m"
@@ -155,97 +159,40 @@ def patch_local_env(env: dict) -> dict:
 # ─── Auto Dependency Installers ───────────────────────────────────────────────
 def ensure_pip_deps(python_exec: str):
     """
-    Read requirements.txt and install any packages that are missing.
-    Uses pip's dry-run check first to avoid reinstalling everything.
+    Fast dependency check: use pip's own --dry-run to detect what's missing.
+    Runs ONCE before any service starts, not inside the AI engine startup.
+    Shows live pip output so user can see progress.
     """
     if not REQ_FILE.exists():
-        log("AI Engine", "No requirements.txt found — skipping pip check.", C_YELLOW)
+        log("Deps", "No requirements.txt found — skipping.", C_YELLOW)
         return
 
-    log("AI Engine", "Checking Python dependencies...", C_GREEN)
+    log("Deps", "Checking Python packages (using pip --dry-run)...", C_CYAN)
 
-    # Map package names (in requirements.txt) → importable module names
-    # Only entries that differ from the install name need to be listed here
-    IMPORT_NAME_MAP = {
-        "langchain-openai":        "langchain_openai",
-        "langchain-core":          "langchain_core",
-        "langchain-community":     "langchain_community",
-        "langchain-groq":          "langchain_groq",
-        "langchain-google-genai":  "langchain_google_genai",
-        "langchain-huggingface":   "langchain_huggingface",
-        "langchain-ollama":        "langchain_ollama",
-        "langchain-text-splitters":"langchain_text_splitters",
-        "langgraph-checkpoint-sqlite": "langgraph_checkpoint_sqlite",
-        "python-dotenv":           "dotenv",
-        "python-docx":             "docx",
-        "duckduckgo-search":       "duckduckgo_search",
-        "googlesearch-python":     "googlesearch",
-        "beautifulsoup4":          "bs4",
-        "scikit-learn":            "sklearn",
-        "pillow":                  "PIL",
-        "sentence-transformers":   "sentence_transformers",
-        "uvicorn[standard]":       "uvicorn",
-        "fastapi":                 "fastapi",
-        "pydantic":                "pydantic",
-        "langchain":               "langchain",
-        "langgraph":               "langgraph",
-        "httpx":                   "httpx",
-        "redis":                   "redis",
-        "requests":                "requests",
-        "arxiv":                   "arxiv",
-        "wikipedia":               "wikipedia",
-        "pypdf":                   "pypdf",
-        "pymupdf":                 "fitz",
-        "chromadb":                "chromadb",
-        "nest_asyncio":            "nest_asyncio",
-        "numpy":                   "numpy",
-        "torch":                   "torch",
-        "diffusers":               "diffusers",
-        "transformers":            "transformers",
-        "accelerate":              "accelerate",
-        "ollama":                  "ollama",
-        "gradio":                  "gradio",
-    }
+    # Pip dry-run: exit code 0 = nothing to install, non-0 = something is missing
+    dry = subprocess.run(
+        [python_exec, "-m", "pip", "install", "-r", str(REQ_FILE),
+         "--dry-run", "--quiet", "--no-warn-script-location"],
+        capture_output=True, text=True, cwd=str(ROOT)
+    )
 
-    # Parse requirements.txt — collect install names (strip version specifiers)
-    to_check: list[tuple[str, str]] = []  # (install_name, import_name)
-    with open(REQ_FILE, encoding="utf-8") as f:
-        for raw in f:
-            line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-            # Strip version specifiers: langchain>=0.2 → langchain
-            pkg_name = re.split(r"[><=!;\[\s]", line)[0].strip().lower()
-            if not pkg_name:
-                continue
-            import_name = IMPORT_NAME_MAP.get(pkg_name, pkg_name.replace("-", "_"))
-            to_check.append((pkg_name, import_name))
+    needs_install = dry.returncode != 0 or "Would install" in dry.stdout
 
-    # Quick import probe for each package
-    missing_installs: list[str] = []
-    for pkg_install, pkg_import in to_check:
-        result = subprocess.run(
-            [python_exec, "-c", f"import {pkg_import}"],
-            capture_output=True, cwd=str(ROOT)
-        )
-        if result.returncode != 0:
-            missing_installs.append(pkg_install)
+    if not needs_install:
+        log("Deps", "All Python packages are up-to-date. \u2713", C_GREEN)
+        return
 
-    if missing_installs:
-        log("AI Engine", f"{C_YELLOW}Missing {len(missing_installs)} package(s): {', '.join(missing_installs[:8])}{'...' if len(missing_installs) > 8 else ''}", C_YELLOW)
-        log("AI Engine", "Installing from requirements.txt — this may take a moment...", C_YELLOW)
-        result = subprocess.run(
-            [python_exec, "-m", "pip", "install", "-r", str(REQ_FILE),
-             "--quiet", "--no-warn-script-location"],
-            cwd=str(ROOT)
-        )
-        if result.returncode == 0:
-            log("AI Engine", "✓ All packages installed successfully.", C_GREEN)
-        else:
-            log("AI Engine", f"{C_RED}pip install had errors — check output above. Continuing anyway.", C_RED)
+    log("Deps", "Installing missing packages — please wait...", C_YELLOW)
+    # Run with visible output (no --quiet) so user sees real progress
+    result = subprocess.run(
+        [python_exec, "-m", "pip", "install", "-r", str(REQ_FILE),
+         "--no-warn-script-location"],
+        cwd=str(ROOT)
+    )
+    if result.returncode == 0:
+        log("Deps", "All packages installed. \u2713", C_GREEN)
     else:
-        log("AI Engine", "✓ All Python dependencies present.", C_GREEN)
-
+        log("Deps", "pip finished with errors (see above). Continuing anyway...", C_YELLOW)
 
 
 def ensure_node_deps(directory: Path, label: str, npm_cmd: list):
@@ -407,15 +354,15 @@ def shutdown_all(signum=None, frame=None):
 
 # ─── Banner ───────────────────────────────────────────────────────────────────
 BANNER = f"""
-{C_BOLD}{C_CYAN}╔══════════════════════════════════════════════════╗
-║     MARP – Multi-Agentic Research Platform       ║
-║         Local Development Launcher               ║
-╚══════════════════════════════════════════════════╝{C_RESET}
+{C_BOLD}{C_CYAN}+==================================================+
+|     MARP - Multi-Agentic Research Platform       |
+|         Local Development Launcher               |
++==================================================+{C_RESET}
 
-  {C_GREEN}Frontend   {C_RESET}→  http://localhost:3000
-  {C_CYAN}Backend    {C_RESET}→  http://localhost:5000
-  {C_GREEN}AI Engine  {C_RESET}→  http://localhost:8000
-  {C_YELLOW}Worker     {C_RESET}→  background process
+  {C_GREEN}Frontend   {C_RESET}->  http://localhost:3000
+  {C_CYAN}Backend    {C_RESET}->  http://localhost:5000
+  {C_GREEN}AI Engine  {C_RESET}->  http://localhost:8000
+  {C_YELLOW}Worker     {C_RESET}->  background process
 
   Press {C_BOLD}Ctrl+C{C_RESET} to stop all services.
 """
@@ -444,6 +391,12 @@ def main():
 
     start_all = not (args.backend or args.ai or args.frontend)
 
+    # ── PRE-FLIGHT: install Python deps BEFORE starting any service ───────────
+    # This runs once, synchronously, so the AI engine starts clean without
+    # blocking in the background while the worker times out.
+    if (start_all or args.ai) and not args.no_ai:
+        ensure_pip_deps(python_exec)
+
     # ── Backend ──────────────────────────────────────────────────────────────
     if start_all or args.backend:
         ensure_node_deps(BACKEND_DIR, "Backend", npm_cmd)
@@ -455,11 +408,10 @@ def main():
 
     # ── AI Engine ────────────────────────────────────────────────────────────
     if (start_all or args.ai) and not args.no_ai:
-        ensure_pip_deps(python_exec)
         kill_port(8000, "AI Engine")
         start_ai_engine(env, python_exec)
         log("AI Engine", "Starting... (first run may take 30-90s for model loading)", C_YELLOW)
-        wait_for_port("localhost", 8000, timeout=90, label="AI Engine")
+        wait_for_port("localhost", 8000, timeout=120, label="AI Engine")
 
     # ── Frontend ─────────────────────────────────────────────────────────────
     if (start_all or args.frontend) and not args.no_frontend:
