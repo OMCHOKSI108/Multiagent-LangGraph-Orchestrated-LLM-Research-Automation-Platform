@@ -1,135 +1,178 @@
-# Multi-Agent LLM Research Automation Platform
+# Multiagent Research Automation Platform
 
-<div align="center">
-<img width="800" height="400" alt="Multi-Agent Architecture" src="assets/multi_agent.png" />
-</div>
+**Multiagent LangGraph-Orchestrated LLM Research Automation Platform**
 
-## About the Project
-
-The **Multi-Agent LLM Research Automation Platform** is an intelligent system that revolutionizes academic research by leveraging a sophisticated multi-agent architecture powered by LangGraph and Large Language Models. This platform can analyze individual research papers, perform comprehensive literature reviews, identify research gaps, and even generate novel research directions.
-
-Built with modern AI technologies, the platform combines automated information retrieval, structured systematic review protocols, and multi-agent collaboration to provide researchers with powerful tools for accelerating their work. Whether you're conducting single-paper analysis or exploring entire research domains, our system delivers reliable, reproducible results with full transparency.
-
-
-## Agent Overview
-
-| Category | Agent Name | Purpose |
-|----------|------------|---------|
-| **Orchestration** | Orchestrator Agent | Routes tasks and manages workflow |
-| **Discovery** | Domain Intelligence Agent | Maps research landscapes |
-| | Historical Review Agent | Chronological analysis via ArXiv |
-| **Literature Review** | Systematic Literature Review Agent | PRISMA-compliant reviews |
-| | Survey Meta-Analysis Agent | Statistical synthesis |
-| **Synthesis** | Gap Synthesis Agent | Identifies research opportunities |
-| | Research Question Engineering Agent | Generates research questions |
-| | Conceptual Framework Agent | Builds theoretical models |
-| **Innovation** | Innovation & Novelty Agent | Creates novel research ideas |
-| | Baseline Reproduction Agent | Reproduces existing methods |
-| | Validation & Robustness Agent | Tests research validity |
-| **Paper Analysis** | Paper Decomposition Agent | Structural document parsing |
-| | Paper Understanding Agent | Content summarization |
-| **Verification** | Technical Verification Agent | Claims validation |
-| | Data Source Validation Agent | Source credibility checking |
-| | Reproducibility Reasoning Agent | Reproducibility assessment |
-| **Interaction** | Interactive Paper Chatbot Agent | Conversational paper analysis |
-| | Reviewer Style Critique Agent | Academic peer review |
-| **Shared Services** | Memory & Knowledge Graph Agent | Information persistence |
-| | Citation Graph Analysis Agent | Citation network analysis |
-| | Scientific Writing Agent | Academic paper composition |
-| | LaTeX Generation Agent | Professional typesetting |
-| | Adversarial Critique Agent | Bias and error detection |
-| | Hallucination Detection Agent | AI output validation |
-
-## API Showcase
-
-### AI Engine API (Python/FastAPI)
-```bash
-# Health Check
-GET /health
-
-# Research Analysis
-POST /research
-Content-Type: application/json
-
-{
-  "task": "Analyze transformer architecture evolution",
-  "paper_url": "https://arxiv.org/pdf/1706.03762.pdf",
-  "depth": "deep"
-}
-
-# Individual Agent Calls
-POST /agent/{agent_slug}
-```
-
-### Backend API (Node.js/Express)
-```bash
-# Authentication
-POST /auth/login
-POST /auth/register
-
-# Research Sessions
-POST /research
-GET /research/{id}
-GET /research/{id}/status
-
-# Chat Interface
-POST /chat/message
-
-# Real-time Events
-GET /events/stream
-```
-![/docs/image.png]
-<div align="center">
-<img width="800" height="400" alt="API Showcase" src="docs/image.png" />
-## Architecture Diagrams
-
-### Agent Types Overview
-<div align="center">
-<img width="600" height="400" alt="Agent Types" src="assets/simple_reflex.png" />
-</div>
-
-### Research Workflow
-<div align="center">
-<img width="800" height="1500" alt="Research Workflow" src="assets/project_workflow.png" />
-</div>
-
-### Learning Agent Architecture
-<div align="center">
-<img width="600" height="400" alt="Learning Agent" src="assets/learning_agent.png" />
-</div>
-
-### Goal-Based Agent System
-<div align="center">
-<img width="600" height="400" alt="Goal-Based Agent" src="assets/goal_based.png" />
-</div>
-
-### Utility-Based Decision Making
-<div align="center">
-<img width="600" height="400" alt="Utility-Based Agent" src="assets/utility_based.png" />
-</div>
-
-### Hierarchical Agent Structure
-<div align="center">
-<img width="600" height="400" alt="Hierarchical Agent" src="assets/hierarchical.png" />
-</div>
-
-### Model-Based Reflex Agent
-<div align="center">
-<img width="600" height="400" alt="Model-Based Reflex" src="assets/Model-Based-Reflex.png" />
-</div>
-
-
-
-## Technology Stack
-
-- **AI Engine**: Python, FastAPI, LangGraph, LangChain
-- **Backend**: Node.js, Express.js, PostgreSQL
-- **Frontend**: React, TypeScript, Vite
-- **LLMs**: Ollama, Google Gemini, Groq
-- **Infrastructure**: Docker, Redis, Nginx
+One query in — a sourced, structured, exportable research report out. A pipeline of LangGraph agents (Planner → Searcher → Crawler → Reasoner → Reviewer → Writer) does the tab-hopping for you.
 
 ---
 
-<p align="center">
-  <strong>Accelerating Research Through Intelligent Automation</strong>
-</p>
+## Architecture
+
+```
+┌─────────────┐     GraphQL / SSE      ┌─────────────┐    REST (proxy)     ┌──────────────┐
+│   Client    │ ─────────────────────► │ Node Server │ ──────────────────► │   FastAPI    │
+│  Next.js    │        :3000           │  Express +  │       :4000         │  LangGraph   │
+│             │                        │  Apollo +   │                     │   agents     │
+└─────────────┘                        │   BullMQ    │                     │    :8000     │
+                                       └──────┬──────┘                     └──────┬───────┘
+                                              │                                   │
+                                       ┌──────▼──────┐                    ┌───────▼──────┐
+                                       │    Redis    │                    │  PostgreSQL  │
+                                       │ (job queue) │                    │  + pgvector  │
+                                       └─────────────┘                    └──────────────┘
+```
+
+| Service    | Tech                                             | Port | Role                                             |
+| ---------- | ------------------------------------------------ | ---- | ------------------------------------------------ |
+| `client`   | Next.js 16, React 19, Tailwind 4                 | 3000 | Landing, auth, dashboard, research chat UI       |
+| `node`     | Express, Apollo GraphQL, BullMQ, Sequelize       | 4000 | Auth (JWT), job queue, SSE progress, API gateway |
+| `fastapi`  | FastAPI, LangGraph, LangChain, Groq/OpenRouter   | 8000 | Multi-agent research engine, RAG, paper writer   |
+| `postgres` | pgvector/pgvector:pg16                           | 5432 | Users, sessions, documents, vector embeddings    |
+| `redis`    | redis:7-alpine                                   | 6379 | BullMQ queue backing store                       |
+
+---
+
+## Quick Start (Docker)
+
+### 1. Configure environment
+
+```bash
+cp .env.example .env
+# then edit .env — at minimum set:
+#   GROQ_API_KEY   (or OPENROUTER_API_KEY)
+#   EXA_API_KEY    (or TAVILY_API_KEY / BRAVE_SEARCH_API_KEY)
+#   JWT_SECRET     (any long random string)
+```
+
+All services load their configuration from this single root `.env` via `docker-compose.yml`. Container-to-container wiring (`POSTGRES_HOST=postgres`, `REDIS_HOST=redis`, `FASTAPI_URL=http://fastapi:8000`) is injected automatically by compose — you don't need to change those.
+
+### 2. Nuke, rebuild, run, and tail logs — one command
+
+```bash
+docker compose down --rmi local --volumes --remove-orphans && docker network prune -f && docker compose up --build -d && docker compose logs -f
+```
+
+What it does, in order:
+
+1. `docker compose down --rmi local --volumes --remove-orphans` — stops the stack, **deletes old images** built by this project, **deletes volumes** (Postgres + Redis data), and removes stray containers.
+2. `docker network prune -f` — **deletes unused networks**.
+3. `docker compose up --build -d` — **rebuilds all images** and starts everything in the background, in dependency order (postgres/redis → fastapi → node → client).
+4. `docker compose logs -f` — **streams live logs** from all five services (Ctrl-C detaches without stopping anything).
+
+> ⚠️ `--volumes` wipes the database. Drop that flag for a rebuild that keeps your data:
+> ```bash
+> docker compose down --rmi local --remove-orphans && docker compose up --build -d && docker compose logs -f
+> ```
+
+### 3. Open the app
+
+| URL                                  | What                          |
+| ------------------------------------ | ----------------------------- |
+| http://localhost:3000                | Client UI                     |
+| http://localhost:4000/graphql        | GraphQL playground            |
+| http://localhost:4000/api/health     | Node health                   |
+| http://localhost:8000/docs           | FastAPI Swagger docs          |
+| http://localhost:8000/api/health     | FastAPI health                |
+
+### Health checks
+
+Every service has a Docker healthcheck; `depends_on: condition: service_healthy` gates startup order so nothing boots before its dependencies are ready.
+
+```bash
+docker compose ps          # STATUS column shows (healthy) / (unhealthy)
+curl -s localhost:4000/api/health
+curl -s localhost:8000/api/health
+```
+
+### Everyday commands
+
+```bash
+docker compose up -d                 # start (no rebuild)
+docker compose logs -f node          # tail one service
+docker compose restart fastapi       # bounce one service
+docker compose exec postgres psql -U kuchi_user -d kuchi_db   # DB shell
+docker compose down                  # stop (keeps data)
+```
+
+---
+
+## Local Development (without Docker)
+
+You still need Postgres (with pgvector) and Redis running — easiest is to run just those two in Docker:
+
+```bash
+docker compose up -d postgres redis
+```
+
+**FastAPI** (Python 3.12+):
+
+```bash
+cd server/fastapi_server
+source .venv/bin/activate            # or: python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+**Node server**:
+
+```bash
+cd server/ts_server
+npm install
+npm run dev                          # node --watch, port 4000
+```
+
+**Client**:
+
+```bash
+cd client
+npm install
+npm run dev                          # Next.js dev server, port 3000
+```
+
+---
+
+## Environment Variables
+
+See [.env.example](.env.example) for the full annotated list. The important ones:
+
+| Variable                                  | Used by        | Purpose                                        |
+| ----------------------------------------- | -------------- | ---------------------------------------------- |
+| `GROQ_API_KEY` / `OPENROUTER_API_KEY`     | fastapi        | LLM provider (`DEFAULT_LLM_PROVIDER` selects)  |
+| `EXA_API_KEY` / `TAVILY_API_KEY`          | fastapi        | Web search (`WEB_SEARCH_PROVIDER` selects)     |
+| `POSTGRES_USER/PASSWORD/DB`               | all backends   | Database credentials                           |
+| `JWT_SECRET`                              | node           | Auth token signing                             |
+| `RESEND_API_KEY`, `EMAIL_FROM`            | node           | Verification emails                            |
+| `NEXT_PUBLIC_GRAPHQL_URL`                 | client (build) | GraphQL endpoint baked into the browser bundle |
+| `NEXT_PUBLIC_API_URL`                     | client (build) | SSE/REST base URL baked into the bundle        |
+| `CLIENT_PORT` / `NODE_PORT` / `FASTAPI_PORT` | compose     | Published host ports                           |
+
+> `NEXT_PUBLIC_*` values are compiled into the client at **build** time. If you change them, rebuild the client image: `docker compose build client`.
+
+---
+
+## Repository Layout
+
+```
+├── client/                  # Next.js frontend
+│   ├── src/app/             # App-router pages (landing, settings, …)
+│   ├── src/components/      # Dashboard, ResearchChat, AuthModal, …
+│   └── Dockerfile
+├── server/
+│   ├── ts_server/           # Express + Apollo GraphQL + BullMQ
+│   │   ├── src/             # index, graphql, db, queue, sse, email, logger
+│   │   └── Dockerfile
+│   └── fastapi_server/      # LangGraph research engine
+│       ├── app/agents/      # planner, searcher, crawler, reasoner, reviewer, writer, …
+│       ├── app/routers/     # research, rag, paper, images
+│       ├── app/services/    # embeddings, rag
+│       └── Dockerfile
+├── scripts/
+│   └── init-pgvector.sql    # CREATE EXTENSION vector (runs on first DB boot)
+├── docker-compose.yml       # Full-stack orchestration
+├── .env.example             # Annotated env template → copy to .env
+└── docs/
+```
+
+## Agent Pipeline
+
+`Planner` breaks the question into sub-queries → `Searcher` hits the web-search provider → `Crawler` fetches and extracts sources → `Chunker`/embeddings feed RAG → `Reasoner` synthesizes with citations → `Reviewer` critiques (revision loop depth: Fast=0, Balanced=1, Deep=2) → `Writer`/`PaperWriter` produce the final report, streamed to the UI over SSE.

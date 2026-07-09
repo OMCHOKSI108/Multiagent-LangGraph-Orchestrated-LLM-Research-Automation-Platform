@@ -1,0 +1,492 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="5.0" version="24.7.17">
+  <diagram name="TypeScript-Server-Module-Flow" id="module-flow-diagram">
+    <mxGraphModel dx="2074" dy="1204" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2339" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- TITLE -->
+        <mxCell id="title" value="TypeScript Server Boilerplate - Module Flow Architecture" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="50" y="20" width="1554" height="40" as="geometry"/>
+        </mxCell>
+        
+        <!-- CLIENT REQUEST -->
+        <mxCell id="client" value="Client Request&#xa;(GraphQL / REST)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="100" width="160" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- ENTRY POINT -->
+        <mxCell id="entry-point" value="Entry Point&#xa;index.ts" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="100" width="120" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- EXPRESS APP -->
+        <mxCell id="express-app" value="Express Application&#xa;• CORS&#xa;• Compression&#xa;• Body Parsing&#xa;• Error Handling" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="460" y="100" width="160" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- MIDDLEWARE LAYER -->
+        <mxCell id="middleware-header" value="MIDDLEWARE LAYER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="680" y="80" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="middleware-timestamp" value="Timestamp&#xa;Validation" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffcccc;" vertex="1" parent="1">
+          <mxGeometry x="680" y="120" width="90" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="middleware-locale" value="Locale Service&#xa;Setup" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffcccc;" vertex="1" parent="1">
+          <mxGeometry x="790" y="120" width="90" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="middleware-log" value="Request Log&#xa;Info" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffcccc;" vertex="1" parent="1">
+          <mxGeometry x="900" y="120" width="90" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="middleware-query" value="Query Length&#xa;Validation" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffcccc;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="120" width="90" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="middleware-introspection" value="Introspection&#xa;Restriction" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffcccc;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="120" width="90" height="50" as="geometry"/>
+        </mxCell>
+        
+        <!-- ROUTE LAYER -->
+        <mxCell id="route-layer" value="ROUTING LAYER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="220" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="apollo-server" value="Apollo GraphQL Server&#xa;• Schema Merging&#xa;• Directive Application&#xa;• Context Creation&#xa;• Error Formatting&#xa;• Rate Limiting" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="50" y="260" width="180" height="100" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="rest-routes" value="REST API Routes&#xa;• Version Management&#xa;• Express Routing&#xa;• Middleware Chain&#xa;• Error Handling" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="280" y="260" width="180" height="100" as="geometry"/>
+        </mxCell>
+        
+        <!-- DIRECTIVE LAYER -->
+        <mxCell id="directive-layer" value="DIRECTIVE LAYER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="520" y="220" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="auth-directive" value="@isAuthenticated&#xa;JWT Token Validation" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e6ccff;" vertex="1" parent="1">
+          <mxGeometry x="520" y="260" width="120" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="role-directive" value="@hasRole&#xa;Role-based Access" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e6ccff;" vertex="1" parent="1">
+          <mxGeometry x="660" y="260" width="120" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="permission-directive" value="@hasPermission&#xa;Permission Checks" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e6ccff;" vertex="1" parent="1">
+          <mxGeometry x="520" y="320" width="120" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="rate-limit-directive" value="@rateLimit&#xa;Request Throttling" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e6ccff;" vertex="1" parent="1">
+          <mxGeometry x="660" y="320" width="120" height="50" as="geometry"/>
+        </mxCell>
+        
+        <!-- MODULE LAYER -->
+        <mxCell id="module-layer" value="MODULE LAYER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="420" width="1554" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- USER MODULE -->
+        <mxCell id="user-module" value="USER MODULE" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="50" y="460" width="280" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="user-resolvers" value="User Resolvers&#xa;• Mutations: signUp, login, updateUser&#xa;• Queries: me, users, userPreference&#xa;• Field Resolvers: profileImage" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="50" y="500" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="user-services" value="User Services&#xa;• Authentication Logic&#xa;• Profile Management&#xa;• Password Handling&#xa;• Email Verification" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="200" y="500" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- CONFIG MODULE -->
+        <mxCell id="config-module" value="CONFIG MODULE" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="460" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="config-resolvers" value="Config Resolvers&#xa;• CRUD Operations&#xa;• Public Configs&#xa;• Admin Configs" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="370" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="config-services" value="Config Services&#xa;• System Settings&#xa;• Feature Flags&#xa;• Environment Configs" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="475" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- ROLE MODULE -->
+        <mxCell id="role-module" value="ROLE MODULE" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="460" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="role-resolvers" value="Role Resolvers&#xa;• Role CRUD&#xa;• Permission Mapping" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="600" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="role-services" value="Role Services&#xa;• Access Control&#xa;• Permission Logic" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="705" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- EVENT MODULE -->
+        <mxCell id="event-module" value="EVENT MODULE" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="460" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="event-resolvers" value="Event Resolvers&#xa;• Event CRUD&#xa;• Invitee Management" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="830" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="event-services" value="Event Services&#xa;• Event Logic&#xa;• Invitation System" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="935" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- NOTIFICATION MODULE -->
+        <mxCell id="notification-module" value="NOTIFICATION MODULE" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="460" width="230" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="notification-resolvers" value="Notification Resolvers&#xa;• Push Notifications&#xa;• Email Notifications" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="500" width="110" height="80" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="notification-services" value="Notification Services&#xa;• Delivery Logic&#xa;• Template Management" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="500" width="110" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- UI LABEL MODULE -->
+        <mxCell id="ui-label-module" value="UI LABEL MODULE" style="rounded=0;whiteSpace=wrap;html=1;fontSize=14;fillColor=#cce5ff;strokeColor=#36393d;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="460" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="ui-label-resolvers" value="UI Label Resolvers&#xa;• I18N Labels&#xa;• Language Support" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="ui-label-services" value="UI Label Services&#xa;• Translation Logic&#xa;• Locale Management" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ccf2ff;" vertex="1" parent="1">
+          <mxGeometry x="1425" y="500" width="95" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- SHARED LIBRARY LAYER -->
+        <mxCell id="shared-lib-layer" value="SHARED LIBRARY LAYER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="620" width="1554" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- AUTH UTILS -->
+        <mxCell id="auth-utils" value="Authentication Utils&#xa;• JWT Generation&#xa;• Password Hashing&#xa;• Token Validation&#xa;• Access Control" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="50" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- ERROR HANDLER -->
+        <mxCell id="error-handler" value="Error Handler&#xa;• Custom Exceptions&#xa;• GraphQL Errors&#xa;• Localized Messages&#xa;• Sentry Integration" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="200" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- EMAIL SERVICE -->
+        <mxCell id="email-service" value="Email Service&#xa;• SMTP Integration&#xa;• Template Engine&#xa;• Bulk Emails&#xa;• Verification Mails" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="350" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- SMS SERVICE -->
+        <mxCell id="sms-service" value="SMS Service&#xa;• Twilio Integration&#xa;• MSG91 Integration&#xa;• OTP Delivery&#xa;• Bulk SMS" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="500" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- AWS SERVICE -->
+        <mxCell id="aws-service" value="AWS Services&#xa;• S3 Storage&#xa;• CloudFront CDN&#xa;• Signed URLs&#xa;• File Management" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="650" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- FIREBASE SERVICE -->
+        <mxCell id="firebase-service" value="Firebase Service&#xa;• Authentication&#xa;• Admin SDK&#xa;• Push Notifications&#xa;• User Management" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="800" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- ELASTICSEARCH -->
+        <mxCell id="elasticsearch" value="Elasticsearch&#xa;• Search Indexing&#xa;• Query Engine&#xa;• Data Analytics&#xa;• Full-text Search" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="950" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- QUEUE SYSTEM -->
+        <mxCell id="queue-system" value="Queue System&#xa;• BullMQ&#xa;• Job Processing&#xa;• Background Tasks&#xa;• Email Queue" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- LOGGER -->
+        <mxCell id="logger" value="Logging System&#xa;• Winston Logger&#xa;• Request Tracking&#xa;• Error Logging&#xa;• Performance Metrics" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- PUSHER -->
+        <mxCell id="pusher" value="Pusher Service&#xa;• Real-time Updates&#xa;• WebSocket Support&#xa;• Event Broadcasting&#xa;• Live Notifications" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffe6cc;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="660" width="130" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- DATA LAYER -->
+        <mxCell id="data-layer" value="DATA LAYER" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="50" y="780" width="1554" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- SEQUELIZE ORM -->
+        <mxCell id="sequelize" value="Sequelize ORM&#xa;• Database Models&#xa;• Relationships&#xa;• Migrations&#xa;• Query Builder" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="200" y="820" width="150" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- MODELS -->
+        <mxCell id="models" value="Database Models&#xa;• User, AdminUser&#xa;• Role, Permission&#xa;• Event, Notification&#xa;• Config, UiLabel" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="400" y="820" width="150" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- POSTGRESQL -->
+        <mxCell id="postgresql" value="PostgreSQL&#xa;Database" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="820" width="120" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- REDIS -->
+        <mxCell id="redis" value="Redis Cache&#xa;• Session Storage&#xa;• Rate Limiting&#xa;• Queue Storage" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="760" y="820" width="120" height="80" as="geometry"/>
+        </mxCell>
+        
+        <!-- EXTERNAL SERVICES -->
+        <mxCell id="external-layer" value="EXTERNAL SERVICES" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;fillColor=#f0f0f0;" vertex="1" parent="1">
+          <mxGeometry x="920" y="780" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="aws-s3" value="AWS S3" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="820" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="aws-cloudfront" value="AWS CloudFront" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="870" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="twilio" value="Twilio SMS" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="820" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="msg91" value="MSG91 SMS" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="870" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="sendbay" value="Sendbay Email" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="820" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="firebase" value="Firebase Auth" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="870" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="pusher-external" value="Pusher" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="820" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="elastic-external" value="Elasticsearch" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="870" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="sentry" value="Sentry" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="820" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="hive" value="Hive Moderation" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="870" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <!-- REQUEST FLOW ARROWS -->
+        <mxCell id="flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#0066cc;" source="client" target="entry-point" edge="1" parent="1"/>
+        <mxCell id="flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#0066cc;" source="entry-point" target="express-app" edge="1" parent="1"/>
+        <mxCell id="flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066cc;" source="express-app" target="middleware-timestamp" edge="1" parent="1"/>
+        <mxCell id="flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066cc;" source="middleware-timestamp" target="middleware-locale" edge="1" parent="1"/>
+        <mxCell id="flow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066cc;" source="middleware-locale" target="middleware-log" edge="1" parent="1"/>
+        <mxCell id="flow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066cc;" source="middleware-log" target="middleware-query" edge="1" parent="1"/>
+        <mxCell id="flow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#0066cc;" source="middleware-query" target="middleware-introspection" edge="1" parent="1"/>
+        
+        <!-- ROUTING FLOW -->
+        <mxCell id="route-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#009900;curved=1;" source="express-app" target="apollo-server" edge="1" parent="1"/>
+        <mxCell id="route-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#009900;curved=1;" source="express-app" target="rest-routes" edge="1" parent="1"/>
+        
+        <!-- DIRECTIVE FLOW -->
+        <mxCell id="directive-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6600cc;" source="apollo-server" target="auth-directive" edge="1" parent="1"/>
+        <mxCell id="directive-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6600cc;" source="auth-directive" target="role-directive" edge="1" parent="1"/>
+        <mxCell id="directive-flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6600cc;" source="role-directive" target="permission-directive" edge="1" parent="1"/>
+        <mxCell id="directive-flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6600cc;" source="permission-directive" target="rate-limit-directive" edge="1" parent="1"/>
+        
+        <!-- MODULE INTERACTION FLOWS -->
+        <mxCell id="module-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff6600;" source="apollo-server" target="user-resolvers" edge="1" parent="1"/>
+        <mxCell id="module-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff6600;" source="apollo-server" target="config-resolvers" edge="1" parent="1"/>
+        <mxCell id="module-flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff6600;" source="apollo-server" target="role-resolvers" edge="1" parent="1"/>
+        <mxCell id="module-flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff6600;" source="apollo-server" target="event-resolvers" edge="1" parent="1"/>
+        <mxCell id="module-flow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff6600;" source="apollo-server" target="notification-resolvers" edge="1" parent="1"/>
+        <mxCell id="module-flow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff6600;" source="apollo-server" target="ui-label-resolvers" edge="1" parent="1"/>
+        
+        <!-- RESOLVER TO SERVICE FLOWS -->
+        <mxCell id="service-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#cc0066;" source="user-resolvers" target="user-services" edge="1" parent="1"/>
+        <mxCell id="service-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#cc0066;" source="config-resolvers" target="config-services" edge="1" parent="1"/>
+        <mxCell id="service-flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#cc0066;" source="role-resolvers" target="role-services" edge="1" parent="1"/>
+        <mxCell id="service-flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#cc0066;" source="event-resolvers" target="event-services" edge="1" parent="1"/>
+        <mxCell id="service-flow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#cc0066;" source="notification-resolvers" target="notification-services" edge="1" parent="1"/>
+        <mxCell id="service-flow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#cc0066;" source="ui-label-resolvers" target="ui-label-services" edge="1" parent="1"/>
+        
+        <!-- SHARED LIBRARY DEPENDENCIES -->
+        <mxCell id="shared-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#663300;dashed=1;" source="user-services" target="auth-utils" edge="1" parent="1"/>
+        <mxCell id="shared-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#663300;dashed=1;" source="user-services" target="email-service" edge="1" parent="1"/>
+        <mxCell id="shared-flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#663300;dashed=1;" source="user-services" target="sms-service" edge="1" parent="1"/>
+        <mxCell id="shared-flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#663300;dashed=1;" source="notification-services" target="pusher" edge="1" parent="1"/>
+        <mxCell id="shared-flow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#663300;dashed=1;" source="user-services" target="aws-service" edge="1" parent="1"/>
+        
+        <!-- DATA LAYER CONNECTIONS -->
+        <mxCell id="data-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="user-services" target="sequelize" edge="1" parent="1"/>
+        <mxCell id="data-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="config-services" target="sequelize" edge="1" parent="1"/>
+        <mxCell id="data-flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="role-services" target="sequelize" edge="1" parent="1"/>
+        <mxCell id="data-flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="event-services" target="sequelize" edge="1" parent="1"/>
+        <mxCell id="data-flow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="notification-services" target="sequelize" edge="1" parent="1"/>
+        <mxCell id="data-flow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="ui-label-services" target="sequelize" edge="1" parent="1"/>
+        
+        <mxCell id="db-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="sequelize" target="models" edge="1" parent="1"/>
+        <mxCell id="db-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#990000;" source="models" target="postgresql" edge="1" parent="1"/>
+        
+        <!-- CACHE AND EXTERNAL CONNECTIONS -->
+        <mxCell id="cache-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#006600;dashed=1;" source="auth-utils" target="redis" edge="1" parent="1"/>
+        <mxCell id="cache-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#006600;dashed=1;" source="queue-system" target="redis" edge="1" parent="1"/>
+        
+        <!-- EXTERNAL SERVICE CONNECTIONS -->
+        <mxCell id="ext-flow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="aws-service" target="aws-s3" edge="1" parent="1"/>
+        <mxCell id="ext-flow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="aws-service" target="aws-cloudfront" edge="1" parent="1"/>
+        <mxCell id="ext-flow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="sms-service" target="twilio" edge="1" parent="1"/>
+        <mxCell id="ext-flow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="sms-service" target="msg91" edge="1" parent="1"/>
+        <mxCell id="ext-flow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="email-service" target="sendbay" edge="1" parent="1"/>
+        <mxCell id="ext-flow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="firebase-service" target="firebase" edge="1" parent="1"/>
+        <mxCell id="ext-flow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="pusher" target="pusher-external" edge="1" parent="1"/>
+        <mxCell id="ext-flow8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="elasticsearch" target="elastic-external" edge="1" parent="1"/>
+        <mxCell id="ext-flow9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" source="error-handler" target="sentry" edge="1" parent="1"/>
+        
+        <!-- LEGEND -->
+        <mxCell id="legend-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="50" y="950" width="1400" height="120" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="legend-title" value="LEGEND - FLOW PATTERNS" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="960" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="legend-request" value="Request Flow" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="120" y="990" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-request-line" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#0066cc;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="70" y="1000" as="sourcePoint"/>
+            <mxPoint x="110" y="1000" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-routing" value="Routing Flow" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="990" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-routing-line" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#009900;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="220" y="1000" as="sourcePoint"/>
+            <mxPoint x="260" y="1000" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-directive" value="Directive Flow" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="990" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-directive-line" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#6600cc;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="370" y="1000" as="sourcePoint"/>
+            <mxPoint x="410" y="1000" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-module" value="Module Flow" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="570" y="990" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-module-line" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#ff6600;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="520" y="1000" as="sourcePoint"/>
+            <mxPoint x="560" y="1000" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-service" value="Service Flow" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="990" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-service-line" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#cc0066;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="670" y="1000" as="sourcePoint"/>
+            <mxPoint x="710" y="1000" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-shared" value="Shared Library" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1020" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-shared-line" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#663300;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="70" y="1030" as="sourcePoint"/>
+            <mxPoint x="110" y="1030" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-data" value="Data Flow" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="270" y="1020" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-data-line" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#990000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="220" y="1030" as="sourcePoint"/>
+            <mxPoint x="260" y="1030" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-cache" value="Cache &amp; Queue" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="420" y="1020" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-cache-line" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#006600;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="370" y="1030" as="sourcePoint"/>
+            <mxPoint x="410" y="1030" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="legend-external" value="External Services" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="570" y="1020" width="100" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-external-line" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#ff9900;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="520" y="1030" as="sourcePoint"/>
+            <mxPoint x="560" y="1030" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- KEY FEATURES BOX -->
+        <mxCell id="features-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;" vertex="1" parent="1">
+          <mxGeometry x="1460" y="100" width="180" height="280" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="features-title" value="KEY FEATURES" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="110" width="160" height="25" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="features-list" value="• GraphQL &amp; REST APIs&#xa;• JWT Authentication&#xa;• Role-Based Access Control&#xa;• Rate Limiting&#xa;• Request Validation&#xa;• Multi-language Support&#xa;• File Upload/Storage&#xa;• Email &amp; SMS Integration&#xa;• Real-time Notifications&#xa;• Background Job Processing&#xa;• Elasticsearch Integration&#xa;• Error Tracking&#xa;• Performance Monitoring&#xa;• Docker Support&#xa;• Database Migrations&#xa;• Queue Management&#xa;• Caching Layer&#xa;• Security Middleware&#xa;• API Documentation&#xa;• Testing Framework" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1475" y="140" width="150" height="230" as="geometry"/>
+        </mxCell>
+        
+        <!-- FLOW SUMMARY BOX -->
+        <mxCell id="summary-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#ff8f00;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1100" width="1400" height="120" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="summary-title" value="EXECUTION FLOW SUMMARY" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1110" width="200" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="summary-text" value="1. Client Request → Entry Point (index.ts) → Express App Setup&#xa;2. Middleware Chain → Timestamp → Locale → Logging → Query Validation → Introspection Control&#xa;3. Request Routing → GraphQL (Apollo Server) | REST (Express Routes)&#xa;4. GraphQL Directives → Authentication → Authorization → Rate Limiting → Permission Checks&#xa;5. Module Layer → Resolvers (User, Config, Role, Event, Notification, UI-Label) → Services&#xa;6. Shared Libraries → Auth Utils, Error Handler, Email/SMS Services, AWS, Firebase, Elasticsearch, Queue System&#xa;7. Data Layer → Sequelize ORM → Database Models → PostgreSQL Database&#xa;8. Caching &amp; Background → Redis (Sessions, Rate Limits, Queue Storage) → Background Job Processing&#xa;9. External Integrations → AWS S3/CloudFront, Twilio/MSG91, Sendbay, Firebase, Pusher, Elasticsearch, Sentry" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1150" width="1370" height="60" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

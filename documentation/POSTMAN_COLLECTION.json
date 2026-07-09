@@ -1,0 +1,1106 @@
+{
+  "info": {
+    "name": "Server Boilerplate TypeScript API",
+    "description": "Comprehensive API collection for TypeScript server boilerplate with GraphQL and REST endpoints",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL for the API"
+    },
+    {
+      "key": "apiPrefix",
+      "value": "api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT Access Token"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string",
+      "description": "JWT Refresh Token"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "Current user ID"
+    }
+  ],
+  "item": [
+    {
+      "name": "System Endpoints",
+      "item": [
+        {
+          "name": "Get API Version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/{{apiPrefix}}/version",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "version"]
+            },
+            "description": "Get API version information"
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/{{apiPrefix}}/v1/auth/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["{{apiPrefix}}", "v1", "auth", "health"]
+            },
+            "description": "Health check endpoint"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GraphQL Endpoints",
+      "item": [
+        {
+          "name": "User Authentication",
+          "item": [
+            {
+              "name": "Sign Up",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation SignUp($data: SignUpInput!) { signUp(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"email\": \"user@example.com\",\n      \"password\": \"securePassword123\",\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\",\n      \"timezone\": \"America/New_York\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Register a new user account"
+              }
+            },
+            {
+              "name": "Login User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation LoginUser($data: LoginUserInput!) { loginUser(data: $data) { message data { id email firstName lastName roles } accessToken refreshToken } }\",\n  \"variables\": {\n    \"data\": {\n      \"email\": \"user@example.com\",\n      \"password\": \"securePassword123\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Login with email and password"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const jsonData = pm.response.json();",
+                      "  if (jsonData.data && jsonData.data.loginUser) {",
+                      "    pm.collectionVariables.set('accessToken', jsonData.data.loginUser.accessToken);",
+                      "    pm.collectionVariables.set('refreshToken', jsonData.data.loginUser.refreshToken);",
+                      "    pm.collectionVariables.set('userId', jsonData.data.loginUser.data.id);",
+                      "  }",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Firebase Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation FirebaseLogin($data: FirebaseLoginDataInput!) { firebaseLogin(data: $data) { message data { id email firstName lastName roles } accessToken refreshToken } }\",\n  \"variables\": {\n    \"data\": {\n      \"token\": \"firebase_id_token_here\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Login with Firebase ID token"
+              }
+            },
+            {
+              "name": "Get Current User (Me)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"query Me { me { id email firstName lastName profileImage roles lastActiveOn mobileNo createdAt updatedAt unReadCount disabledAt disabledBy address1 address2 city state country zipcode } }\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Get current user information"
+              }
+            },
+            {
+              "name": "Refresh Token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation RefreshToken($data: RefreshTokenInput!) { refreshToken(data: $data) { user { id email firstName lastName } accessToken } }\",\n  \"variables\": {\n    \"data\": {\n      \"refreshToken\": \"{{refreshToken}}\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Refresh access token using refresh token"
+              }
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation LogoutUser { logoutUser { message } }\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Logout current user"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Password Management",
+          "item": [
+            {
+              "name": "Forgot Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation ForgotPassword($data: ForgotPasswordInput!) { forgotPassword(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"email\": \"user@example.com\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Send password reset email"
+              }
+            },
+            {
+              "name": "Verify Reset Token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation VerifyResetToken($data: VerifyResetTokenInput!) { verifyResetToken(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"uid\": \"user_id_here\",\n      \"token\": \"reset_token_here\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Verify password reset token"
+              }
+            },
+            {
+              "name": "Update Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation UpdatePassword($data: UpdatePasswordInput!) { updatePassword(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"uid\": \"user_id_here\",\n      \"token\": \"reset_token_here\",\n      \"password\": \"newSecurePassword123\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Update password with reset token"
+              }
+            },
+            {
+              "name": "Change Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation ChangePassword($data: ChangePasswordInput!) { changePassword(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"oldPassword\": \"currentPassword\",\n      \"newPassword\": \"newSecurePassword123\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Change password for authenticated user"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Email & Mobile Verification",
+          "item": [
+            {
+              "name": "Email Verification",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation EmailVerificationUser($data: EmailVerificationUserInput!) { emailVerificationUser(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"uid\": \"user_id_here\",\n      \"token\": \"verification_token_here\",\n      \"password\": \"optional_password\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Verify email address"
+              }
+            },
+            {
+              "name": "Email OTP Verification",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation EmailOTPVerification($data: EmailOTPVerificationInput!) { emailOTPVerification(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"email\": \"user@example.com\",\n      \"otp\": \"123456\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Verify email OTP"
+              }
+            },
+            {
+              "name": "Send Mobile Verify OTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation SendMobileVerifyOtp { sendMobileVerifyOtp { message } }\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Send OTP to mobile number"
+              }
+            },
+            {
+              "name": "Mobile OTP Verification",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation MobileOtpVerification($data: MobileOTPVerificationInput!) { mobileOtpVerification(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"otp\": \"123456\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Verify mobile OTP"
+              }
+            },
+            {
+              "name": "Resend OTP Verification Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation ResendOTPVerificationEmail($data: ResendOTPInput!) { resendOTPVerificationEmail(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"email\": \"user@example.com\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Resend OTP verification email"
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Profile Management",
+          "item": [
+            {
+              "name": "Update User Profile",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation UpdateUser($data: UpdateUserInput!) { updateUser(data: $data) { message data { id email firstName lastName profileImage mobileNo address1 address2 city state country zipcode } } }\",\n  \"variables\": {\n    \"data\": {\n      \"firstName\": \"John\",\n      \"lastName\": \"Doe\",\n      \"mobileNo\": \"+1234567890\",\n      \"address1\": \"123 Main St\",\n      \"city\": \"New York\",\n      \"state\": \"NY\",\n      \"country\": \"USA\",\n      \"zipcode\": \"10001\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Update user profile information"
+              }
+            },
+            {
+              "name": "Get Profile Image Upload URL",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"query GetProfileImageUploadSignedUrl($data: GetProfileImageUploadSignedUrlInput!) { getProfileImageUploadSignedUrl(data: $data) { signedUrl key } }\",\n  \"variables\": {\n    \"data\": {\n      \"fileName\": \"profile.jpg\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Get signed URL for profile image upload"
+              }
+            },
+            {
+              "name": "Delete User Account",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation DeleteUser { deleteUser { message } }\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Delete user account"
+              }
+            },
+            {
+              "name": "Send Delete User OTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation SendDeleteUserOtp { sendDeleteUserOtp { message } }\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Send OTP for user account deletion"
+              }
+            },
+            {
+              "name": "Verify Delete User OTP",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation VerifyDeleteUserOtp($data: VerifyDeleteUserOtpData!) { verifyDeleteUserOtp(data: $data) { message } }\",\n  \"variables\": {\n    \"data\": {\n      \"otp\": \"123456\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Verify OTP for user account deletion"
+              }
+            }
+          ]
+        },
+        {
+          "name": "User Preferences",
+          "item": [
+            {
+              "name": "Get User Preference",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"query UserPreference($filter: UserPreferenceFilterInput!) { userPreference(filter: $filter) { id userId userType type value { key sms email inApp push } createdAt updatedAt } }\",\n  \"variables\": {\n    \"filter\": {\n      \"type\": \"NOTIFICATION\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Get user preferences"
+              }
+            },
+            {
+              "name": "Upsert User Preference",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation UpsertUserPreference($data: UpsertUserPreferenceInput!) { upsertUserPreference(data: $data) { message data { id type value { key sms email inApp push } } } }\",\n  \"variables\": {\n    \"data\": {\n      \"type\": \"NOTIFICATION\",\n      \"value\": [\n        {\n          \"key\": \"email_notifications\",\n          \"sms\": false,\n          \"email\": true,\n          \"inApp\": true,\n          \"push\": true\n        }\n      ]\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Create or update user preferences"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Event Management",
+          "item": [
+            {
+              "name": "Create Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation CreateEvent($data: CreateEventInput!) { createEvent(data: $data) { message data { id title description eventDate isOwnerEvent inviteeStatus user { id firstName lastName } } } }\",\n  \"variables\": {\n    \"data\": {\n      \"title\": \"Team Meeting\",\n      \"description\": \"Monthly team sync meeting\",\n      \"eventDate\": \"2023-12-01T10:00:00Z\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Create a new event"
+              }
+            },
+            {
+              "name": "Get Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"query Event($where: EventUniqueInput!) { event(where: $where) { data { id title description eventDate isOwnerEvent inviteeStatus user { id firstName lastName } } } }\",\n  \"variables\": {\n    \"where\": {\n      \"id\": \"event_id_here\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Get event by ID"
+              }
+            },
+            {
+              "name": "Get Events with Filters",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"query Events($filter: EventFilters, $sort: [EventSort]) { events(filter: $filter, sort: $sort) { count data { id title description eventDate isOwnerEvent inviteeStatus user { id firstName lastName } } } }\",\n  \"variables\": {\n    \"filter\": {\n      \"skip\": 0,\n      \"limit\": 10,\n      \"type\": \"UPCOMING\",\n      \"search\": \"team\"\n    },\n    \"sort\": [\n      {\n        \"sortOn\": \"eventDate\",\n        \"sortBy\": \"ASC\"\n      }\n    ]\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Get events with filters and sorting"
+              }
+            },
+            {
+              "name": "Update Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation UpdateEvent($where: EventUniqueInput!, $data: UpdateEventInput!) { updateEvent(where: $where, data: $data) { message data { id title description eventDate } } }\",\n  \"variables\": {\n    \"where\": {\n      \"id\": \"event_id_here\"\n    },\n    \"data\": {\n      \"title\": \"Updated Team Meeting\",\n      \"description\": \"Updated monthly team sync meeting\",\n      \"eventDate\": \"2023-12-02T10:00:00Z\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Update an existing event"
+              }
+            },
+            {
+              "name": "Delete Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation DeleteEvent($where: DeleteEventUniqueInput!) { deleteEvent(where: $where) { message } }\",\n  \"variables\": {\n    \"where\": {\n      \"ids\": [\"event_id_here\"]\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Delete events by IDs"
+              }
+            },
+            {
+              "name": "Create Event Join Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation CreateEventJoinRequest($where: EventUniqueInput!) { createEventJoinRequest(where: $where) { message } }\",\n  \"variables\": {\n    \"where\": {\n      \"id\": \"event_id_here\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Create join request for an event"
+              }
+            },
+            {
+              "name": "Update Event Join Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation UpdateEventJoinRequest($where: EventUniqueInput!, $data: UpdateEventJoinRequestInput) { updateEventJoinRequest(where: $where, data: $data) { message } }\",\n  \"variables\": {\n    \"where\": {\n      \"id\": \"event_id_here\"\n    },\n    \"data\": {\n      \"status\": \"ACCEPTED\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Update event join request status"
+              }
+            },
+            {
+              "name": "Send Event Invitation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"mutation SendEventInvitation($where: EventUniqueInput!, $data: UserWhereUniqueInput) { sendEventInvitation(where: $where, data: $data) { message } }\",\n  \"variables\": {\n    \"where\": {\n      \"id\": \"event_id_here\"\n    },\n    \"data\": {\n      \"id\": \"user_id_here\"\n    }\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Send invitation to user for an event"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Common Queries",
+          "item": [
+            {
+              "name": "Dynamic Message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"query DynamicMessage($name: String) { dynamicMessage(name: $name) { message } }\",\n  \"variables\": {\n    \"name\": \"test\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/graphql",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "graphql"]
+                },
+                "description": "Get dynamic message"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "REST API Endpoints",
+      "item": [
+        {
+          "name": "User Management",
+          "item": [
+            {
+              "name": "Get Users List",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"search\": \"\",\n  \"isActive\": true,\n  \"roles\": [\"USER\"],\n  \"skip\": 0,\n  \"limit\": 10,\n  \"sortOn\": \"createdAt\",\n  \"sortBy\": \"DESC\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/list",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "list"]
+                },
+                "description": "Get paginated list of users"
+              }
+            },
+            {
+              "name": "Get User by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/{{userId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "{{userId}}"]
+                },
+                "description": "Get user details by ID"
+              }
+            },
+            {
+              "name": "Create User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"securePassword123\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"roles\": [\"USER\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/create",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "create"]
+                },
+                "description": "Create a new user"
+              }
+            },
+            {
+              "name": "Bulk Update Users",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"user_id_1\", \"user_id_2\"],\n  \"data\": {\n    \"isActive\": false\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/bulk-update",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "bulk-update"]
+                },
+                "description": "Bulk update users"
+              }
+            },
+            {
+              "name": "Bulk Delete Users",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"user_id_1\", \"user_id_2\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/bulk-delete",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "bulk-delete"]
+                },
+                "description": "Bulk delete users"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin User Management",
+          "item": [
+            {
+              "name": "Get Admin Users List",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"search\": \"\",\n  \"isActive\": true,\n  \"roles\": [\"ADMIN\"],\n  \"skip\": 0,\n  \"limit\": 10,\n  \"sortOn\": \"createdAt\",\n  \"sortBy\": \"DESC\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/admin",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "admin"]
+                },
+                "description": "Get paginated list of admin users"
+              }
+            },
+            {
+              "name": "Get Admin User by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/admin/admin_user_id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "admin", "admin_user_id"]
+                },
+                "description": "Get admin user details by ID"
+              }
+            },
+            {
+              "name": "Create Admin User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"securePassword123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"User\",\n  \"roles\": [\"ADMIN\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/admin/create",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "admin", "create"]
+                },
+                "description": "Create a new admin user"
+              }
+            },
+            {
+              "name": "Bulk Update Admin Users",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"admin_id_1\", \"admin_id_2\"],\n  \"data\": {\n    \"isActive\": false\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/admin/bulk-update",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "admin", "bulk-update"]
+                },
+                "description": "Bulk update admin users"
+              }
+            },
+            {
+              "name": "Bulk Delete Admin Users",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ids\": [\"admin_id_1\", \"admin_id_2\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/{{apiPrefix}}/v1/users/admin/bulk-delete",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["{{apiPrefix}}", "v1", "users", "admin", "bulk-delete"]
+                },
+                "description": "Bulk delete admin users"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Queue Management",
+      "item": [
+        {
+          "name": "Bull Board Queue Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/queues",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "queues"]
+            },
+            "description": "Access Bull Board queue management interface"
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-set timestamp for timestamp validation if enabled",
+          "if (pm.request.url.path.includes('graphql') || pm.request.url.path.includes('api')) {",
+          "  pm.request.headers.add({",
+          "    key: 'X-Timestamp',",
+          "    value: Date.now().toString()",
+          "  });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-extract tokens from login responses",
+          "if (pm.response.code === 200) {",
+          "  const jsonData = pm.response.json();",
+          "  ",
+          "  // Handle GraphQL login response",
+          "  if (jsonData.data && jsonData.data.loginUser) {",
+          "    if (jsonData.data.loginUser.accessToken) {",
+          "      pm.collectionVariables.set('accessToken', jsonData.data.loginUser.accessToken);",
+          "    }",
+          "    if (jsonData.data.loginUser.refreshToken) {",
+          "      pm.collectionVariables.set('refreshToken', jsonData.data.loginUser.refreshToken);",
+          "    }",
+          "    if (jsonData.data.loginUser.data && jsonData.data.loginUser.data.id) {",
+          "      pm.collectionVariables.set('userId', jsonData.data.loginUser.data.id);",
+          "    }",
+          "  }",
+          "  ",
+          "  // Handle GraphQL refresh token response",
+          "  if (jsonData.data && jsonData.data.refreshToken) {",
+          "    if (jsonData.data.refreshToken.accessToken) {",
+          "      pm.collectionVariables.set('accessToken', jsonData.data.refreshToken.accessToken);",
+          "    }",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ]
+}
