@@ -4,22 +4,24 @@
 
 One query in — a sourced, structured, exportable research report out. A pipeline of LangGraph agents (Planner → Searcher → Crawler → Reasoner → Reviewer → Writer) does the tab-hopping for you.
 
+[Documentation](https://omchoksi108.github.io/Multiagent-LangGraph-Orchestrated-LLM-Research-Automation-Platform/)
+
 ---
 
 ## Architecture
 
-```
-┌─────────────┐     GraphQL / SSE      ┌─────────────┐    REST (proxy)     ┌──────────────┐
-│   Client    │ ─────────────────────► │ Node Server │ ──────────────────► │   FastAPI    │
-│  Next.js    │        :3000           │  Express +  │       :4000         │  LangGraph   │
-│             │                        │  Apollo +   │                     │   agents     │
-└─────────────┘                        │   BullMQ    │                     │    :8000     │
-                                       └──────┬──────┘                     └──────┬───────┘
-                                              │                                   │
-                                       ┌──────▼──────┐                    ┌───────▼──────┐
-                                       │    Redis    │                    │  PostgreSQL  │
-                                       │ (job queue) │                    │  + pgvector  │
-                                       └─────────────┘                    └──────────────┘
+```mermaid
+flowchart LR
+    client["Client<br/>Next.js<br/>:3000"]
+    node["Node Server<br/>Express + Apollo + BullMQ<br/>:4000"]
+    fastapi["FastAPI<br/>LangGraph agents<br/>:8000"]
+    redis[("Redis<br/>job queue<br/>:6379")]
+    postgres[("PostgreSQL<br/>pgvector<br/>:5432")]
+
+    client -->|"GraphQL / SSE"| node
+    node -->|"REST proxy"| fastapi
+    node -->|"BullMQ jobs"| redis
+    fastapi -->|"RAG memory + app data"| postgres
 ```
 
 | Service    | Tech                                             | Port | Role                                             |
@@ -29,6 +31,14 @@ One query in — a sourced, structured, exportable research report out. A pipeli
 | `fastapi`  | FastAPI, LangGraph, LangChain, Groq/OpenRouter   | 8000 | Multi-agent research engine, RAG, paper writer   |
 | `postgres` | pgvector/pgvector:pg16                           | 5432 | Users, sessions, documents, vector embeddings    |
 | `redis`    | redis:7-alpine                                   | 6379 | BullMQ queue backing store                       |
+
+---
+
+## Showcase
+
+![Comprehensive metrics dashboard](assets/evaluation/metrics_comprehensive_dashboard.png)
+
+The evaluation dashboard tracks pipeline timing, provider latency, retrieval quality, throughput, and reliability across the multi-agent research flow.
 
 ---
 
@@ -59,7 +69,7 @@ What it does, in order:
 3. `docker compose up --build -d` — **rebuilds all images** and starts everything in the background, in dependency order (postgres/redis → fastapi → node → client).
 4. `docker compose logs -f` — **streams live logs** from all five services (Ctrl-C detaches without stopping anything).
 
-> ⚠️ `--volumes` wipes the database. Drop that flag for a rebuild that keeps your data:
+>  `--volumes` wipes the database. Drop that flag for a rebuild that keeps your data:
 > ```bash
 > docker compose down --rmi local --remove-orphans && docker compose up --build -d && docker compose logs -f
 > ```
