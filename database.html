@@ -1,0 +1,476 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Database Schema &mdash; Multiagent Research Automation Platform 2.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=51b770b3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api/index.html" />
+    <link rel="prev" title="Multi-Agent Pipeline" href="agents.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Multiagent Research Automation Platform
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#what-is-it">What is it?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#architecture-at-a-glance">Architecture at a Glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#technology-stack">Technology Stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#project-structure">Project Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#development-without-docker">Development (Without Docker)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#core-settings">Core Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#llm-provider-settings">LLM Provider Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#search-provider-settings">Search Provider Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#rag-settings">RAG Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#feature-flags">Feature Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#email-settings">Email Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#node-server-settings">Node Server Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html#client-settings">Client Settings</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#node-as-api-gateway">Node as API Gateway</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#fastapi-as-ai-engine">FastAPI as AI Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#data-flow">Data Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#sse-streaming-architecture">SSE Streaming Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#queue-architecture">Queue Architecture</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="server/index.html">Server Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="server/node_server.html">Node.js Server (<code class="docutils literal notranslate"><span class="pre">server/ts_server/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#entry-point-src-index-ts">Entry Point — <code class="docutils literal notranslate"><span class="pre">src/index.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#graphql-schema-src-graphql-ts">GraphQL Schema — <code class="docutils literal notranslate"><span class="pre">src/graphql.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#database-models-src-db-ts">Database Models — <code class="docutils literal notranslate"><span class="pre">src/db.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#email-templates-src-email-ts">Email Templates — <code class="docutils literal notranslate"><span class="pre">src/email.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#auth-directive-src-authdirective-ts">Auth Directive — <code class="docutils literal notranslate"><span class="pre">src/authDirective.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#queue-system-src-queue-ts">Queue System — <code class="docutils literal notranslate"><span class="pre">src/queue.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#sse-manager-src-sse-ts">SSE Manager — <code class="docutils literal notranslate"><span class="pre">src/sse.ts</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="server/fastapi_server.html">FastAPI Server (<code class="docutils literal notranslate"><span class="pre">server/fastapi_server/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#directory-structure">Directory Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#entry-point-main-py">Entry Point — <code class="docutils literal notranslate"><span class="pre">main.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#langgraph-pipeline-app-graph-py">LangGraph Pipeline — <code class="docutils literal notranslate"><span class="pre">app/graph.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#database-models-app-db-py">Database Models — <code class="docutils literal notranslate"><span class="pre">app/db.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#routers">Routers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="server/services.html">Service Layer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#llm-provider-abstraction-providers-py">LLM Provider Abstraction (<code class="docutils literal notranslate"><span class="pre">providers.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#centralized-generator-generator-py">Centralized Generator (<code class="docutils literal notranslate"><span class="pre">generator.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#rag-engine-rag-py">RAG Engine (<code class="docutils literal notranslate"><span class="pre">rag.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#web-search-search-py">Web Search (<code class="docutils literal notranslate"><span class="pre">search.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#web-scraper-scraper-py">Web Scraper (<code class="docutils literal notranslate"><span class="pre">scraper.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#embeddings-embeddings-py">Embeddings (<code class="docutils literal notranslate"><span class="pre">embeddings.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#chunking-chunking-py">Chunking (<code class="docutils literal notranslate"><span class="pre">chunking.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#progress-emitter-progress-py">Progress Emitter (<code class="docutils literal notranslate"><span class="pre">progress.py</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="agents.html">Multi-Agent Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#agent-pipeline">Agent Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#agent-reference">Agent Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#research-state">Research State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#quality-pipeline">Quality Pipeline</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Database Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#schema-diagram">Schema Diagram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fastapi-sqlalchemy-models-app-db-py">FastAPI SQLAlchemy Models (<code class="docutils literal notranslate"><span class="pre">app/db.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#research-session">Research Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sources">Sources</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#document-chunks-with-pgvector">Document Chunks (with pgvector)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#papers">Papers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#citations">Citations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#token-usage">Token Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#relationship-summary">Relationship Summary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html">GraphQL API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#authentication">Authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#schema">Schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#types">Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#flow-examples">Flow Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html">REST API (Node.js)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#health-check">Health Check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#api-index">API Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#sse-stream">SSE Stream</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#html-status-page">HTML Status Page</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#proxy-routes">Proxy Routes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html">REST API (FastAPI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#research-api-research">Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#rag-api-rag">RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#papers-api-papers">Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#images-api-images">Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#ai-generation-api-ai">AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#agents-internal-agents">Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html#access-points">Access Points</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/graphql.html">GraphQL API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#schema">Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#flow-examples">Flow Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/rest.html">REST API (Node.js)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#health-check">Health Check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#api-index">API Index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#sse-stream">SSE Stream</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#html-status-page">HTML Status Page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#proxy-routes">Proxy Routes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/fastapi.html">REST API (FastAPI)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#research-api-research">Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#rag-api-rag">RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#papers-api-papers">Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#images-api-images">Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#ai-generation-api-ai">AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#agents-internal-agents">Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Operations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#docker-compose-production">Docker Compose (Production)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#service-dependencies">Service Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#dockerfiles">Dockerfiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#setup-checklist">Setup Checklist</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#scaling-notes">Scaling Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="monitoring.html">Monitoring &amp; Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#health-checks">Health Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#logging">Logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#sse-monitoring">SSE Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#bullmq-queue-monitoring">BullMQ Queue Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#database-monitoring">Database Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Multiagent Research Automation Platform</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Database Schema</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/omchoksi/Multiagent-LangGraph-Orchestrated-LLM-Research-Automation-Platform/blob/main/docs/source/database.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="database-schema">
+<h1>Database Schema<a class="headerlink" href="#database-schema" title="Link to this heading"></a></h1>
+<p>The platform uses <strong>PostgreSQL 16</strong> with <strong>pgvector</strong> for hybrid search. There are
+<strong>28 tables</strong> across two schemas (Node.js Sequelize models + FastAPI SQLAlchemy models).</p>
+<section id="schema-diagram">
+<h2>Schema Diagram<a class="headerlink" href="#schema-diagram" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Node.js Schema (10 tables)        FastAPI Schema (18 tables)
+┌─────────────────────┐           ┌─────────────────────────┐
+│ users               │           │ research_sessions       │
+│ tokens              │           │ research_messages       │
+│ research_sessions   │           │ sources                 │
+│ sources             │           │ research_reports        │
+│ projects            │           │ research_jobs           │
+│ chat_sessions       │           │ research_plans          │
+│ chat_messages       │           │ research_tasks          │
+│ api_keys            │           │ document_chunks ←── pgvector │
+│ templates           │           │ evidence_items          │
+│ user_settings       │           │ key_findings            │
+└─────────────────────┘           │ raw_documents           │
+                                  │ images                  │
+                                  │ papers                  │
+                                  │ paper_versions          │
+                                  │ paper_sections          │
+                                  │ citations               │
+                                  │ paper_edits             │
+                                  │ job_events              │
+                                  │ token_usage             │
+                                  └─────────────────────────┘
+</pre></div>
+</div>
+</section>
+<section id="fastapi-sqlalchemy-models-app-db-py">
+<h2>FastAPI SQLAlchemy Models (<code class="docutils literal notranslate"><span class="pre">app/db.py</span></code>)<a class="headerlink" href="#fastapi-sqlalchemy-models-app-db-py" title="Link to this heading"></a></h2>
+<section id="research-session">
+<h3>Research Session<a class="headerlink" href="#research-session" title="Link to this heading"></a></h3>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">research_sessions</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">user_id</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">255</span><span class="p">),</span>
+<span class="w">    </span><span class="n">title</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">status</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;in_progress&#39;</span>
+<span class="w">        </span><span class="k">CHECK</span><span class="w"> </span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;in_progress&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;completed&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;failed&#39;</span><span class="p">)),</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
+<span class="w">    </span><span class="n">updated_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="sources">
+<h3>Sources<a class="headerlink" href="#sources" title="Link to this heading"></a></h3>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sources</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">research_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">canonical_url</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">title</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">author</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">255</span><span class="p">),</span>
+<span class="w">    </span><span class="n">published_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="p">,</span>
+<span class="w">    </span><span class="n">source_type</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+<span class="w">    </span><span class="n">trust_score</span><span class="w"> </span><span class="nb">FLOAT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">relevance_score</span><span class="w"> </span><span class="nb">FLOAT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">freshness_score</span><span class="w"> </span><span class="nb">FLOAT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">status</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;pending&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="document-chunks-with-pgvector">
+<h3>Document Chunks (with pgvector)<a class="headerlink" href="#document-chunks-with-pgvector" title="Link to this heading"></a></h3>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">document_chunks</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">research_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">source_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">sources</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">chunk_index</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">section_title</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">chunk_text</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">chunk_summary</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">embedding</span><span class="w"> </span><span class="n">VECTOR</span><span class="p">(</span><span class="mi">384</span><span class="p">),</span><span class="w">              </span><span class="c1">-- pgvector</span>
+<span class="w">    </span><span class="n">search_tsvector</span><span class="w"> </span><span class="n">TSVECTOR</span><span class="p">,</span><span class="w">           </span><span class="c1">-- PostgreSQL FTS</span>
+<span class="w">    </span><span class="n">meta_json</span><span class="w"> </span><span class="n">JSONB</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;{}&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+
+<span class="c1">-- Indexes for hybrid search</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_document_chunks_embedding</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">document_chunks</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">hnsw</span><span class="w"> </span><span class="p">(</span><span class="n">embedding</span><span class="w"> </span><span class="n">vector_cosine_ops</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_document_chunks_fts</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">document_chunks</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">gin</span><span class="w"> </span><span class="p">(</span><span class="n">search_tsvector</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="papers">
+<h3>Papers<a class="headerlink" href="#papers" title="Link to this heading"></a></h3>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">papers</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">research_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">title</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">abstract</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">status</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;draft&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">active_version_id</span><span class="w"> </span><span class="n">UUID</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
+<span class="w">    </span><span class="n">updated_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">paper_versions</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">paper_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">papers</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">version_number</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">full_markdown</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">full_latex</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">change_summary</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span><span class="p">,</span>
+<span class="w">    </span><span class="k">UNIQUE</span><span class="p">(</span><span class="n">paper_id</span><span class="p">,</span><span class="w"> </span><span class="n">version_number</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">paper_sections</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">paper_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">papers</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">version_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">paper_versions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">section_name</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">255</span><span class="p">),</span>
+<span class="w">    </span><span class="n">section_order</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">content_markdown</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">content_latex</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">embedding</span><span class="w"> </span><span class="n">VECTOR</span><span class="p">(</span><span class="mi">384</span><span class="p">)</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="citations">
+<h3>Citations<a class="headerlink" href="#citations" title="Link to this heading"></a></h3>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">citations</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">paper_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">papers</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">research_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">version_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">paper_versions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">section_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">paper_sections</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">source_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">sources</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">chunk_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">document_chunks</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">citation_number</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">claim_text</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">citation_text</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">url</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">confidence_score</span><span class="w"> </span><span class="nb">FLOAT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">5</span><span class="p">,</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="token-usage">
+<h3>Token Usage<a class="headerlink" href="#token-usage" title="Link to this heading"></a></h3>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">token_usage</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">gen_random_uuid</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">session_id</span><span class="w"> </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">research_sessions</span><span class="p">(</span><span class="n">id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">provider</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+<span class="w">    </span><span class="n">model</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span>
+<span class="w">    </span><span class="n">prompt_tokens</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">completion_tokens</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">total_tokens</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">duration_ms</span><span class="w"> </span><span class="nb">INTEGER</span><span class="p">,</span>
+<span class="w">    </span><span class="n">agent_name</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span>
+<span class="w">    </span><span class="n">created_at</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="relationship-summary">
+<h2>Relationship Summary<a class="headerlink" href="#relationship-summary" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>research_sessions
+    │── research_messages     (one-to-many)
+    │── sources               (one-to-many)
+    │── research_reports      (one-to-one)
+    │── research_jobs         (one-to-one)
+    │── research_plans        (one-to-one)
+    │── research_tasks        (one-to-many)
+    │── document_chunks       (one-to-many)
+    │── evidence_items        (one-to-many)
+    │── key_findings          (one-to-many)
+    │── images                (one-to-many)
+    │── papers                (one-to-one)
+    │── citations             (one-to-many)
+    │── token_usage           (one-to-many)
+    │── job_events            (one-to-many)
+
+sources
+    │── document_chunks       (one-to-many)
+    │── raw_documents         (one-to-one)
+    │── evidence_items        (one-to-many)
+
+papers
+    │── paper_versions        (one-to-many)
+    │── paper_sections        (one-to-many)
+    │── paper_edits           (one-to-many)
+    │── citations             (one-to-many)
+    active_version_id ──&gt; paper_versions (one-to-one)
+
+paper_versions
+    └── paper_sections        (one-to-many)
+
+document_chunks
+    └── citations             (one-to-many)
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="agents.html" class="btn btn-neutral float-left" title="Multi-Agent Pipeline" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api/index.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Multiagent Research Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

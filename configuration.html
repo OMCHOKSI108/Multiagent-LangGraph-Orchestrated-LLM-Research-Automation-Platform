@@ -1,0 +1,387 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration &mdash; Multiagent Research Automation Platform 2.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=51b770b3"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Architecture" href="architecture.html" />
+    <link rel="prev" title="Quick Start" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Multiagent Research Automation Platform
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#what-is-it">What is it?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#architecture-at-a-glance">Architecture at a Glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#technology-stack">Technology Stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="overview.html#project-structure">Project Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#development-without-docker">Development (Without Docker)</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-settings">Core Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#llm-provider-settings">LLM Provider Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#search-provider-settings">Search Provider Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rag-settings">RAG Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#feature-flags">Feature Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#email-settings">Email Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#node-server-settings">Node Server Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#client-settings">Client Settings</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#node-as-api-gateway">Node as API Gateway</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#fastapi-as-ai-engine">FastAPI as AI Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#data-flow">Data Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#sse-streaming-architecture">SSE Streaming Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="architecture.html#queue-architecture">Queue Architecture</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="server/index.html">Server Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="server/node_server.html">Node.js Server (<code class="docutils literal notranslate"><span class="pre">server/ts_server/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#entry-point-src-index-ts">Entry Point — <code class="docutils literal notranslate"><span class="pre">src/index.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#graphql-schema-src-graphql-ts">GraphQL Schema — <code class="docutils literal notranslate"><span class="pre">src/graphql.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#database-models-src-db-ts">Database Models — <code class="docutils literal notranslate"><span class="pre">src/db.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#email-templates-src-email-ts">Email Templates — <code class="docutils literal notranslate"><span class="pre">src/email.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#auth-directive-src-authdirective-ts">Auth Directive — <code class="docutils literal notranslate"><span class="pre">src/authDirective.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#queue-system-src-queue-ts">Queue System — <code class="docutils literal notranslate"><span class="pre">src/queue.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/node_server.html#sse-manager-src-sse-ts">SSE Manager — <code class="docutils literal notranslate"><span class="pre">src/sse.ts</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="server/fastapi_server.html">FastAPI Server (<code class="docutils literal notranslate"><span class="pre">server/fastapi_server/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#directory-structure">Directory Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#entry-point-main-py">Entry Point — <code class="docutils literal notranslate"><span class="pre">main.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#langgraph-pipeline-app-graph-py">LangGraph Pipeline — <code class="docutils literal notranslate"><span class="pre">app/graph.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#database-models-app-db-py">Database Models — <code class="docutils literal notranslate"><span class="pre">app/db.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/fastapi_server.html#routers">Routers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="server/services.html">Service Layer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#llm-provider-abstraction-providers-py">LLM Provider Abstraction (<code class="docutils literal notranslate"><span class="pre">providers.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#centralized-generator-generator-py">Centralized Generator (<code class="docutils literal notranslate"><span class="pre">generator.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#rag-engine-rag-py">RAG Engine (<code class="docutils literal notranslate"><span class="pre">rag.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#web-search-search-py">Web Search (<code class="docutils literal notranslate"><span class="pre">search.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#web-scraper-scraper-py">Web Scraper (<code class="docutils literal notranslate"><span class="pre">scraper.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#embeddings-embeddings-py">Embeddings (<code class="docutils literal notranslate"><span class="pre">embeddings.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#chunking-chunking-py">Chunking (<code class="docutils literal notranslate"><span class="pre">chunking.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="server/services.html#progress-emitter-progress-py">Progress Emitter (<code class="docutils literal notranslate"><span class="pre">progress.py</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="agents.html">Multi-Agent Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#agent-pipeline">Agent Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#agent-reference">Agent Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#research-state">Research State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="agents.html#quality-pipeline">Quality Pipeline</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="database.html">Database Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="database.html#schema-diagram">Schema Diagram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#fastapi-sqlalchemy-models-app-db-py">FastAPI SQLAlchemy Models (<code class="docutils literal notranslate"><span class="pre">app/db.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="database.html#research-session">Research Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database.html#sources">Sources</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database.html#document-chunks-with-pgvector">Document Chunks (with pgvector)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database.html#papers">Papers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database.html#citations">Citations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="database.html#token-usage">Token Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="database.html#relationship-summary">Relationship Summary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html">GraphQL API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#authentication">Authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#schema">Schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#types">Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/graphql.html#flow-examples">Flow Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html">REST API (Node.js)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#health-check">Health Check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#api-index">API Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#sse-stream">SSE Stream</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#html-status-page">HTML Status Page</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/rest.html#proxy-routes">Proxy Routes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html">REST API (FastAPI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#research-api-research">Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#rag-api-rag">RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#papers-api-papers">Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#images-api-images">Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#ai-generation-api-ai">AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/fastapi.html#agents-internal-agents">Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html#access-points">Access Points</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/graphql.html">GraphQL API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#schema">Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/graphql.html#flow-examples">Flow Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/rest.html">REST API (Node.js)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#health-check">Health Check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#api-index">API Index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#sse-stream">SSE Stream</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#html-status-page">HTML Status Page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/rest.html#proxy-routes">Proxy Routes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/fastapi.html">REST API (FastAPI)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#research-api-research">Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#rag-api-rag">RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#papers-api-papers">Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#images-api-images">Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#ai-generation-api-ai">AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/fastapi.html#agents-internal-agents">Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Operations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#docker-compose-production">Docker Compose (Production)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#service-dependencies">Service Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#dockerfiles">Dockerfiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#setup-checklist">Setup Checklist</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deployment.html#scaling-notes">Scaling Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="monitoring.html">Monitoring &amp; Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#health-checks">Health Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#logging">Logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#sse-monitoring">SSE Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#bullmq-queue-monitoring">BullMQ Queue Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#database-monitoring">Database Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monitoring.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Multiagent Research Automation Platform</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/omchoksi/Multiagent-LangGraph-Orchestrated-LLM-Research-Automation-Platform/blob/main/docs/source/configuration.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration">
+<h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
+<p>All configuration is via environment variables. A single <code class="docutils literal notranslate"><span class="pre">.env</span></code> file at the project root
+is shared by all services via Docker Compose.</p>
+<section id="core-settings">
+<h2>Core Settings<a class="headerlink" href="#core-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1"># Application</span>
+<span class="na">APP_URL</span><span class="o">=</span><span class="s">http://localhost:3000</span>
+<span class="na">JWT_SECRET</span><span class="o">=</span><span class="s">your_64_char_secret_here</span>
+<span class="na">LOG_LEVEL</span><span class="o">=</span><span class="s">info</span>
+
+<span class="c1"># PostgreSQL</span>
+<span class="na">POSTGRES_USER</span><span class="o">=</span><span class="s">postgres</span>
+<span class="na">POSTGRES_PASSWORD</span><span class="o">=</span><span class="s">postgres</span>
+<span class="na">POSTGRES_DB</span><span class="o">=</span><span class="s">deep_research</span>
+<span class="na">POSTGRES_HOST</span><span class="o">=</span><span class="s">localhost</span>
+<span class="na">POSTGRES_PORT</span><span class="o">=</span><span class="s">5432</span>
+
+<span class="c1"># Redis</span>
+<span class="na">REDIS_HOST</span><span class="o">=</span><span class="s">localhost</span>
+<span class="na">REDIS_PORT</span><span class="o">=</span><span class="s">6379</span>
+</pre></div>
+</div>
+</section>
+<section id="llm-provider-settings">
+<h2>LLM Provider Settings<a class="headerlink" href="#llm-provider-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1"># Provider selection</span>
+<span class="na">DEFAULT_LLM_PROVIDER</span><span class="o">=</span><span class="s">groq</span><span class="w">          </span><span class="c1"># groq | openrouter</span>
+
+<span class="c1"># Groq</span>
+<span class="na">GROQ_API_KEY</span><span class="o">=</span><span class="s">gsk_your_key</span>
+<span class="na">GROQ_MODEL</span><span class="o">=</span><span class="s">llama-3.1-8b-instant</span>
+
+<span class="c1"># OpenRouter (fallback)</span>
+<span class="na">OPENROUTER_API_KEY</span><span class="o">=</span><span class="s">sk-or-your-key</span>
+<span class="na">OPENROUTER_MODEL</span><span class="o">=</span><span class="s">meta-llama/llama-3.1-8b-instruct</span>
+
+<span class="na">LLM_REQUEST_TIMEOUT</span><span class="o">=</span><span class="s">60</span>
+<span class="na">LLM_CONTEXT_MESSAGES</span><span class="o">=</span><span class="s">20</span>
+</pre></div>
+</div>
+</section>
+<section id="search-provider-settings">
+<h2>Search Provider Settings<a class="headerlink" href="#search-provider-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">WEB_SEARCH_PROVIDER</span><span class="o">=</span><span class="s">exa</span><span class="w">             </span><span class="c1"># exa | tavily | duckduckgo</span>
+
+<span class="c1"># Exa</span>
+<span class="na">EXA_API_KEY</span><span class="o">=</span><span class="s">your_exa_key</span>
+<span class="na">EXA_MAX_SEARCH_RESULTS</span><span class="o">=</span><span class="s">10</span>
+
+<span class="c1"># Tavily</span>
+<span class="na">TAVILY_API_KEY</span><span class="o">=</span><span class="s">your_tavily_key</span>
+
+<span class="c1"># Web crawling</span>
+<span class="na">WEB_CRAWL_MAX_PAGES</span><span class="o">=</span><span class="s">10</span>
+<span class="na">WEB_CRAWL_TIMEOUT</span><span class="o">=</span><span class="s">30</span>
+<span class="na">WEB_CHUNK_SIZE_CHARS</span><span class="o">=</span><span class="s">4000</span>
+</pre></div>
+</div>
+</section>
+<section id="rag-settings">
+<h2>RAG Settings<a class="headerlink" href="#rag-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1"># Embeddings</span>
+<span class="na">EMBEDDING_PROVIDER</span><span class="o">=</span><span class="s">local</span><span class="w">            </span><span class="c1"># local | openai</span>
+<span class="na">EMBEDDING_MODEL</span><span class="o">=</span><span class="s">all-MiniLM-L6-v2</span>
+<span class="na">EMBEDDING_DIM</span><span class="o">=</span><span class="s">384</span>
+
+<span class="c1"># Retrieval</span>
+<span class="na">TOP_K_RETRIEVAL</span><span class="o">=</span><span class="s">10</span>
+<span class="na">MIN_RETRIEVAL_SCORE</span><span class="o">=</span><span class="s">0.15</span>
+
+<span class="c1"># Chunking</span>
+<span class="na">CHUNK_SIZE</span><span class="o">=</span><span class="s">1000</span>
+<span class="na">CHUNK_OVERLAP</span><span class="o">=</span><span class="s">200</span>
+</pre></div>
+</div>
+</section>
+<section id="feature-flags">
+<h2>Feature Flags<a class="headerlink" href="#feature-flags" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">ENABLE_DOCUMENT_RAG</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ENABLE_WEB_RESEARCH</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ENABLE_RESEARCH_PROJECTS</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ENABLE_DRAFT_WRITER</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ENABLE_LATEX</span><span class="o">=</span><span class="s">false</span>
+<span class="na">ENABLE_VOICE</span><span class="o">=</span><span class="s">false</span>
+<span class="na">ENABLE_JOBS</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ENABLE_SCHEDULER</span><span class="o">=</span><span class="s">false</span>
+<span class="na">ENABLE_NOTIFICATIONS</span><span class="o">=</span><span class="s">false</span>
+<span class="na">ENABLE_EVALUATION</span><span class="o">=</span><span class="s">false</span>
+</pre></div>
+</div>
+</section>
+<section id="email-settings">
+<h2>Email Settings<a class="headerlink" href="#email-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">RESEND_API_KEY</span><span class="o">=</span><span class="s">re_your_key</span>
+<span class="na">EMAIL_FROM</span><span class="o">=</span><span class="s">&quot;Multiagent Research Automation Platform &lt;noreply@yourdomain.com&gt;&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="node-server-settings">
+<h2>Node Server Settings<a class="headerlink" href="#node-server-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">NODE_PORT</span><span class="o">=</span><span class="s">4000</span>
+<span class="na">FASTAPI_URL</span><span class="o">=</span><span class="s">http://localhost:8000</span>
+<span class="na">CORS_ORIGIN</span><span class="o">=</span><span class="s">http://localhost:3000</span>
+</pre></div>
+</div>
+</section>
+<section id="client-settings">
+<h2>Client Settings<a class="headerlink" href="#client-settings" title="Link to this heading"></a></h2>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">NEXT_PUBLIC_GRAPHQL_URL</span><span class="o">=</span><span class="s">http://localhost:4000/graphql</span>
+<span class="na">NEXT_PUBLIC_APP_URL</span><span class="o">=</span><span class="s">http://localhost:3000</span>
+<span class="na">NEXT_PUBLIC_SSE_URL</span><span class="o">=</span><span class="s">http://localhost:4000</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quick Start" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="architecture.html" class="btn btn-neutral float-right" title="Architecture" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Multiagent Research Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,443 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REST API (FastAPI) &mdash; Multiagent Research Automation Platform 2.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=51b770b3"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Deployment" href="../deployment.html" />
+    <link rel="prev" title="REST API (Node.js)" href="rest.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Multiagent Research Automation Platform
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../overview.html#what-is-it">What is it?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../overview.html#architecture-at-a-glance">Architecture at a Glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../overview.html#key-features">Key Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../overview.html#technology-stack">Technology Stack</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../overview.html#project-structure">Project Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#setup">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart.html#development-without-docker">Development (Without Docker)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#core-settings">Core Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#llm-provider-settings">LLM Provider Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#search-provider-settings">Search Provider Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#rag-settings">RAG Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#feature-flags">Feature Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#email-settings">Email Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#node-server-settings">Node Server Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration.html#client-settings">Client Settings</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../architecture.html#node-as-api-gateway">Node as API Gateway</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture.html#fastapi-as-ai-engine">FastAPI as AI Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture.html#data-flow">Data Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture.html#sse-streaming-architecture">SSE Streaming Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture.html#queue-architecture">Queue Architecture</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../server/index.html">Server Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../server/node_server.html">Node.js Server (<code class="docutils literal notranslate"><span class="pre">server/ts_server/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#entry-point-src-index-ts">Entry Point — <code class="docutils literal notranslate"><span class="pre">src/index.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#graphql-schema-src-graphql-ts">GraphQL Schema — <code class="docutils literal notranslate"><span class="pre">src/graphql.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#database-models-src-db-ts">Database Models — <code class="docutils literal notranslate"><span class="pre">src/db.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#email-templates-src-email-ts">Email Templates — <code class="docutils literal notranslate"><span class="pre">src/email.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#auth-directive-src-authdirective-ts">Auth Directive — <code class="docutils literal notranslate"><span class="pre">src/authDirective.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#queue-system-src-queue-ts">Queue System — <code class="docutils literal notranslate"><span class="pre">src/queue.ts</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/node_server.html#sse-manager-src-sse-ts">SSE Manager — <code class="docutils literal notranslate"><span class="pre">src/sse.ts</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../server/fastapi_server.html">FastAPI Server (<code class="docutils literal notranslate"><span class="pre">server/fastapi_server/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../server/fastapi_server.html#directory-structure">Directory Structure</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/fastapi_server.html#entry-point-main-py">Entry Point — <code class="docutils literal notranslate"><span class="pre">main.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/fastapi_server.html#langgraph-pipeline-app-graph-py">LangGraph Pipeline — <code class="docutils literal notranslate"><span class="pre">app/graph.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/fastapi_server.html#database-models-app-db-py">Database Models — <code class="docutils literal notranslate"><span class="pre">app/db.py</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/fastapi_server.html#routers">Routers</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../server/services.html">Service Layer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#llm-provider-abstraction-providers-py">LLM Provider Abstraction (<code class="docutils literal notranslate"><span class="pre">providers.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#centralized-generator-generator-py">Centralized Generator (<code class="docutils literal notranslate"><span class="pre">generator.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#rag-engine-rag-py">RAG Engine (<code class="docutils literal notranslate"><span class="pre">rag.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#web-search-search-py">Web Search (<code class="docutils literal notranslate"><span class="pre">search.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#web-scraper-scraper-py">Web Scraper (<code class="docutils literal notranslate"><span class="pre">scraper.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#embeddings-embeddings-py">Embeddings (<code class="docutils literal notranslate"><span class="pre">embeddings.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#chunking-chunking-py">Chunking (<code class="docutils literal notranslate"><span class="pre">chunking.py</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../server/services.html#progress-emitter-progress-py">Progress Emitter (<code class="docutils literal notranslate"><span class="pre">progress.py</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../agents.html">Multi-Agent Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../agents.html#agent-pipeline">Agent Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agents.html#agent-reference">Agent Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agents.html#research-state">Research State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../agents.html#quality-pipeline">Quality Pipeline</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../database.html">Database Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../database.html#schema-diagram">Schema Diagram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../database.html#fastapi-sqlalchemy-models-app-db-py">FastAPI SQLAlchemy Models (<code class="docutils literal notranslate"><span class="pre">app/db.py</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../database.html#research-session">Research Session</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../database.html#sources">Sources</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../database.html#document-chunks-with-pgvector">Document Chunks (with pgvector)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../database.html#papers">Papers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../database.html#citations">Citations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../database.html#token-usage">Token Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../database.html#relationship-summary">Relationship Summary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="graphql.html">GraphQL API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="graphql.html#authentication">Authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="graphql.html#schema">Schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="graphql.html#types">Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="graphql.html#flow-examples">Flow Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="rest.html">REST API (Node.js)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rest.html#health-check">Health Check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rest.html#api-index">API Index</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rest.html#sse-stream">SSE Stream</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rest.html#html-status-page">HTML Status Page</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rest.html#proxy-routes">Proxy Routes</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">REST API (FastAPI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#research-api-research">Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rag-api-rag">RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#papers-api-papers">Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#images-api-images">Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ai-generation-api-ai">AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#agents-internal-agents">Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#access-points">Access Points</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="graphql.html">GraphQL API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="graphql.html#authentication">Authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="graphql.html#schema">Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="graphql.html#types">Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="graphql.html#flow-examples">Flow Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rest.html">REST API (Node.js)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="rest.html#health-check">Health Check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest.html#api-index">API Index</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest.html#sse-stream">SSE Stream</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest.html#html-status-page">HTML Status Page</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rest.html#proxy-routes">Proxy Routes</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">REST API (FastAPI)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#research-api-research">Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rag-api-rag">RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#papers-api-papers">Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#images-api-images">Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ai-generation-api-ai">AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#agents-internal-agents">Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Operations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../deployment.html">Deployment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../deployment.html#docker-compose-production">Docker Compose (Production)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment.html#service-dependencies">Service Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment.html#dockerfiles">Dockerfiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment.html#setup-checklist">Setup Checklist</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment.html#scaling-notes">Scaling Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../monitoring.html">Monitoring &amp; Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../monitoring.html#health-checks">Health Checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../monitoring.html#logging">Logging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../monitoring.html#sse-monitoring">SSE Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../monitoring.html#bullmq-queue-monitoring">BullMQ Queue Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../monitoring.html#database-monitoring">Database Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../monitoring.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Multiagent Research Automation Platform</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">REST API (FastAPI)</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/omchoksi/Multiagent-LangGraph-Orchestrated-LLM-Research-Automation-Platform/blob/main/docs/source/api/fastapi.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="rest-api-fastapi">
+<h1>REST API (FastAPI)<a class="headerlink" href="#rest-api-fastapi" title="Link to this heading"></a></h1>
+<p>The FastAPI server exposes comprehensive REST endpoints for research, RAG, papers,
+images, AI generation, and individual agents. All endpoints are prefixed and
+proxied through the Node.js gateway.</p>
+<section id="research-api-research">
+<h2>Research (<code class="docutils literal notranslate"><span class="pre">/api/research</span></code>)<a class="headerlink" href="#research-api-research" title="Link to this heading"></a></h2>
+<dl>
+<dt><strong>POST /api/research/start</strong></dt><dd><p>Run the full LangGraph research pipeline.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;question&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;What are the latest advances in retrieval-augmented generation?&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid-optional&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;user_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid-optional&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_revisions&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;job_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid-optional&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Response: <code class="docutils literal notranslate"><span class="pre">ResearchResponse</span></code> with <code class="docutils literal notranslate"><span class="pre">session_id</span></code>, <code class="docutils literal notranslate"><span class="pre">report</span></code>, <code class="docutils literal notranslate"><span class="pre">sources</span></code>, <code class="docutils literal notranslate"><span class="pre">status</span></code>.</p>
+</dd>
+<dt><strong>GET /api/research/sessions/{session_id}</strong></dt><dd><p>Get session details with messages and sources.</p>
+</dd>
+<dt><strong>POST /api/research/plans/{session_id}/approve</strong></dt><dd><p>Approve a generated research plan.</p>
+</dd>
+</dl>
+</section>
+<section id="rag-api-rag">
+<h2>RAG (<code class="docutils literal notranslate"><span class="pre">/api/rag</span></code>)<a class="headerlink" href="#rag-api-rag" title="Link to this heading"></a></h2>
+<dl>
+<dt><strong>POST /api/rag/query</strong></dt><dd><p>Hybrid search (vector + keyword + reranker).</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;transformer attention mechanism&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;top_k&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;min_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.15</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;source_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;webpage&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;min_trust_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/rag/enhanced-search</strong></dt><dd><p>Query rewrite → sub-questions → hybrid search → context compression.</p>
+</dd>
+<dt><strong>POST /api/rag/answer</strong></dt><dd><p>Full pipeline: search → answer → faithfulness check → reflexion revision.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;How does sparse attention work?&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;top_k&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;min_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Response includes <code class="docutils literal notranslate"><span class="pre">answer</span></code>, <code class="docutils literal notranslate"><span class="pre">faithful</span></code>, <code class="docutils literal notranslate"><span class="pre">faithfulness_score</span></code>,
+<code class="docutils literal notranslate"><span class="pre">unsupported_claims</span></code>, <code class="docutils literal notranslate"><span class="pre">citations</span></code>, <code class="docutils literal notranslate"><span class="pre">chunks_used</span></code>.</p>
+</dd>
+</dl>
+</section>
+<section id="papers-api-papers">
+<h2>Papers (<code class="docutils literal notranslate"><span class="pre">/api/papers</span></code>)<a class="headerlink" href="#papers-api-papers" title="Link to this heading"></a></h2>
+<dl>
+<dt><strong>POST /api/papers/{session_id}/chat</strong></dt><dd><p>Conversational Q&amp;A over the generated paper.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Summarize the methodology section&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/papers/{session_id}/edit</strong></dt><dd><p>Edit a paper section (creates new version with diff).</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;section_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;III. Proposed Architecture&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;instruction&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Add details about the attention mechanism&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>GET /api/papers/{session_id}/versions</strong></dt><dd><p>List all versions of a paper.</p>
+</dd>
+<dt><strong>GET /api/papers/{session_id}/versions/{version_id}</strong></dt><dd><p>Get a specific version’s full content.</p>
+</dd>
+<dt><strong>GET /api/papers/{session_id}/export?format=markdown</strong></dt><dd><p>Export paper (formats: <code class="docutils literal notranslate"><span class="pre">markdown</span></code>, <code class="docutils literal notranslate"><span class="pre">latex</span></code>, <code class="docutils literal notranslate"><span class="pre">pdf</span></code>).</p>
+</dd>
+</dl>
+</section>
+<section id="images-api-images">
+<h2>Images (<code class="docutils literal notranslate"><span class="pre">/api/images</span></code>)<a class="headerlink" href="#images-api-images" title="Link to this heading"></a></h2>
+<dl>
+<dt><strong>POST /api/images/search</strong></dt><dd><p>Search and store images related to the research.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;transformer architecture diagram&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;uuid&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_images&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/images/attach</strong></dt><dd><p>Attach an image to a paper section.</p>
+</dd>
+<dt><strong>GET /api/images/{session_id}</strong></dt><dd><p>Get stored images for a session.</p>
+</dd>
+</dl>
+</section>
+<section id="ai-generation-api-ai">
+<h2>AI Generation (<code class="docutils literal notranslate"><span class="pre">/api/ai</span></code>)<a class="headerlink" href="#ai-generation-api-ai" title="Link to this heading"></a></h2>
+<dl>
+<dt><strong>POST /api/ai/generate</strong></dt><dd><p>Centralized LLM generation with method overloading.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;prompt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Explain the attention mechanism&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;generator_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;base&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;temperature&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.7</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_tokens&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4096</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;stream&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Also supports:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;system_prompt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;You are an AI expert&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;user_prompt&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Explain transformers&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;generator_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;faithful&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Generator types: <code class="docutils literal notranslate"><span class="pre">base</span></code>, <code class="docutils literal notranslate"><span class="pre">streaming</span></code>, <code class="docutils literal notranslate"><span class="pre">faithful</span></code>, <code class="docutils literal notranslate"><span class="pre">tracking</span></code>.
+When <code class="docutils literal notranslate"><span class="pre">stream:</span> <span class="pre">true</span></code>, returns SSE stream of tokens.</p>
+</dd>
+<dt><strong>POST /api/ai/rewrite</strong></dt><dd><p>Rewrite a search query for precision.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tell me about RAG&quot;</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/ai/sub-questions</strong></dt><dd><p>Break a query into 2-3 sub-questions.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;How do transformers work?&quot;</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/ai/context-compress</strong></dt><dd><p>Extract relevant sentences from chunks.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;attention is all you need&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;chunks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;max_chars&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/ai/faithfulness-check</strong></dt><dd><p>Verify answer claims against source context.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;answer&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+<dt><strong>POST /api/ai/reflexion</strong></dt><dd><p>Rewrite answer to remove unsupported claims.</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;answer&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;context&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;unsupported_claims&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;...&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;query&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;original question&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</section>
+<section id="agents-internal-agents">
+<h2>Agents (<code class="docutils literal notranslate"><span class="pre">/internal/agents</span></code>)<a class="headerlink" href="#agents-internal-agents" title="Link to this heading"></a></h2>
+<p>These endpoints are <strong>internal only</strong> — called by BullMQ workers, not exposed to clients.
+Each accepts a minimal request model (not the full <code class="docutils literal notranslate"><span class="pre">ResearchState</span></code>).</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="rest.html" class="btn btn-neutral float-left" title="REST API (Node.js)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../deployment.html" class="btn btn-neutral float-right" title="Deployment" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Multiagent Research Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
