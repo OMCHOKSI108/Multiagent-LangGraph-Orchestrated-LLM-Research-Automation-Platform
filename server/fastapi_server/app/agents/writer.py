@@ -1,7 +1,10 @@
 from ..services.llm import call_llm_stream
 from ..services.progress import emit_progress, emit_token
 from ..services.rag import hybrid_search, validate_citations
+from ..services.token_budget import count_tokens, truncate_to_token_budget
 from .types import ResearchState
+
+MAX_EVIDENCE_TOKENS = 2500
 
 SYSTEM_PROMPT = """You are a professional research report writer. Write a comprehensive, well-structured research report based on the provided research question, plan, and retrieved evidence.
 
@@ -34,10 +37,11 @@ async def run_writer(state: ResearchState) -> ResearchState:
         rag_results = await hybrid_search(question, session_id, db, top_k=8, min_score=0.25)
 
     evidence_text = ""
-    for i, r in enumerate(rag_results, 1):
-        text = r["chunk_text"][:1500]
+    for i, r in enumerate(rag_results[:5], 1):
+        text = r["chunk_text"][:800]
         sec = r["section_title"] or "General"
         evidence_text += f"[Evidence {i}] Section: {sec}\n{text}\n---\n"
+    evidence_text = truncate_to_token_budget(evidence_text, MAX_EVIDENCE_TOKENS)
 
     sources_text = ""
     for i, item in enumerate(state.get("crawled_content", []), 1):
@@ -48,7 +52,7 @@ async def run_writer(state: ResearchState) -> ResearchState:
     if not rag_results:
         await emit_progress(job_id, "writer", "rag_fallback", "No RAG results found, using full analysis.")
         analysis = state.get("analysis", "No analysis available")
-        evidence_text = analysis
+        evidence_text = truncate_to_token_budget(analysis, MAX_EVIDENCE_TOKENS)
 
         for i, item in enumerate(state.get("search_results", []), 1):
             title = item.get("title", "Untitled")

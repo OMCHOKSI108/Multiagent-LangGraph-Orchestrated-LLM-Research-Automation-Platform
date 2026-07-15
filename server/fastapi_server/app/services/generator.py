@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import time
 from typing import Any, AsyncIterator, Callable
@@ -11,6 +12,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from .llm import call_llm as _call_llm, track_token_usage, LLMError
 from .types import GenerateResult, UsageInfo
 from .providers import registry as _provider_registry, LLMProviderService, _estimate_tokens
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_MAX_TOKENS = 4096
@@ -75,30 +78,44 @@ class BaseGenerator:
         agent_name: str | None = None,
         db=None,
     ) -> GenerateResult:
+        from .token_budget import check_token_budget, shrink_context, count_tokens
+
         msgs = self._build_messages(prompt, system_prompt, user_prompt, messages)
         prompt_text = " ".join(m.get("content", "") for m in msgs)
-        prompt_tokens = _estimate_tokens(prompt_text)
+        prompt_tokens = count_tokens(prompt_text)
 
         last_error = None
-        for provider in _provider_registry.get_providers():
-            try:
-                start = time.monotonic()
-                result = provider.generate(msgs, temperature, max_tokens)
-                result.usage.duration_ms = int((time.monotonic() - start) * 1000)
-                asyncio.create_task(track_token_usage(
-                    session_id=session_id,
-                    provider=provider.name,
-                    model=provider.model_name,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=result.usage.completion_tokens,
-                    duration_ms=result.usage.duration_ms,
-                    agent_name=agent_name,
-                    db=db,
-                ))
-                return result
-            except Exception as e:
-                last_error = e
+        providers = _provider_registry.get_providers()
+        budget_applied = False
+
+        for attempt in range(2):
+            for provider in providers:
+                try:
+                    if not budget_applied:
+                        msgs = check_token_budget(msgs)
+                        budget_applied = True
+                    start = time.monotonic()
+                    result = provider.generate(msgs, temperature, max_tokens)
+                    result.usage.duration_ms = int((time.monotonic() - start) * 1000)
+                    asyncio.create_task(track_token_usage(
+                        session_id=session_id,
+                        provider=provider.name,
+                        model=provider.model_name,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=result.usage.completion_tokens,
+                        duration_ms=result.usage.duration_ms,
+                        agent_name=agent_name,
+                        db=db,
+                    ))
+                    return result
+                except Exception as e:
+                    last_error = e
+                    continue
+            if attempt == 0:
+                logger.warning("All providers failed on first attempt, shrinking context and retrying")
+                msgs = shrink_context(msgs, max_context=3000)
                 continue
+            break
 
         raise LLMError() from last_error
 
@@ -115,46 +132,60 @@ class BaseGenerator:
         agent_name: str | None = None,
         db=None,
     ) -> GenerateResult:
+        from .token_budget import check_token_budget, shrink_context, count_tokens
+
         msgs = self._build_messages(prompt, system_prompt, user_prompt, messages)
         prompt_text = " ".join(m.get("content", "") for m in msgs)
-        prompt_tokens = _estimate_tokens(prompt_text)
+        prompt_tokens = count_tokens(prompt_text)
 
         last_error = None
-        for provider in _provider_registry.get_providers():
-            try:
-                start = time.monotonic()
-                full_response = ""
-                async for token in provider.generate_stream(msgs, temperature, max_tokens):
-                    if token:
-                        full_response += token
-                        if token_callback:
-                            if asyncio.iscoroutinefunction(token_callback):
-                                await token_callback(token)
-                            else:
-                                token_callback(token)
-                duration_ms = int((time.monotonic() - start) * 1000)
-                completion_tokens = _estimate_tokens(full_response)
-                usage = UsageInfo(
-                    provider=provider.name,
-                    model=provider.model_name,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    duration_ms=duration_ms,
-                )
-                asyncio.create_task(track_token_usage(
-                    session_id=session_id,
-                    provider=provider.name,
-                    model=provider.model_name,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    duration_ms=duration_ms,
-                    agent_name=agent_name,
-                    db=db,
-                ))
-                return GenerateResult(content=full_response, usage=usage)
-            except Exception as e:
-                last_error = e
+        providers = _provider_registry.get_providers()
+        budget_applied = False
+
+        for attempt in range(2):
+            for provider in providers:
+                try:
+                    if not budget_applied:
+                        msgs = check_token_budget(msgs)
+                        budget_applied = True
+                    start = time.monotonic()
+                    full_response = ""
+                    async for token in provider.generate_stream(msgs, temperature, max_tokens):
+                        if token:
+                            full_response += token
+                            if token_callback:
+                                if asyncio.iscoroutinefunction(token_callback):
+                                    await token_callback(token)
+                                else:
+                                    token_callback(token)
+                    duration_ms = int((time.monotonic() - start) * 1000)
+                    completion_tokens = count_tokens(full_response)
+                    usage = UsageInfo(
+                        provider=provider.name,
+                        model=provider.model_name,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        duration_ms=duration_ms,
+                    )
+                    asyncio.create_task(track_token_usage(
+                        session_id=session_id,
+                        provider=provider.name,
+                        model=provider.model_name,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        duration_ms=duration_ms,
+                        agent_name=agent_name,
+                        db=db,
+                    ))
+                    return GenerateResult(content=full_response, usage=usage)
+                except Exception as e:
+                    last_error = e
+                    continue
+            if attempt == 0:
+                logger.warning("All providers failed on first streaming attempt, shrinking context and retrying")
+                msgs = shrink_context(msgs, max_context=3000)
                 continue
+            break
 
         raise LLMError() from last_error
 

@@ -61,6 +61,7 @@ async def _detect_spa_with_head(url: str) -> bool:
 
 async def scrape_url(url: str, timeout: int | None = None) -> dict | None:
     timeout = timeout or settings.web_crawl_timeout
+    httpx_result: dict | None = None
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             head = await client.head(url, headers={"User-Agent": "KuchiBot/1.0 (research assistant)"})
@@ -74,8 +75,13 @@ async def scrape_url(url: str, timeout: int | None = None) -> dict | None:
             logger.info("SPA detected at %s, switching to Playwright", url)
             return await _scrape_playwright(url, timeout)
         else:
-            return await _scrape_httpx(url, timeout)
-    except Exception:
+            httpx_result = await _scrape_httpx(url, timeout)
+            if httpx_result is None:
+                logger.info("httpx returned None for %s, falling back to Playwright", url)
+                return await _scrape_playwright(url, timeout)
+            return httpx_result
+    except Exception as e:
+        logger.warning("scrape_url failed via httpx for %s: %s, falling back to Playwright", url, e)
         return await _scrape_playwright(url, timeout)
 
 

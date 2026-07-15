@@ -4,8 +4,11 @@ import re
 from ..services.llm import call_llm_stream
 from ..services.progress import emit_progress, emit_token
 from ..services.rag import hybrid_search, validate_citations
+from ..services.token_budget import count_tokens, truncate_to_token_budget
 from ..db import Paper, PaperVersion, PaperSection
 from .types import ResearchState
+
+MAX_EVIDENCE_TOKENS = 2500
 
 IEEE_SYSTEM_PROMPT = """You are an IEEE paper writer agent. Given a research question, key findings, and evidence, write a professional IEEE-style research paper.
 
@@ -55,8 +58,9 @@ async def run_paper_writer(state: ResearchState) -> ResearchState:
         findings_text += f"[Finding {i}] {f.get('title', '')}: {f.get('finding', '')}\n"
 
     evidence_text = ""
-    for i, r in enumerate(rag_results, 1):
-        evidence_text += f"[Evidence {i}] {r['chunk_text'][:1500]}\n---\n"
+    for i, r in enumerate(rag_results[:5], 1):
+        evidence_text += f"[Evidence {i}] {r['chunk_text'][:800]}\n---\n"
+    evidence_text = truncate_to_token_budget(evidence_text, MAX_EVIDENCE_TOKENS)
 
     sources_text = ""
     for i, item in enumerate(state.get("crawled_content", []), 1):
@@ -66,7 +70,7 @@ async def run_paper_writer(state: ResearchState) -> ResearchState:
         findings_text = "No structured findings available."
     if not evidence_text.strip():
         analysis = state.get("analysis", "No evidence available.")
-        evidence_text = analysis
+        evidence_text = truncate_to_token_budget(analysis, MAX_EVIDENCE_TOKENS)
 
     source_list = [item.get("url", "") for item in state.get("crawled_content", [])]
     source_count = len(source_list)

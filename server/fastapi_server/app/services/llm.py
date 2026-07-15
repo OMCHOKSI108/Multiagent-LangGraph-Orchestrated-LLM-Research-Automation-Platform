@@ -38,6 +38,59 @@ def _build_groq_llm(temperature: float, max_tokens: int) -> BaseChatModel | None
         return None
 
 
+def _build_cerebras_llm(temperature: float, max_tokens: int) -> BaseChatModel | None:
+    if not settings.cerebras_api_key:
+        return None
+    try:
+
+        class CerebrasLLM(BaseChatModel):
+            api_key: str
+            model: str
+            temperature: float = 0.7
+            max_tokens: int = 4096
+            timeout: int = 60
+
+            def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "model": self.model,
+                    "messages": [{"role": m.type, "content": m.content} for m in messages],
+                    "max_completion_tokens": self.max_tokens,
+                    "temperature": self.temperature,
+                    "top_p": 1,
+                }
+                if stop:
+                    payload["stop"] = stop
+                resp = httpx.post(
+                    "https://api.cerebras.ai/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=self.timeout,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                return ChatResult(generations=[ChatGeneration(message=HumanMessage(content=content))])
+
+            @property
+            def _llm_type(self):
+                return "cerebras"
+
+        return CerebrasLLM(
+            api_key=settings.cerebras_api_key,
+            model=settings.cerebras_model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=settings.llm_request_timeout,
+        )
+    except Exception as e:
+        logger.warning("Failed to init Cerebras: %s", e)
+        return None
+
+
 def _build_openrouter_llm(temperature: float, max_tokens: int) -> BaseChatModel | None:
     if not settings.openrouter_api_key:
         return None
@@ -93,6 +146,7 @@ def _build_openrouter_llm(temperature: float, max_tokens: int) -> BaseChatModel 
 _PROVIDERS = [
     ("Groq", _build_groq_llm),
     ("OpenRouter", _build_openrouter_llm),
+    ("Cerebras", _build_cerebras_llm),
 ]
 
 
@@ -151,8 +205,12 @@ def call_llm(
     agent_name: str | None = None,
     db=None,
 ) -> str:
+    from .token_budget import count_tokens, truncate_to_token_budget
+
     last_error = None
-    prompt_tokens_est = max(1, (len(system_prompt) + len(user_prompt)) // 4)
+    budget_ctx = 3500
+    user_prompt = truncate_to_token_budget(user_prompt, budget_ctx)
+    prompt_tokens = count_tokens(system_prompt) + count_tokens(user_prompt)
     for name, builder in _PROVIDERS:
         llm = builder(temperature, max_tokens=4096)
         if llm is None:
@@ -165,12 +223,12 @@ def call_llm(
             start = time.monotonic()
             response = llm.invoke(messages)
             duration_ms = int((time.monotonic() - start) * 1000)
-            completion_tokens = max(1, len(response.content) // 4)
+            completion_tokens = count_tokens(response.content)
             asyncio.create_task(track_token_usage(
                 session_id=session_id,
                 provider=name,
                 model=getattr(llm, 'model', str(type(llm).__name__)),
-                prompt_tokens=prompt_tokens_est,
+                prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 duration_ms=duration_ms,
                 agent_name=agent_name,
@@ -193,8 +251,12 @@ async def call_llm_stream(
     agent_name: str | None = None,
     db=None,
 ) -> str:
+    from .token_budget import count_tokens, truncate_to_token_budget
+
     last_error = None
-    prompt_tokens_est = max(1, (len(system_prompt) + len(user_prompt)) // 4)
+    budget_ctx = 3500
+    user_prompt = truncate_to_token_budget(user_prompt, budget_ctx)
+    prompt_tokens = count_tokens(system_prompt) + count_tokens(user_prompt)
     for name, builder in _PROVIDERS:
         llm = builder(temperature, max_tokens=4096)
         if llm is None:
@@ -213,12 +275,12 @@ async def call_llm_stream(
                     if token_callback:
                         await token_callback(token)
             duration_ms = int((time.monotonic() - start) * 1000)
-            completion_tokens = max(1, len(full_response) // 4)
+            completion_tokens = count_tokens(full_response)
             asyncio.create_task(track_token_usage(
                 session_id=session_id,
                 provider=name,
                 model=getattr(llm, 'model', str(type(llm).__name__)),
-                prompt_tokens=prompt_tokens_est,
+                prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 duration_ms=duration_ms,
                 agent_name=agent_name,

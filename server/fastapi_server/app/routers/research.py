@@ -13,6 +13,38 @@ from ..services.progress import emit_progress
 
 router = APIRouter(prefix="/api/research", tags=["research"])
 
+_GREETING_REPLY = (
+    "Hey there! I'm a research assistant — ask me a question and I'll search the web, "
+    "analyze sources, and compile a structured report for you."
+)
+
+try:
+    from semantic_router import Route, RouteLayer
+    from semantic_router.encoders import HuggingFaceEncoder
+
+    _greeting_route = Route(
+        name="greeting",
+        utterances=[
+            "hi", "hello", "hey", "good morning", "sup", "how are you",
+            "what's up", "hey there", "hi bot", "good afternoon", "yo",
+            "howdy", "what's good", "how's it going", "good evening",
+            "who are you", "what can you do", "tell me about yourself",
+            "thanks", "thank you", "bye", "goodbye", "see ya",
+        ],
+    )
+    _encoder = HuggingFaceEncoder(name="all-MiniLM-L6-v2")
+    _router = RouteLayer(encoder=_encoder, routes=[_greeting_route])
+    _SEMANTIC_ROUTER_AVAILABLE = True
+except Exception:
+    _SEMANTIC_ROUTER_AVAILABLE = False
+
+
+def _is_greeting_only(text: str) -> str | None:
+    if not _SEMANTIC_ROUTER_AVAILABLE:
+        return None
+    matched = _router(text)
+    return _GREETING_REPLY if matched.name == "greeting" else None
+
 
 class ResearchRequest(BaseModel):
     question: str = Field(..., examples=["How do quantum computing algorithms improve drug discovery?", "What are the latest advances in RAG-based LLM systems?", "Explain the transformer architecture in deep learning"])
@@ -42,12 +74,13 @@ async def start_research(req: ResearchRequest, db: AsyncSession = Depends(get_db
 
     if not session:
         session = ResearchSessionModel(
-            id=uuid.UUID(session_id) if req.session_id else uuid.UUID(session_id),
+            id=uuid.UUID(session_id),
             user_id=uuid.UUID(req.user_id),
             title=req.question[:100],
             status=ResearchSessionStatus.in_progress,
         )
         db.add(session)
+        await db.flush()
 
     msg = ResearchMessage(
         session_id=session.id,
@@ -56,6 +89,33 @@ async def start_research(req: ResearchRequest, db: AsyncSession = Depends(get_db
     )
     db.add(msg)
     await db.commit()
+
+    greeting_reply = _is_greeting_only(req.question)
+    if greeting_reply:
+        session.status = ResearchSessionStatus.completed
+        session.updated_at = datetime.now(timezone.utc)
+
+        report_msg = ResearchMessage(
+            session_id=session.id,
+            role="assistant",
+            content=greeting_reply,
+        )
+        db.add(report_msg)
+        await db.commit()
+
+        await emit_progress(job_id, "pipeline", "complete", greeting_reply, {
+            "session_id": session_id,
+            "status": "completed",
+            "report": greeting_reply,
+            "sources": [],
+        })
+
+        return ResearchResponse(
+            session_id=str(session.id),
+            report=greeting_reply,
+            sources=[],
+            status="completed",
+        )
 
     await emit_progress(job_id, "pipeline", "started", "Research pipeline started.", {"session_id": session_id, "question": req.question[:100]})
 

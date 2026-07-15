@@ -10,12 +10,14 @@ class Settings(BaseSettings):
     postgres_host: str = "localhost"
     postgres_port: int = 5432
 
-    default_llm_provider: Literal["groq", "openrouter"] = "groq"
+    default_llm_provider: Literal["groq", "openrouter", "cerebras"] = "groq"
 
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-8b-instant"
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.1-8b-instruct"
+    cerebras_api_key: str = ""
+    cerebras_model: str = "gemma-4-31b"
 
     llm_request_timeout: int = 60
     max_context_messages: int = 12

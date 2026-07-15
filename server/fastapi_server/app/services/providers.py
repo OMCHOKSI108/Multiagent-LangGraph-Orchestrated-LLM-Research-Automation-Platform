@@ -114,14 +114,32 @@ class GroqClient(LLMProviderService):
         temperature: float = 0.7,
         max_tokens: int = 4096,
     ) -> GenerateResult:
+        from .token_budget import check_token_budget, shrink_context, count_tokens
+
+        budgeted = check_token_budget(messages)
+        prompt_tokens = count_tokens(" ".join(m.get("content", "") for m in budgeted))
+
         llm = self._build_llm(temperature, max_tokens)
-        lc_msgs = _to_langchain_messages(messages)
-        prompt_tokens = _estimate_tokens(" ".join(m.get("content", "") for m in messages))
+        lc_msgs = _to_langchain_messages(budgeted)
         start = time.monotonic()
-        response = llm.invoke(lc_msgs)
+        try:
+            response = llm.invoke(lc_msgs)
+        except Exception as e:
+            err_str = str(e)
+            if "413" in err_str or "too large" in err_str.lower() or "rate_limit_exceeded" in err_str:
+                logger.warning("Groq 413 / token limit on %d-token prompt — shrinking further", prompt_tokens)
+                tighter = shrink_context(messages, max_context=3000)
+                tighter_tokens = count_tokens(" ".join(m.get("content", "") for m in tighter))
+                logger.info("Shrunk to %d tokens and retrying Groq", tighter_tokens)
+                llm = self._build_llm(temperature, max_tokens)
+                lc_msgs = _to_langchain_messages(tighter)
+                response = llm.invoke(lc_msgs)
+            else:
+                raise
+
         duration_ms = int((time.monotonic() - start) * 1000)
         content = response.content
-        completion_tokens = _estimate_tokens(content)
+        completion_tokens = count_tokens(content)
         usage = UsageInfo(
             provider=self.name,
             model=self._model,
@@ -187,6 +205,103 @@ class OpenRouterClient(LLMProviderService):
             payload["stream"] = True
         resp = httpx.post(
             "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=self._timeout,
+        )
+        resp.raise_for_status()
+        return resp
+
+    def generate(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> GenerateResult:
+        prompt_tokens = _estimate_tokens(" ".join(m.get("content", "") for m in messages))
+        start = time.monotonic()
+        resp = self._chat_completion(messages, temperature, max_tokens, stream=False)
+        duration_ms = int((time.monotonic() - start) * 1000)
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        completion_tokens = _estimate_tokens(content)
+        usage = UsageInfo(
+            provider=self.name,
+            model=self._model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=duration_ms,
+        )
+        return GenerateResult(content=content, usage=usage)
+
+    async def generate_stream(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> AsyncIterator[str]:
+        resp = self._chat_completion(messages, temperature, max_tokens, stream=True)
+        for line in resp.iter_lines():
+            if not line:
+                continue
+            if line.startswith("data: "):
+                data_str = line[6:]
+                if data_str.strip() == "[DONE]":
+                    break
+                try:
+                    import json
+                    data = json.loads(data_str)
+                    delta = data.get("choices", [{}])[0].get("delta", {})
+                    token = delta.get("content", "")
+                    if token:
+                        yield token
+                except json.JSONDecodeError:
+                    continue
+
+
+class CerebrasClient(LLMProviderService):
+    """Cerebras provider via direct httpx calls (OpenAI-compatible API)."""
+
+    BASE_URL = "https://api.cerebras.ai/v1/chat/completions"
+
+    def __init__(self):
+        self._model: str = settings.cerebras_model
+        self._api_key: str = settings.cerebras_api_key
+        self._timeout: int = settings.llm_request_timeout
+
+    @property
+    def name(self) -> str:
+        return "Cerebras"
+
+    @property
+    def model_name(self) -> str:
+        return self._model
+
+    def _chat_completion(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+        stream: bool = False,
+    ) -> httpx.Response:
+        if not self._api_key:
+            raise LLMProviderError("Cerebras API key not configured")
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        payload: dict = {
+            "model": self._model,
+            "messages": messages,
+            "max_completion_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": 1,
+            "stream": stream,
+        }
+        if stream:
+            payload["stream"] = True
+        resp = httpx.post(
+            self.BASE_URL,
             headers=headers,
             json=payload,
             timeout=self._timeout,
@@ -324,6 +439,7 @@ class ProviderRegistry:
         candidates: list[LLMProviderService] = [
             GroqClient(),
             OpenRouterClient(),
+            CerebrasClient(),
         ]
         for p in candidates:
             try:

@@ -18,3 +18,6 @@ sse-starlette>=2.0
 exa-py>=2.14.0
 playwright>=1.48.0
 PyMuPDF>=1.24.0
+semantic-router>=0.1.15
+sentence-transformers>=3.0
+tiktoken>=0.6.0

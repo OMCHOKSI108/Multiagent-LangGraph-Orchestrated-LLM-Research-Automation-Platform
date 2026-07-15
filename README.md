@@ -71,7 +71,7 @@ What it does, in order:
 
 >  `--volumes` wipes the database. Drop that flag for a rebuild that keeps your data:
 > ```bash
-> docker compose down --rmi local --remove-orphans && docker compose up --build -d && docker compose logs -f
+> docker compose down -v --rmi local --remove-orphans && docker compose up --build --pull always --force-recreate -d && docker compose logs -f
 > ```
 
 ### 3. Open the app
