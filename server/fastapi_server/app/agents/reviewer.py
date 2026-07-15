@@ -4,6 +4,7 @@ import re
 from ..services.llm import call_llm
 from ..services.progress import emit_progress
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 SYSTEM_PROMPT = """You are an IEEE paper reviewer. Evaluate the paper against these criteria:
 
@@ -30,7 +31,7 @@ If score >= 7, set approved: true. Otherwise include specific revision instructi
 
 
 async def run_reviewer(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     job_id = state.get("job_id", "")
@@ -82,7 +83,7 @@ async def run_reviewer(state: ResearchState) -> ResearchState:
 
 
 async def run_revise(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     job_id = state.get("job_id", "")

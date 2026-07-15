@@ -44,6 +44,10 @@ export class SSEManager {
       if (eventType === "tokens") {
         this._bufferToken(targetJobId, message);
       }
+
+      if (eventType === "cancel") {
+        this._handleCancel(targetJobId);
+      }
     });
   }
 
@@ -124,6 +128,10 @@ export class SSEManager {
     this._broadcast(jobId, "token", JSON.stringify({ tokens: toSend }));
   }
 
+  private _handleCancel(jobId: string): void {
+    this._broadcast(jobId, "cancelled", JSON.stringify({ jobId }));
+  }
+
   private _flushStale(): void {
     for (const [jobId, state] of this.jobs.entries()) {
       if (state.chunks.length > 0) {
@@ -142,6 +150,10 @@ export class SSEManager {
   broadcastComplete(jobId: string): void {
     this._flushJob(jobId, Infinity);
     this._broadcast(jobId, "complete", JSON.stringify({ jobId }));
+  }
+
+  broadcastCancelled(jobId: string): void {
+    this._broadcast(jobId, "cancelled", JSON.stringify({ jobId }));
   }
 
   broadcastError(jobId: string, message: string): void {

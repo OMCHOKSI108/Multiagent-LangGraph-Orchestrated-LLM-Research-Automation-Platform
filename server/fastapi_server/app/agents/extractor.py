@@ -5,6 +5,7 @@ from ..services.llm import call_llm
 from ..services.progress import emit_progress
 from ..db import RawDocument, ResearchSource
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 SYSTEM_PROMPT = """You are a research extraction agent. Given raw web content, extract structured information.
 
@@ -40,7 +41,7 @@ If a field has no data, use an empty array or null. Do not fabricate information
 
 
 async def run_extractor(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     db = state.get("db")
@@ -58,6 +59,8 @@ async def run_extractor(state: ResearchState) -> ResearchState:
     all_structured = []
 
     for i, item in enumerate(crawled):
+        if await check_cancelled(state):
+            return state
         content = item.get("content", "")
         url = item.get("url", "")
         title = item.get("title", "")

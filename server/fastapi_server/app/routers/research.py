@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db, ResearchSessionModel, ResearchMessage, ResearchSource, ResearchReport, ResearchPlan
 from ..db import ResearchSessionStatus
 from ..graph import run_research
-from ..services.progress import emit_progress
+from ..services.progress import emit_progress, cancel_job, clear_cancel_flag
 
 router = APIRouter(prefix="/api/research", tags=["research"])
 
@@ -121,11 +121,15 @@ async def start_research(req: ResearchRequest, db: AsyncSession = Depends(get_db
 
     result = await run_research(req.question, str(session.id), job_id, req.max_revisions, db)
 
-    session.status = (
-        ResearchSessionStatus.completed
-        if result["status"] != "failed"
-        else ResearchSessionStatus.failed
-    )
+    result_status = result.get("status", "failed")
+    if result_status == "cancelled":
+        session.status = ResearchSessionStatus.failed
+    else:
+        session.status = (
+            ResearchSessionStatus.completed
+            if result_status != "failed"
+            else ResearchSessionStatus.failed
+        )
     session.updated_at = datetime.now(timezone.utc)
 
     report_msg = ResearchMessage(
@@ -214,3 +218,17 @@ async def approve_plan(session_id: str, db: AsyncSession = Depends(get_db)):
     plan.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return {"status": "approved"}
+
+
+class CancelRequest(BaseModel):
+    job_id: str
+
+
+@router.post("/cancel")
+async def cancel_research(req: CancelRequest):
+    """Cancel a running research job by setting a cancellation flag in Redis."""
+    try:
+        await cancel_job(req.job_id)
+        return {"status": "cancelled", "job_id": req.job_id}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to cancel research: {e}")

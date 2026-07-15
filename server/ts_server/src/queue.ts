@@ -76,6 +76,11 @@ export function startWorker(sseManager: SSEManager): Worker {
       sseManager.broadcastError(job.id!, msg);
       return;
     }
+    if (pipelineStatus === "cancelled") {
+      logger.info(`Job ${job.id} was cancelled`);
+      sseManager.broadcastCancelled(job.id!);
+      return;
+    }
     logger.info(`Job ${job.id} completed`);
     sseManager.broadcastComplete(job.id!);
   });

@@ -7,6 +7,7 @@ from ..services.rag import hybrid_search, validate_citations
 from ..services.token_budget import count_tokens, truncate_to_token_budget
 from ..db import Paper, PaperVersion, PaperSection
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 MAX_EVIDENCE_TOKENS = 2500
 
@@ -38,7 +39,7 @@ Requirements:
 
 
 async def run_paper_writer(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     db = state.get("db")
@@ -51,6 +52,9 @@ async def run_paper_writer(state: ResearchState) -> ResearchState:
     rag_results = []
     if db is not None:
         rag_results = await hybrid_search(question, session_id, db, top_k=10, min_score=0.2)
+
+    if await check_cancelled(state):
+        return state
 
     key_findings = state.get("key_findings", [])
     findings_text = ""

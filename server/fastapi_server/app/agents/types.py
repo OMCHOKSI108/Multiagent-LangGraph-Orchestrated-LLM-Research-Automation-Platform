@@ -16,6 +16,7 @@ class ResearchState(TypedDict):
     max_revisions: int
     status: str
     error: Optional[str]
+    cancelled: bool
     chunk_count: int
     db: Any
     structured_data: list[dict]

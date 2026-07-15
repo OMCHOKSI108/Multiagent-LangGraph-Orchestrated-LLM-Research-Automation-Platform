@@ -2,6 +2,7 @@ from ..services.search import crawl_pages
 from ..services.llm import call_llm
 from ..services.progress import emit_progress
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 
 async def _extract_relevant_content(question: str, crawl_results: list[dict], job_id: str = "") -> str:
@@ -28,7 +29,7 @@ async def _extract_relevant_content(question: str, crawl_results: list[dict], jo
 
 
 async def run_crawler(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     job_id = state.get("job_id", "")
@@ -48,6 +49,9 @@ async def run_crawler(state: ResearchState) -> ResearchState:
         state["status"] = "crawled"
         state["analysis"] = f"Crawling failed: {e}"
         await emit_progress(job_id, "crawler", "error", f"Crawling failed: {e}")
+        return state
+
+    if await check_cancelled(state):
         return state
 
     state["crawled_content"] = crawl_results

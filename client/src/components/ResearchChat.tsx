@@ -30,6 +30,12 @@ const START_RESEARCH = gql`
   }
 `;
 
+const CANCEL_RESEARCH = gql`
+  mutation CancelResearch($jobId: ID!) {
+    cancelResearch(jobId: $jobId)
+  }
+`;
+
 const FETCH_SESSION = gql`
   query ResearchSession($sessionId: ID!) {
     researchSession(sessionId: $sessionId) {
@@ -131,6 +137,7 @@ export default function ResearchChat({
       setActiveJobId(null);
       fetchSession(activeChatId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sseDone, activeChatId]);
 
   useEffect(() => {
@@ -144,6 +151,28 @@ export default function ResearchChat({
       ]);
     }
   }, [sseError]);
+
+  const handleCancel = async () => {
+    if (!activeJobId) return;
+    try {
+      await client.mutate({
+        mutation: CANCEL_RESEARCH,
+        variables: { jobId: activeJobId },
+      });
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Research cancelled." },
+      ]);
+      setIsThinking(false);
+      setThinkingLabel("");
+      setActiveJobId(null);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Failed to cancel research." },
+      ]);
+    }
+  };
 
   const fetchSession = async (sessionId: string) => {
     try {
@@ -471,7 +500,23 @@ export default function ResearchChat({
                       )}
                     </div>
 
-                    {canSend ? (
+                    {/* STOP button - shown when research is running */}
+                    {isThinking && activeJobId ? (
+                      <button
+                        type="button"
+                        aria-label="Stop research"
+                        onClick={handleCancel}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-500 text-white transition hover:scale-105 hover:bg-red-600"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="h-4 w-4"
+                        >
+                          <rect x="6" y="6" width="12" height="12" rx="2" />
+                        </svg>
+                      </button>
+                    ) : canSend ? (
                       <button
                         type="button"
                         aria-label="Send message"

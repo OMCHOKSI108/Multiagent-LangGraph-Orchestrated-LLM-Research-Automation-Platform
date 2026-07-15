@@ -6,6 +6,7 @@ from ..services.progress import emit_progress
 from ..services.rag import hybrid_search
 from ..db import Citation, DocumentChunk, ResearchSource
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 SYSTEM_PROMPT = """You are a citation verification agent. Given a paper section and the original source evidence, map each claim in the paper to its supporting evidence.
 
@@ -27,7 +28,7 @@ Every claim in the paper that makes a factual assertion MUST have a citation. Cl
 
 
 async def run_citation(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     db = state.get("db")
@@ -47,6 +48,9 @@ async def run_citation(state: ResearchState) -> ResearchState:
         section_text += f"\n--- Section {i + 1} ---\n{sec[:2000]}"
 
     rag_results = await hybrid_search(report[:500], session_id, db, top_k=10, min_score=0.2)
+
+    if await check_cancelled(state):
+        return state
 
     source_text = ""
     for i, r in enumerate(rag_results, 1):

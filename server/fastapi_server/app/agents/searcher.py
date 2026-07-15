@@ -1,10 +1,11 @@
 from ..services.search import search_web
 from ..services.progress import emit_progress
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 
 async def run_searcher(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     job_id = state.get("job_id", "")
@@ -14,6 +15,8 @@ async def run_searcher(state: ResearchState) -> ResearchState:
     all_results = []
 
     for i, query in enumerate(queries):
+        if await check_cancelled(state):
+            return state
         await emit_progress(job_id, "searcher", "searching", f'Running query {i + 1}/{len(queries)}: "{query[:80]}..."')
         try:
             results = await search_web(query)

@@ -18,39 +18,55 @@ from .services.llm import LLMError, USER_FRIENDLY_ERROR
 
 
 def router_planner(state: ResearchState) -> Literal["searcher", "end"]:
-    return "end" if state.get("error") else "searcher"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "searcher"
 
 
 def router_searcher(state: ResearchState) -> Literal["crawler", "end"]:
-    return "end" if state.get("error") else "crawler"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "crawler"
 
 
 def router_crawler(state: ResearchState) -> Literal["extractor", "end"]:
-    return "end" if state.get("error") else "extractor"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "extractor"
 
 
 def router_extractor(state: ResearchState) -> Literal["chunker", "end"]:
-    return "end" if state.get("error") else "chunker"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "chunker"
 
 
 def router_chunker(state: ResearchState) -> Literal["reasoning", "end"]:
-    return "end" if state.get("error") else "reasoning"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "reasoning"
 
 
 def router_reasoning(state: ResearchState) -> Literal["paper_writer", "end"]:
-    return "end" if state.get("error") else "paper_writer"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "paper_writer"
 
 
 def router_paper_writer(state: ResearchState) -> Literal["citation", "end"]:
-    return "end" if state.get("error") else "citation"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "citation"
 
 
 def router_citation(state: ResearchState) -> Literal["reviewer", "end"]:
-    return "end" if state.get("error") else "reviewer"
+    if state.get("error") or state.get("cancelled"):
+        return "end"
+    return "reviewer"
 
 
 def router_reviewer(state: ResearchState) -> Literal["revise", "end"]:
-    if state.get("error"):
+    if state.get("error") or state.get("cancelled"):
         return "end"
     if state.get("status") == "approved":
         return "end"
@@ -123,6 +139,22 @@ async def run_research(
     max_revisions: int = 2,
     db: AsyncSession | None = None,
 ) -> dict:
+    # Check if job was cancelled before starting
+    from .services.progress import is_job_cancelled
+    if await is_job_cancelled(job_id):
+        return {
+            "report": "Research cancelled by user.",
+            "sources": [],
+            "status": "cancelled",
+            "error": "cancelled",
+            "revision_count": 0,
+            "chunk_count": 0,
+            "paper_id": "",
+            "paper_title": "",
+            "citation_count": 0,
+            "finding_count": 0,
+        }
+
     initial_state: ResearchState = {
         "question": question,
         "session_id": session_id,
@@ -138,6 +170,7 @@ async def run_research(
         "max_revisions": max_revisions,
         "status": "started",
         "error": None,
+        "cancelled": False,
         "chunk_count": 0,
         "db": db,
         "structured_data": [],

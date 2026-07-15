@@ -72,6 +72,14 @@ export function useResearchSSE(jobId: string | null) {
       eventSourceRef.current = null;
     });
 
+    es.addEventListener("cancelled", () => {
+      setDone(true);
+      setStatus("idle");
+      setError("Research cancelled by user.");
+      es.close();
+      eventSourceRef.current = null;
+    });
+
     es.addEventListener("error", (event) => {
       try {
         const data = JSON.parse((event as MessageEvent).data);

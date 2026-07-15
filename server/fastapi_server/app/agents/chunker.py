@@ -5,10 +5,11 @@ from ..services.embeddings import embed_batch
 from ..services.progress import emit_progress
 from ..db import DocumentChunk, ResearchSource
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 
 async def run_chunker(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     db = state.get("db")
@@ -24,6 +25,8 @@ async def run_chunker(state: ResearchState) -> ResearchState:
 
     all_chunks = []
     for item in crawled:
+        if await check_cancelled(state):
+            return state
         content = item.get("content", item.get("clean_text", ""))
         url = item.get("url", "")
         title = item.get("title", "")
@@ -35,6 +38,9 @@ async def run_chunker(state: ResearchState) -> ResearchState:
 
     if not all_chunks:
         await emit_progress(job_id, "chunker", "complete", "No chunks generated.")
+        return state
+
+    if await check_cancelled(state):
         return state
 
     await emit_progress(job_id, "chunker", "embedding", f"Generating embeddings for {len(all_chunks)} chunks...")

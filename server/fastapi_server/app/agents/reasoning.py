@@ -6,6 +6,7 @@ from ..services.progress import emit_progress
 from ..services.rag import enhanced_rag_search
 from ..db import KeyFinding
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 SYSTEM_PROMPT = """You are a research reasoning agent. Given a research question and a collection of evidence from multiple sources, synthesize key findings.
 
@@ -35,7 +36,7 @@ Focus on clustering similar claims, detecting contradictions, and ranking by sou
 
 
 async def run_reasoning(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     db = state.get("db")
@@ -48,6 +49,9 @@ async def run_reasoning(state: ResearchState) -> ResearchState:
     rag_evidence = ""
     if db is not None:
         rag_evidence = await enhanced_rag_search(question, session_id, db, top_k=12, min_score=0.2)
+
+    if await check_cancelled(state):
+        return state
 
     structured = state.get("structured_data", [])
     claims_text = ""

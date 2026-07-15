@@ -157,6 +157,7 @@ const typeDefs = `#graphql
     ): UserSetting! @auth
 
     startResearch(question: String!, depth: String): ResearchJobResult! @auth
+    cancelResearch(jobId: ID!): Boolean! @auth
     createProject(title: String!, description: String): Project! @auth
     updateProject(id: ID!, title: String, description: String): Project! @auth
     deleteProject(id: ID!): Boolean! @auth
@@ -546,6 +547,26 @@ export const resolvers = {
         citationPreference: raw.citation_preference,
         exportPreference: raw.export_preference,
       };
+    },
+
+    cancelResearch: async (_parent: unknown, { jobId }: { jobId: string }, { user }: GraphQLContext) => {
+      if (!user) throw new Error("Not authenticated");
+      try {
+        const resp = await fetch(`${FASTAPI_URL}/api/research/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: jobId }),
+        });
+        if (!resp.ok) {
+          const text = await resp.text();
+          throw new Error(text);
+        }
+        return true;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`Cancel research job ${jobId} failed: ${message}`);
+        throw new Error(`Failed to cancel research: ${message}`);
+      }
     },
 
     startResearch: async (_parent: unknown, { question, depth }: { question: string; depth?: string }, { user }: GraphQLContext) => {

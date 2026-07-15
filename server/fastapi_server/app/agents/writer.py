@@ -3,6 +3,7 @@ from ..services.progress import emit_progress, emit_token
 from ..services.rag import hybrid_search, validate_citations
 from ..services.token_budget import count_tokens, truncate_to_token_budget
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 MAX_EVIDENCE_TOKENS = 2500
 
@@ -21,7 +22,7 @@ Requirements:
 
 
 async def run_writer(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     job_id = state.get("job_id", "")
@@ -35,6 +36,9 @@ async def run_writer(state: ResearchState) -> ResearchState:
     rag_results = []
     if db is not None:
         rag_results = await hybrid_search(question, session_id, db, top_k=8, min_score=0.25)
+
+    if await check_cancelled(state):
+        return state
 
     evidence_text = ""
     for i, r in enumerate(rag_results[:5], 1):

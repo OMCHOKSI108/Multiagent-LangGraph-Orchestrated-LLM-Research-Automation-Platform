@@ -1,6 +1,7 @@
 from ..services.llm import call_llm
 from ..services.progress import emit_progress
 from .types import ResearchState
+from .cancel_helpers import check_cancelled
 
 SYSTEM_PROMPT = """You are a research planning agent. Given a user's research question, create a structured research plan.
 
@@ -14,7 +15,7 @@ Generate 3-5 specific search queries that will gather comprehensive information 
 
 
 async def run_planner(state: ResearchState) -> ResearchState:
-    if state.get("error"):
+    if state.get("error") or await check_cancelled(state):
         return state
 
     job_id = state.get("job_id", "")
